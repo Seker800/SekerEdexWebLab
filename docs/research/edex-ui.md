@@ -17,11 +17,15 @@ Phase 0 的唯一视觉基准是上游 README 中的默认截图：
 - Path: `media/screenshot_default.png`
 - Commit: `04a00c4079908788b371c6ecdefff96d0d9950f8`
 - Native size: 1934×1094
+- Opaque UI bounds: `(5, 5)` through `(1924, 1084)`, exactly 1920×1080
 - SHA-256: `c72ddbab1fc89c9ceb35ab18e864084f603861ba629ec72bd072ea9015173ef4`
 - Source: <https://github.com/GitSquared/edex-ui/blob/04a00c4079908788b371c6ecdefff96d0d9950f8/media/screenshot_default.png>
 
 参考截图不复制进仓库，只通过固定上游地址和摘要识别。其他官方截图可用于理解组件行为，
 不能混入首个视觉基准。
+
+PNG 外层含透明和抗锯齿边缘；像素 alpha 大于 127 的包围区域是 `(5, 5)` 开始的
+1920×1080。视觉比较以该裁剪为准，项目逻辑画布因此固定为 16:9。
 
 ## What we study
 
@@ -36,7 +40,7 @@ Phase 0 的唯一视觉基准是上游 README 中的默认截图：
 
 - Logo、项目名称和品牌表现。
 - 截图、演示媒体和原始音频。
-- 字体文件与文件图标子模块。
+- 字体文件与文件图标子模块。United Sans 只允许从本地忽略目录临时加载，不进入仓库。
 - Electron、本地 shell、PTY、系统进程和文件系统访问实现。
 - 未经文件级来源核查的第三方 vendor 代码。
 

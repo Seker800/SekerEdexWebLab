@@ -13,3 +13,5 @@ test-results/
 *.log
 *.local
 
+.reference-assets/*
+!.reference-assets/README.md

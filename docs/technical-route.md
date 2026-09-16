@@ -11,7 +11,7 @@
 | 终端 | xterm.js + Fit + WebGL addon | ANSI、字符网格、光标、选择、尺寸适配和终端质感 |
 | 地球 | Three.js 直接封装 | 点阵地球、标记、连线和受控动画循环 |
 | 实时图表 | 原生 Canvas 2D | CPU、内存和网络曲线的精确线宽、网格与采样节奏 |
-| 主体视觉 | 语义 DOM + CSS Grid + CSS 自定义属性 | 三栏、底部区域、切角、线框、刻度和响应式布局 |
+| 主体视觉 | 语义 DOM + CSS Grid + CSS 自定义属性 | 固定 16:9 三栏、底部区域、切角、线框和刻度 |
 | 声音 | 原生 Web Audio API | 用户手势解锁后的程序化按键、扫描、成功和错误音效 |
 | 状态 | 框架无关 TypeScript 会话引擎 | 命令、intent、状态转换、虚拟文件系统和领域事件 |
 | 测试 | Vitest + Playwright | 纯逻辑、键盘交互、浏览器行为、截图和视觉回归 |
@@ -34,11 +34,12 @@ Next.js，因为当前没有账号、数据库、服务端动作或按请求渲�
 ### DOM、Canvas 与 WebGL 各做擅长的部分
 
 整个界面不能画在单张 Canvas 上。标题、终端辅助输入、文件、按键和文章需要语义、选择、
-焦点与响应式布局，所以主骨架使用 DOM/CSS。高频折线放在 Canvas，点阵地球放在 WebGL，
+焦点与固定画布缩放，所以主骨架使用 DOM/CSS。高频折线放在 Canvas，点阵地球放在 WebGL，
 避免 React 因每帧数据更新而重渲染整个工作台。
 
 主体布局使用 CSS Grid 和少量绝对定位。`#aacfd1`、`#05080d`、`#000000`、`#262828`
-等默认 `tron` 色值进入视觉 token；几何尺寸从 1934×1094 参考画布推导。首版不引入
+等默认 `tron` 色值进入视觉 token；几何尺寸从裁剪后的 1920×1080 参考内容推导。Shell
+内部只按该逻辑画布布局，外层 `ViewportScaler` 负责等比缩放和居中留边。首版不引入
 Tailwind、组件库或通用图表库，以免抽象层妨碍逐像素调校。
 
 ### 终端保留 xterm.js，shell 重新定义
@@ -90,7 +91,7 @@ src/
     adapters/            键盘、指针、可见性、浏览器指标
     renderers/           xterm、Three.js、Canvas、Web Audio
     features/            shell、terminal、telemetry、keyboard、viewer
-    styles/              token、基准几何、响应式和减少动态效果
+    styles/              token、16:9 基准几何、画布缩放和减少动态效果
   tests/
     unit/
     e2e/
@@ -125,11 +126,13 @@ Astro content collections 定义三类数据：
 ## 字体与素材
 
 - 终端采用具有明确开放许可的 Fira Mono 自托管版本，不直接复制上游字体文件。
-- 上游使用的 United Sans 必须完成独立许可证核查；未确认前不得提交。
-- UI 字体先做字宽、字高、数字形状和大写字母 specimen 对比，再确定开放许可替代字体。
+- 本地复刻阶段临时从 `.reference-assets/fonts/` 加载 United Sans Medium 与 Light，以保持
+  字宽、字高、数字形状和大写字母与参考图一致。
+- `.reference-assets/` 被 Git 忽略；United Sans 未完成独立许可证核查前不得提交、进入公开
+  构建或部署。后续通过取得授权或选择经过 specimen 对比的开放字体解决。
 - 原版 WAV、截图和 vendor globe bundle 不进入应用；视觉和声音均独立实现。
 
-United Sans 的许可结论会决定字体层面的最终像素差异，是开始视觉验收前必须关闭的资产问题。
+United Sans 的许可结论是公开发布前必须关闭的资产问题，不阻塞本地视觉复刻。
 
 ## 验证门禁
 
@@ -143,9 +146,8 @@ United Sans 的许可结论会决定字体层面的最终像素差异，是开�
 
 视觉验证固定浏览器版本、字体、设备缩放和动画时钟：
 
-- 1934×1094：对上游固定参考图生成实现图与差异图。
-- 1920×1080：主部署构图和交互截图。
-- 1440×900：受控适配截图。
+- 1920×1080：裁剪上游固定参考图，生成实现图与差异图。
+- 1440×900：验证完整工作台缩放为 1440×810，上下各留 45 像素背景边。
 - 移动视口：终端/内容降级路径，不参加桌面一比一比较。
 
 上游参考图下载到被 Git 忽略的缓存目录，并核对文档记录的 SHA-256。项目提交自己的测试基线
@@ -154,7 +156,7 @@ United Sans 的许可结论会决定字体层面的最终像素差异，是开�
 ## 首个垂直切片顺序
 
 1. 建立 Astro + React + TypeScript strict、pnpm lockfile 和验证门禁。
-2. 用 DOM/CSS 完成 1934×1094 静态几何骨架与 `tron` token。
+2. 用 DOM/CSS 完成固定 1920×1080 静态几何骨架、`ViewportScaler` 与 `tron` token。
 3. 接入 xterm.js，显示固定 `neofetch` 状态并完成尺寸校准。
 4. 接入 Canvas 曲线和统一调度器。
 5. 接入 Three.js 点阵地球及生命周期回收。

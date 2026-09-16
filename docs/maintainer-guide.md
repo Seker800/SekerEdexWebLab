@@ -15,6 +15,7 @@
 6. [`adr/0001-reference-and-license-boundary.md`](adr/0001-reference-and-license-boundary.md)
 7. [`adr/0002-lock-tron-reference.md`](adr/0002-lock-tron-reference.md)
 8. [`adr/0003-web-technology-route.md`](adr/0003-web-technology-route.md)
+9. [`adr/0004-fixed-canvas-and-reference-fonts.md`](adr/0004-fixed-canvas-and-reference-fonts.md)
 
 ## 当前开发流程
 
