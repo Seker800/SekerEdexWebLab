@@ -1,4 +1,4 @@
-# eDEX Web Lab 开发规则
+# SekerEdexWebLab 开发规则
 
 ## 开始之前
 
@@ -50,4 +50,3 @@
 - 禁止 force push、`git push --all`、`git push --mirror`，也不得擅自创建或替换远端。
 - 没有远端、认证失败或分支保护拒绝时，保留本地提交并清楚报告，不得绕过保护。
 - 提交或 push 前检查 `git status --short`，不得覆盖、回滚或夹带无关改动。
-

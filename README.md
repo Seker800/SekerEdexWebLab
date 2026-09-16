@@ -1,4 +1,4 @@
-# eDEX Web Lab
+# SekerEdexWebLab
 
 一个非官方、开源的 Web 视觉复刻实验。当前目标只有一个：验证现代浏览器能否重现
 [eDEX-UI](https://github.com/GitSquared/edex-ui) 最有辨识度的全屏终端体验，并形成可用于个人博客主页的可靠基础。
@@ -40,4 +40,3 @@
 
 本项目代码按 GPL-3.0-only 发布。个人文章、摄影和设计作品不因进入本仓库而自动采用 GPL；
 内容许可证必须由内容目录单独声明。
-
