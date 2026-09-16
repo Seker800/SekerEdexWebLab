@@ -1,0 +1,41 @@
+# eDEX-UI 参考记录
+
+## Authoritative source
+
+- Repository: <https://github.com/GitSquared/edex-ui>
+- Reference tag: `v2.2.8`
+- License: GPL-3.0
+- Status: upstream archived in 2021
+
+不要把低关注度 fork 当作上游依据。引用代码、提交或行为时优先链接原仓库和固定 tag。
+
+## What we study
+
+- 固定全屏模块比例和视觉层级。
+- 启动、自检、扫描、授权与错误反馈的时间组织。
+- 中央终端、文件系统、监控、地球和键盘之间的联动。
+- 实体键盘映射到屏幕键盘的即时反馈。
+- 高频小音效如何强化触感。
+- 无用户操作时仍保持运行感的动态密度。
+
+## What we do not copy by default
+
+- Logo、项目名称和品牌表现。
+- 截图、演示媒体和原始音频。
+- 字体文件与文件图标子模块。
+- Electron、本地 shell、PTY、系统进程和文件系统访问实现。
+- 未经文件级来源核查的第三方 vendor 代码。
+
+## Import procedure
+
+若复用上游实现确实比重写更合理，变更必须同时包含：
+
+1. 固定的上游 commit 或 tag。
+2. 原文件路径与本仓库目标路径。
+3. 许可证和版权声明。
+4. 修改摘要。
+5. 为什么复用优于重新实现。
+6. 对整个发布物许可证边界的影响。
+
+未完成以上记录时不得复制代码或素材。
+
