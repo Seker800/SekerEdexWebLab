@@ -3,6 +3,10 @@
 一个非官方、开源的 Web 视觉复刻实验。当前目标只有一个：验证现代浏览器能否重现
 [eDEX-UI](https://github.com/GitSquared/edex-ui) 最有辨识度的全屏终端体验，并形成可用于个人博客主页的可靠基础。
 
+当前唯一视觉基准是上游官方默认截图：**neofetch on eDEX-UI 2.2、默认 `tron` 主题、
+QWERTY 键盘**。Phase 0 先一比一复刻该画面的构图、比例、视觉语言和运行状态，再进行
+响应式适配与博客内容替换；其他主题不属于当前复刻范围。
+
 本项目当前不预设框架，不继承其他项目的技术路线，也不把普通终端主题包装成“复刻”。
 先用可运行原型证明视觉、交互、声音和性能，再决定长期实现。
 
@@ -28,6 +32,7 @@
 | [`docs/architecture.md`](docs/architecture.md) | 北极星、系统边界和长期不变量 |
 | [`docs/visual-parity.md`](docs/visual-parity.md) | 视觉与交互复刻的验收合同 |
 | [`docs/research/edex-ui.md`](docs/research/edex-ui.md) | 原项目参考范围和证据记录 |
+| [`docs/adr/0002-lock-tron-reference.md`](docs/adr/0002-lock-tron-reference.md) | 锁定默认 Tron 官方截图为一比一复刻基准 |
 | [`docs/maintainer-guide.md`](docs/maintainer-guide.md) | 日常开发、验证、提交与推送入口 |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | 贡献、DCO 和 Pull Request 规则 |
 | [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | 第三方代码、素材和许可证边界 |

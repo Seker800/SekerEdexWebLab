@@ -8,6 +8,15 @@ Cyberdeck：中央终端、文件系统、遥测面板、活动日志、声音�
 
 当前 North Star 是验证体验可行性，不是提前确定框架。
 
+## Locked reference profile
+
+Phase 0 只实现一个参考配置：eDEX-UI 2.2、默认 `tron` 主题、QWERTY 键盘和中央
+`neofetch` 输出。参考画面中的三栏结构、底部文件系统与屏幕键盘、面板比例、线框、切角、
+网格、字号层级和灰蓝色阶构成第一阶段不可随意改写的视觉合同。
+
+博客文章、摄影和设计作品接入属于参考画面成立之后的内容替换。主题系统、其他 eDEX-UI
+皮肤和持续故障效果不进入首个垂直切片。
+
 ## Experience direction
 
 ```text

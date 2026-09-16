@@ -9,6 +9,20 @@
 
 不要把低关注度 fork 当作上游依据。引用代码、提交或行为时优先链接原仓库和固定 tag。
 
+## Locked visual reference
+
+Phase 0 的唯一视觉基准是上游 README 中的默认截图：
+
+- Caption: `neofetch on eDEX-UI 2.2 with the default "tron" theme & QWERTY keyboard`
+- Path: `media/screenshot_default.png`
+- Commit: `04a00c4079908788b371c6ecdefff96d0d9950f8`
+- Native size: 1934×1094
+- SHA-256: `c72ddbab1fc89c9ceb35ab18e864084f603861ba629ec72bd072ea9015173ef4`
+- Source: <https://github.com/GitSquared/edex-ui/blob/04a00c4079908788b371c6ecdefff96d0d9950f8/media/screenshot_default.png>
+
+参考截图不复制进仓库，只通过固定上游地址和摘要识别。其他官方截图可用于理解组件行为，
+不能混入首个视觉基准。
+
 ## What we study
 
 - 固定全屏模块比例和视觉层级。
@@ -38,4 +52,3 @@
 6. 对整个发布物许可证边界的影响。
 
 未完成以上记录时不得复制代码或素材。
-
