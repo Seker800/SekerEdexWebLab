@@ -7,8 +7,8 @@
 QWERTY 键盘**。Phase 0 先一比一复刻该画面的构图、比例、视觉语言和运行状态，再进行
 响应式适配与博客内容替换；其他主题不属于当前复刻范围。
 
-本项目当前不预设框架，不继承其他项目的技术路线，也不把普通终端主题包装成“复刻”。
-先用可运行原型证明视觉、交互、声音和性能，再决定长期实现。
+本项目采用 Astro、React 与专用浏览器渲染层，不继承其他项目的技术路线，也不把普通终端
+主题包装成“复刻”。先用可运行垂直切片证明视觉、交互、声音和性能，再扩展博客内容与功能。
 
 ## 当前阶段
 
@@ -30,9 +30,11 @@ QWERTY 键盘**。Phase 0 先一比一复刻该画面的构图、比例、视觉
 | --- | --- |
 | [`AGENTS.md`](AGENTS.md) | Agent 与维护者必须遵守的项目规则 |
 | [`docs/architecture.md`](docs/architecture.md) | 北极星、系统边界和长期不变量 |
+| [`docs/technical-route.md`](docs/technical-route.md) | 已选技术栈、渲染策略、目录边界与验证门禁 |
 | [`docs/visual-parity.md`](docs/visual-parity.md) | 视觉与交互复刻的验收合同 |
 | [`docs/research/edex-ui.md`](docs/research/edex-ui.md) | 原项目参考范围和证据记录 |
 | [`docs/adr/0002-lock-tron-reference.md`](docs/adr/0002-lock-tron-reference.md) | 锁定默认 Tron 官方截图为一比一复刻基准 |
+| [`docs/adr/0003-web-technology-route.md`](docs/adr/0003-web-technology-route.md) | 选择 Astro、React 与专用浏览器渲染层 |
 | [`docs/maintainer-guide.md`](docs/maintainer-guide.md) | 日常开发、验证、提交与推送入口 |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | 贡献、DCO 和 Pull Request 规则 |
 | [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | 第三方代码、素材和许可证边界 |

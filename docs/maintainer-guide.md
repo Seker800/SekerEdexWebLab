@@ -11,11 +11,15 @@
 2. [`architecture.md`](architecture.md)
 3. [`visual-parity.md`](visual-parity.md)
 4. [`research/edex-ui.md`](research/edex-ui.md)
-5. [`adr/0001-reference-and-license-boundary.md`](adr/0001-reference-and-license-boundary.md)
+5. [`technical-route.md`](technical-route.md)
+6. [`adr/0001-reference-and-license-boundary.md`](adr/0001-reference-and-license-boundary.md)
+7. [`adr/0002-lock-tron-reference.md`](adr/0002-lock-tron-reference.md)
+8. [`adr/0003-web-technology-route.md`](adr/0003-web-technology-route.md)
 
 ## 当前开发流程
 
-当前仓库尚未选择技术栈。建立第一个可运行原型时，应在同一变更中补充：
+技术路线已经确定，但代码脚手架尚未建立。第一个可运行原型使用 Node.js 22 LTS、pnpm 10、
+Astro 静态输出、React、严格 TypeScript，并在同一变更中补充可执行的：
 
 - 安装、开发、测试和生产构建命令。
 - Node/运行时版本与 lockfile 策略。
@@ -60,4 +64,3 @@ git commit -s
 - [ ] 程序代码与个人内容许可证边界清晰。
 - [ ] 工作树干净，提交不包含实验缓存、录屏原件或用户私有内容。
 - [ ] 下一阶段目标来自验证结果，而不是提前扩张范围。
-
