@@ -43,13 +43,15 @@
   --capture-process-header-scale-x: 1.045;
   --capture-terminal-scale-x: .995;
   --capture-terminal-offset-x: -2px;
-  --capture-file-scale-x: 1.005;
-  --capture-file-scale-y: 1.04;
+  --capture-file-scale-x: 1.004;
+  --capture-file-scale-y: 1.038;
   --capture-file-offset-x: 1px;
   --capture-file-offset-y: 3px;
   --capture-directory-icon-scale-y: .94;
   --capture-directory-icon-offset-y: 1px;
   --capture-file-icon-scale-y: .94;
+  --capture-file-second-row-label-offset-y: -2px;
+  --capture-file-second-row-label-scale-y: .96;
   --capture-file-footer-scale-x: .99;
   --capture-file-footer-offset-y: -2px;
   --capture-keyboard-scale-x: 1.015;
@@ -402,8 +404,8 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .filesystem-panel .section-label { position: relative; top: .45vh; width: calc(100% + .7vw); font-size: 1.02vh; padding: 0 .925vh; }
 .filesystem-panel .section-label::after { content: ""; position: absolute; left: -9px; right: -2px; top: 11px; border-bottom: 1px solid rgba(var(--signal-rgb), .3); }
 .filesystem-panel .section-label small { color: var(--signal); font-size: 1.02vh; transform: scaleX(.9); transform-origin: right center; }
-.filesystem-panel .section-label > span { margin-left: -.35vw; }
-.filesystem-panel .section-label > small { position: absolute; right: 0; }
+.filesystem-panel .section-label > span { margin-left: -.35vw; translate: -1px 0; transform: scaleX(.96); }
+.filesystem-panel .section-label > small { position: absolute; right: 0; translate: -1px 0; transform: scaleX(.88); }
 .file-grid { position: relative; left: -.093vw; width: calc(100% + .67vw); flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(8, 1fr); grid-auto-rows: 1fr; gap: .4vh .35vw; overflow: hidden; clip-path: inset(0 0 2.83vh 0); transform: translate(var(--capture-file-offset-x), var(--capture-file-offset-y)) scale(var(--capture-file-scale-x), var(--capture-file-scale-y)); transform-origin: center; }
 .file-grid button { width: 8.5vh; height: 8.5vh; min-width: 0; padding: 0; border: 0; background: transparent; justify-self: center; align-self: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .35vh; }
 .file-grid button:focus-visible { outline: 1px solid var(--border); }
@@ -418,10 +420,12 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .file-grid button[data-category="file"] span,
 .file-grid button[data-category="symlink"] span { font-weight: 300; }
 .file-grid button[data-category="symlink"] span { text-decoration: underline; }
+.file-grid button:nth-child(n + 9):nth-child(-n + 16) span { transform: translateY(var(--capture-file-second-row-label-offset-y)) scaleY(var(--capture-file-second-row-label-scale-y)); }
 .file-grid button[data-icon="showDisks"] b, .file-grid button[data-icon="up"] b { top: -.36vh; }
 .file-grid button[data-icon="showDisks"] span, .file-grid button[data-icon="up"] span { top: .18vh; }
 .filesystem-source-scrollbar { position: absolute; top: calc(4.54vh - 1px); right: -6px; width: 8px; height: 23.31vh; background: var(--signal); z-index: 3; pointer-events: none; }
 .filesystem-panel footer { position: relative; top: -1.8vh; width: calc(100% + .7vw); height: 2.1vh; display: grid; grid-template-columns: 29.5% 70.5%; gap: 0; align-items: center; font: 1.4vh var(--font-ui); text-transform: none; transform: translateY(var(--capture-file-footer-offset-y)) scaleX(var(--capture-file-footer-scale-x)); transform-origin: center; }
+.filesystem-panel footer > span { transform: translateX(-9px) scaleX(1.05); transform-origin: left center; }
 .storage-meter { position: relative; width: 101%; height: 2.2vh; margin: 0; padding-top: .5vh; appearance: none; -webkit-appearance: none; background: transparent; }
 .storage-meter::-webkit-progress-bar { position: relative; top: .7vh; height: .7vh; background: rgba(var(--signal-rgb), .4); }
 .storage-meter::-webkit-progress-value { position: relative; bottom: .7vh; height: .7vh; background: rgb(var(--signal-rgb)); }
