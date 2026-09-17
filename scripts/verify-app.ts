@@ -62,6 +62,9 @@ await page.addInitScript(() => {
 try {
   await page.goto("http://127.0.0.1:4174/", { waitUntil: "networkidle" });
   await page.locator('[data-phase="gate"]').waitFor();
+  if (await page.locator(".boot-gate__eyebrow").textContent() !== "eDEX-UI v2.2.0") {
+    throw new Error("Boot gate version does not match the exact screenshot-era source");
+  }
   if (await page.locator("#edex-globe canvas").count() !== 0) {
     throw new Error("Globe runtime started before the source module initialization stage");
   }
@@ -69,6 +72,7 @@ try {
   await page.getByRole("button", { name: "Initialize system" }).click();
   await page.waitForFunction(() => document.querySelector("#boot-log")?.textContent?.includes("Boot Complete") ?? false);
   const bootLogText = await page.locator("#boot-log").textContent() ?? "";
+  if (!bootLogText.includes("eDEX-UI Kernel version 2.2.0")) throw new Error("Boot kernel version does not match the exact screenshot-era source");
   if (!bootLogText.includes("<dict ID=")) throw new Error("Boot log did not decode the upstream HTML entities");
   if (bootLogText.includes("&lt;dict")) throw new Error("Boot log rendered encoded entity text instead of the upstream characters");
   await page.screenshot({ path: path.join(artifactDirectory, "boot-log.png"), animations: "disabled" });

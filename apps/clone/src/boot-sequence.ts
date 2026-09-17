@@ -1,4 +1,5 @@
 import type { AudioDeck } from "./audio-deck.js";
+import { canonicalEdexVersion } from "./canonical-runtime.js";
 
 export type BootPhase = "gate" | "log" | "title" | "reveal" | "complete";
 
@@ -91,7 +92,7 @@ export async function runBootSequence(elements: BootElements, audio: AudioDeck, 
     const line = decodeBootLine(lines[index] ?? "");
     elements.log.textContent += `${line}\n`;
     if (index === 1) {
-      elements.log.textContent += "eDEX-UI Kernel version 2.2.8 boot at Mon Apr 29 2019; root:xnu-1699.22.73~1/RELEASE_X86_64";
+      elements.log.textContent += `eDEX-UI Kernel version ${canonicalEdexVersion} boot at Mon Apr 29 2019; root:xnu-1699.22.73~1/RELEASE_X86_64`;
     }
     elements.log.scrollTop = elements.log.scrollHeight;
     audio.play(line === "Boot Complete" ? "granted" : "stdout");

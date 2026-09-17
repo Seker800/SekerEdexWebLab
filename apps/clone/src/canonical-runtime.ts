@@ -2,6 +2,9 @@ import type { EdexSatelliteLocation } from "./edex-assets.js";
 
 export type MemoryPointState = "active" | "available" | "free";
 
+/** Version rendered by the exact upstream screenshot at commit 66ba190. */
+export const canonicalEdexVersion = "2.2.0";
+
 const memoryPointEncoding = [
   "FAVAAFFFAFFAVAFFAFAFVAAVAAAFAVAAFAFFVAAAVFAAAAAVVVFAFFFAAFAAAAFFAAFAVVFFVAAAAFAA",
   "VAAAFVFAAFAVVFVAAAFAFVFFAVAFAFAAAFAVVAAFAAVFAAFAVVFAAAFFVVAAAAAFAAAFAFAFAAVFAFFA",

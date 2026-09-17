@@ -6,7 +6,7 @@ export interface CanonicalFileEntry {
   category: "navigation" | "directory" | "symlink" | "file";
 }
 
-// Runtime snapshot from the canonical eDEX-UI 2.2.8 screenshot. The entry
+// Runtime snapshot from the exact eDEX-UI screenshot committed after v2.2.0. The entry
 // categories follow filesystem.class.js so source typography and behavior can
 // be applied without coupling them to the page renderer.
 export const canonicalFileEntries: readonly CanonicalFileEntry[] = [

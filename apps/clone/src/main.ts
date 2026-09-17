@@ -1,7 +1,7 @@
 import "./styles.css";
 import { AudioDeck } from "./audio-deck.js";
 import { completeBootImmediately, runBootSequence, type BootElements } from "./boot-sequence.js";
-import { canonicalCpuTraces, canonicalGlobeConstellation, canonicalMemoryPointStates, canonicalNetworkConnectionLocations, canonicalNetworkTraces, type MemoryPointState } from "./canonical-runtime.js";
+import { canonicalCpuTraces, canonicalEdexVersion, canonicalGlobeConstellation, canonicalMemoryPointStates, canonicalNetworkConnectionLocations, canonicalNetworkTraces, type MemoryPointState } from "./canonical-runtime.js";
 import { initializeEdexGlobe, loadEdexIcons, renderEdexIcon, type EdexGlobeLayers } from "./edex-assets.js";
 import { canonicalFileEntries } from "./filesystem-model.js";
 import { bindPhysicalKeyboardFeedback, bindPointerKeyboardFeedback, keyboardKeysForEvent } from "./keyboard-feedback.js";
@@ -27,7 +27,7 @@ const keyboardKeys = new Map(keyboardRows.flat().map((key) => [key.key, key]));
 app.innerHTML = `
   <section class="boot-overlay" id="boot-overlay" data-phase="gate" aria-label="System startup">
     <div class="boot-gate">
-      <p class="boot-gate__eyebrow">eDEX-UI v2.2.8</p>
+      <p class="boot-gate__eyebrow">eDEX-UI v${canonicalEdexVersion}</p>
       <div class="boot-gate__actions">
         <button type="button" id="initialize-system">Initialize system</button>
         <button type="button" id="gate-sound-toggle">Sound: on</button>
@@ -84,7 +84,7 @@ app.innerHTML = `
       <nav class="terminal-tabs" aria-label="Terminal sessions">
         <button class="active" type="button"><span>MAIN SHELL</span></button><button type="button"><span>EMPTY</span></button><button type="button"><span>EMPTY</span></button><button type="button"><span>EMPTY</span></button><button type="button"><span>EMPTY</span></button>
       </nav>
-      <div class="terminal-status"><span>Welcome to eDEX-UI v2.2.0 - Electron v4.1.4</span></div>
+      <div class="terminal-status"><span>Welcome to eDEX-UI v${canonicalEdexVersion} - Electron v4.1.4</span></div>
       <span class="terminal-times"><span id="terminal-time">SESSION // READY</span><span id="terminal-time-secondary"></span></span>
       <div class="terminal-output" id="terminal-output" role="log" aria-live="polite"></div>
       <form class="terminal-prompt" id="terminal-form">
@@ -140,7 +140,7 @@ const input = document.querySelector<HTMLInputElement>("#terminal-input")!;
 const form = document.querySelector<HTMLFormElement>("#terminal-form")!;
 const audioDeck = new AudioDeck();
 const staticGlobeAngle = searchParams.has("globeAngle") ? Number(searchParams.get("globeAngle")) : 6.26;
-const staticGlobeSeed = searchParams.has("globeSeed") ? Number(searchParams.get("globeSeed")) : 0xb6f6_72d2;
+const staticGlobeSeed = searchParams.has("globeSeed") ? Number(searchParams.get("globeSeed")) : 0x1f87_2855;
 const staticGlobeLayerMode = searchParams.get("globeLayers") ?? "all";
 const staticGlobeLayers: EdexGlobeLayers = staticMode && staticGlobeLayerMode !== "all" ? {
   satellites: staticGlobeLayerMode === "satellites",
