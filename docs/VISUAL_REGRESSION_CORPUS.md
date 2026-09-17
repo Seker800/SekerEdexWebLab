@@ -32,6 +32,7 @@ This file records source-plausible changes that deterministic capture disproved.
 | Compensate the terminal's right-anchored session timestamp block by 1 px after the shared xterm content scale | terminal perceptual 33,302; whole perceptual 100,578 / 4.754% | terminal perceptual 32,053; whole perceptual 99,366 / 4.696% | Accepted by regional candidate attribution; all other static regions were unchanged |
 | Keep the source-independent terminal tab strip outside the shared xterm content compensation and offset it by `.1px` | terminal perceptual 32,053; whole perceptual 99,342 / 4.695% | terminal perceptual 31,803; whole perceptual 99,105 / 4.684% | Accepted by regional candidate attribution and transactional recapture |
 | Scope the Electron-effective `166,203,205` signal RGB to the system column while retaining the canonical `tron` token globally | system formal 8,459; perceptual 20,708 | system formal 8,463; perceptual 20,156 | Accepted from an exhaustive local color search and direct target/baseline/candidate inspection; the four-pixel formal tradeoff is negligible beside 552 visible edge matches |
+| Offset the xterm output entry block by `-.1px` independently from its shell, tabs and right anchors | output formal 11,400; perceptual 26,679 | output formal 11,400; perceptual 26,657 | Accepted by separate horizontal and vertical searches; the vertical optimum remained zero and the formal metric was unchanged |
 
 ## Rejected changes
 
@@ -59,6 +60,7 @@ This file records source-plausible changes that deterministic capture disproved.
 | Synthesize bold weight for the neofetch ASCII logo and ANSI-blue labels | terminal perceptual 33,329 | 33,356 | The source stream carries bold semantics, but modern Chromium's synthetic Fira Mono bold moved the raster farther from the captured xterm Canvas output; the autonomous transaction rolled it back |
 | Apply a logo-only fractional translation or `0.01px`–`0.15px` stroke to the neofetch ASCII mark | terminal formal 14,185; perceptual 31,806 | best perceptual candidate 14,179 / 31,804; `0.08px` candidate 14,123 / 31,807 | The two-pixel best result is below capture variance, while stronger strokes trade perceptual fidelity for the formal score; no candidate was retained |
 | Replace the CPU chart transform with the perceptual-only optimum `.994 × .986` at `1.25px` | chart formal 1,410; perceptual 2,785 | chart formal 1,482; perceptual 2,550 | Direct three-way inspection did not justify the 72-pixel formal regression; retain the current dual-purpose transform until a combination improves both metrics or has clearer visual evidence |
+| Add a second `scaleX(.9995)` correction to the terminal entry after its `-.1px` offset | output formal 11,400; perceptual 26,657 | output formal 11,605; perceptual 26,647 | Ten visible pixels do not justify a 205-pixel formal regression or an extra nested content scale; retain only the independently supported offset |
 
 ## Use
 

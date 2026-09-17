@@ -57,6 +57,7 @@
   /* Upstream positions the tab strip independently with its own negative
      margin. Keep it out of the xterm-content compensation used below. */
   --capture-terminal-tabs-offset-x: .1px;
+  --capture-terminal-entry-offset-x: -.1px;
   /* The source timestamp is right-aligned by xterm's canvas cell grid. The
      DOM port inherits the shell-wide horizontal scale, so its right anchor
      needs a one-pixel compensation to preserve the captured cell edge. */
@@ -394,7 +395,7 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .terminal-status > span:first-child { transform: translateX(-.75px) scaleX(1.106); transform-origin: left center; }
 .terminal-times { position: absolute; top: calc(5.05vh - 4px); right: .65vw; z-index: 2; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; color: var(--dim); font: 400 .78vw/1.39 var(--font-mono); text-transform: none; transform: translateX(var(--capture-terminal-right-anchor-offset-x)); }
 .terminal-output { position: relative; top: -1px; flex: 1; min-height: 0; overflow: auto; padding: 0 .45vw .7vh; scrollbar-width: none; }
-.terminal-entry { margin: 0 0 .7vh; white-space: pre-wrap; color: var(--terminal-foreground); font: .78vw/1.39 var(--font-mono); text-transform: none; }
+.terminal-entry { margin: 0 0 .7vh; white-space: pre-wrap; color: var(--terminal-foreground); font: .78vw/1.39 var(--font-mono); text-transform: none; translate: var(--capture-terminal-entry-offset-x) 0; }
 .terminal-entry--command { color: white; background: linear-gradient(90deg, rgba(var(--signal-rgb), .12), transparent 45%); }
 .neofetch-ansi-blue { color: var(--terminal-ansi-blue); }
 .neofetch-swatches { display: inline-flex; width: 11.2vw; height: 21px; vertical-align: middle; transform: translateY(-1px); }
