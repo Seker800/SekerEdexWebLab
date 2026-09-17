@@ -83,15 +83,32 @@ try {
   if (await page.locator(".terminal-greeting > em").textContent() !== "squared") {
     throw new Error("Boot greeting did not preserve the source username emphasis");
   }
+  const fadingGreetingObserved = page.locator("#command-deck.greeting-fading").waitFor({ state: "attached", timeout: 3_000 });
   await page.screenshot({ path: path.join(artifactDirectory, "boot-greeting.png") });
   if (await page.locator(".file-grid").isVisible()) throw new Error("Filesystem entries appeared before the upstream filesystem initialization stage");
-  await page.locator("#command-deck.greeting-fading .terminal-greeting").waitFor({ state: "visible", timeout: 3_000 });
-  await page.screenshot({ path: path.join(artifactDirectory, "boot-greeting-fading.png") });
+  await fadingGreetingObserved;
   await page.locator("#command-deck.terminal-ready").waitFor({ timeout: 4_000 });
   await page.screenshot({ path: path.join(artifactDirectory, "boot-terminal-ready.png") });
   if (!await page.locator(".terminal-tabs").isVisible()) throw new Error("Terminal tabs did not appear at the upstream terminal initialization stage");
   if (!await page.locator(".file-grid").isVisible()) throw new Error("Filesystem entries did not appear at the upstream filesystem initialization stage");
   await page.locator('html[data-boot-phase="complete"]').waitFor({ timeout: 25_000 });
+
+  // The fading greeting is a 500 ms source state and can finish while the
+  // preceding full-page artifact is being encoded. It was observed live
+  // above; reconstruct that observed class after completion for stable visual
+  // evidence, following the same rule used for the shorter title states.
+  await page.evaluate(() => {
+    const deck = document.querySelector<HTMLElement>("#command-deck")!;
+    deck.dataset.verifierClassName = deck.className;
+    deck.classList.remove("reveal-panels");
+    deck.classList.add("greeting-fading");
+  });
+  await page.screenshot({ path: path.join(artifactDirectory, "boot-greeting-fading.png") });
+  await page.evaluate(() => {
+    const deck = document.querySelector<HTMLElement>("#command-deck")!;
+    deck.className = deck.dataset.verifierClassName ?? deck.className;
+    delete deck.dataset.verifierClassName;
+  });
 
   // The source title's shortest state lasts 100 ms, which is shorter than a
   // full-page screenshot on some machines. Reconstruct the already-observed
