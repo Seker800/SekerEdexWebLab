@@ -1,0 +1,14 @@
+node_modules/
+dist/
+artifacts/
+.omx/logs/
+.omx/state/
+playwright-report/
+test-results/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
+.omx/
+.cache/

@@ -1,0 +1,11 @@
+{
+  "scenarioId": "reference-page",
+  "targetUrl": "http://127.0.0.1:4173/target",
+  "replicaUrl": "http://127.0.0.1:4173/replica",
+  "viewport": { "width": 1280, "height": 800 },
+  "readySelector": "[data-ready]",
+  "maxDifferenceRatio": 0,
+  "maxAttempts": 1,
+  "allowedPaths": ["examples/replica"],
+  "validationCommands": [["npm", "run", "check"], ["npm", "test"]]
+}

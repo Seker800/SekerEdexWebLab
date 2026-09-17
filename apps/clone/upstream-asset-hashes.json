@@ -1,0 +1,22 @@
+{
+  "audio/alarm.wav": "b1eaa7986d4b312ffa7a6c92960cc11e63cdc5298ec4e29d72605f3d6b699f41",
+  "audio/denied.wav": "4b3d77e4b9b047bf10d723f1a96d0dae43abb8866fdcbd785620b6b83083ff07",
+  "audio/error.wav": "1d8e5c8dbbe742b7bb734ed8c32552d01d580ab0251db3f81f0b1628138467b1",
+  "audio/expand.wav": "f2bed2c5499d1d0fa760ba35d5b47ec7a01c2e93ac08510714d64001550fda92",
+  "audio/folder.wav": "08194a80d50b7ccca02cca4da87fa1dd8f3bd6369e9f9b10cabfd30664fff563",
+  "audio/granted.wav": "aed43a89a1ae8b7fbc37299b2bd21c21784023a227c3b043b0dc3e348ed56603",
+  "audio/info.wav": "1a32c7faed7ce929659e8c44f2dd6ea526b27f25e76f298fff80691ef24111f5",
+  "audio/keyboard.wav": "ff244b2aad1b9eb1af1a5c461107b3c7b98712aa409e8442f32f75024bb60bb0",
+  "audio/panels.wav": "0ea5821d8074b1110585d888538b13b3c1578374cfd0b41b1a741cc53e318f04",
+  "audio/scan.wav": "92f6df03b8c9ec64940b1dfe32208d82485acf9f08ea8918cb6d95272230da23",
+  "audio/stdin.wav": "8f36088ea8823f69ed509ca5a5c7bfeb0d898078a09b158d764ad6d2fc65e652",
+  "audio/stdout.wav": "e30465a2a675e43142c67850bbdfe6574c28ed4f2bfa3cb8e8fedb030cd6db65",
+  "audio/theme.wav": "674c3f6a46ffab10ac561a0c88cfea2a1bcf7717669935106e191da4ed2b8a53",
+  "boot_log.txt": "bbb737c72730311714ad1c0680cf4c39914204c3b4ba0dbef6a8beb1886ad12e",
+  "encom-globe.js": "1e7f8e48c0eb8dc25171a60b8d66fcfec0d35355c8f85994b6efee86613fe362",
+  "fonts/fira_mono.woff2": "fe9f325e225fbb8f8eede8cbe5a9a08d99ace260c9bcad8976ca43e07355bf96",
+  "fonts/united_sans_light.woff2": "c754f21b40ce64cb779cfc4654236ddf851c1d9387ff867df6a52d8e9bcc23dc",
+  "fonts/united_sans_medium.woff2": "f4f0b559d06033efe291c90d9e4a609ccd8d9cbddb9c652ec5296312f1789431",
+  "grid.json": "18c21b809ed0b207ea24a209d7c2105ee6c4a1a7d8cb87bc9e47630558ce7c67",
+  "icons/edex-file-icons.json": "2d1b34a9dabf864ef4d810a9d78e3f2d5bd0c2735eb20c2d3f8d81745b460035"
+}

@@ -1,0 +1,37 @@
+{
+  "name": "seker-edex-web-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && npm run app:build",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "run": "tsx src/cli.ts run",
+    "demo": "tsx scripts/demo.ts",
+    "app:dev": "vite apps/clone --host 127.0.0.1 --port 4174",
+    "app:build": "vite build apps/clone --outDir ../../dist/clone --emptyOutDir",
+    "app:verify": "tsx scripts/verify-app.ts",
+    "assets:verify": "tsx scripts/verify-upstream-assets.ts",
+    "upstream:sync": "tsx scripts/sync-upstream-source.ts",
+    "replicate:repair": "tsx scripts/repair-replication.ts",
+    "verify": "npm run assets:verify && npm run check && npm test && npm run build && npm run app:verify && npm run replicate:verify",
+    "replicate:verify": "tsx scripts/verify-replication.ts",
+    "install:browsers": "playwright install chromium"
+  },
+  "dependencies": {
+    "pixelmatch": "^7.1.0",
+    "playwright": "^1.55.0",
+    "pngjs": "^7.0.0",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.1",
+    "@types/pixelmatch": "^5.2.6",
+    "@types/pngjs": "^6.0.5",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5",
+    "vitest": "^5.0.1"
+  }
+}

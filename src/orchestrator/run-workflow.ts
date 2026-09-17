@@ -1,0 +1,163 @@
+import { copyFile, mkdir, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import type { ScenarioContract } from "../config/contract.js";
+import type { PageCollector, RepairAgent } from "../domain/ports.js";
+import type { AttemptReport, FinalReport, RepairRequest } from "../domain/types.js";
+import { compareScreenshots } from "../comparison/visual-comparator.js";
+import { judgeVisualResult } from "../judge/visual-judge.js";
+
+export interface WorkflowOptions {
+  contract: ScenarioContract;
+  artifactRoot: string;
+  collector: PageCollector;
+  repairAgent?: RepairAgent;
+  afterRepair?: () => Promise<void>;
+  runId?: string;
+}
+
+function defaultRunId(): string {
+  return new Date().toISOString().replace(/[:.]/g, "-");
+}
+
+async function writeJson(filePath: string, value: unknown): Promise<void> {
+  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+async function sha256(filePath: string): Promise<string> {
+  return createHash("sha256").update(await readFile(filePath)).digest("hex");
+}
+
+export async function runWorkflow(options: WorkflowOptions): Promise<FinalReport> {
+  const { contract, collector } = options;
+  const runId = options.runId ?? defaultRunId();
+  const runDirectory = path.resolve(options.artifactRoot, runId);
+  const startedAt = new Date().toISOString();
+  const attempts: AttemptReport[] = [];
+  await mkdir(runDirectory, { recursive: false });
+
+  const frozenContractPath = path.join(runDirectory, "contract.json");
+  await writeJson(frozenContractPath, contract);
+
+  let target;
+  try {
+    const targetPath = path.join(runDirectory, "target.png");
+    if (contract.targetScreenshotPath) {
+      const sourcePath = path.resolve(contract.targetScreenshotPath);
+      await copyFile(sourcePath, targetPath);
+      target = {
+        screenshotPath: targetPath,
+        diagnostics: { consoleErrors: [], pageErrors: [], finalUrl: `file://${sourcePath}` }
+      };
+    } else {
+      target = await collector.capture(
+        contract.targetUrl!,
+        contract.viewport,
+        targetPath,
+        contract.readySelector
+      );
+    }
+    await writeJson(path.join(runDirectory, "target-browser.json"), target.diagnostics);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const blocked: FinalReport = {
+      runId,
+      scenarioId: contract.scenarioId,
+      status: "blocked",
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      target: {
+        screenshotPath: path.join(runDirectory, "target.png"),
+        diagnostics: { consoleErrors: [], pageErrors: [message], finalUrl: contract.targetUrl ?? contract.targetScreenshotPath ?? "unknown" }
+      },
+      attempts,
+      artifactDirectory: runDirectory,
+      blocker: `Target capture failed: ${message}`
+    };
+    await writeJson(path.join(runDirectory, "final-report.json"), blocked);
+    await collector.close();
+    return blocked;
+  }
+
+  let blocker: string | undefined;
+  const frozenContractHash = await sha256(frozenContractPath);
+  const frozenTargetHash = await sha256(target.screenshotPath);
+  try {
+    for (let attempt = 1; attempt <= contract.maxAttempts; attempt += 1) {
+      const attemptDirectory = path.join(runDirectory, "attempts", String(attempt));
+      await mkdir(attemptDirectory, { recursive: true });
+      const replica = await collector.capture(
+        contract.replicaUrl,
+        contract.viewport,
+        path.join(attemptDirectory, "replica.png"),
+        contract.readySelector
+      );
+      await writeJson(path.join(attemptDirectory, "browser.json"), replica.diagnostics);
+
+      const diffPath = path.join(attemptDirectory, "diff.png");
+      const metrics = await compareScreenshots(target.screenshotPath, replica.screenshotPath, diffPath);
+      await writeJson(path.join(attemptDirectory, "metrics.json"), metrics);
+      const verdict = judgeVisualResult(metrics, replica.diagnostics, contract.maxDifferenceRatio);
+      const verdictPath = path.join(attemptDirectory, "verdict.json");
+      await writeJson(verdictPath, verdict);
+
+      const attemptReport: AttemptReport = { attempt, replica, verdict };
+      attempts.push(attemptReport);
+      if (verdict.status === "passed") break;
+      if (!options.repairAgent || attempt === contract.maxAttempts) continue;
+
+      const repairRequest: RepairRequest = {
+        scenarioId: contract.scenarioId,
+        attempt,
+        contractPath: frozenContractPath,
+        targetScreenshotPath: target.screenshotPath,
+        replicaScreenshotPath: replica.screenshotPath,
+        diffScreenshotPath: diffPath,
+        verdictPath,
+        allowedPaths: contract.allowedPaths,
+        validationCommands: contract.validationCommands,
+        ...(contract.sourceEvidence ? { sourceEvidence: contract.sourceEvidence } : {})
+      };
+
+      try {
+        attemptReport.repair = await options.repairAgent.repair(repairRequest);
+        await writeJson(path.join(attemptDirectory, "repair.json"), attemptReport.repair);
+        if (attemptReport.repair.status === "blocked") {
+          blocker = attemptReport.repair.summary;
+          break;
+        }
+        if (options.afterRepair) await options.afterRepair();
+        if (await sha256(frozenContractPath) !== frozenContractHash) {
+          throw new Error("Frozen contract changed during repair");
+        }
+        if (await sha256(target.screenshotPath) !== frozenTargetHash) {
+          throw new Error("Target evidence changed during repair");
+        }
+      } catch (error) {
+        blocker = error instanceof Error ? error.message : String(error);
+        break;
+      }
+    }
+  } catch (error) {
+    blocker = error instanceof Error ? error.message : String(error);
+  } finally {
+    await collector.close();
+  }
+
+  const finalAttempt = attempts.at(-1);
+  const status = blocker ? "blocked" : finalAttempt?.verdict.status === "passed" ? "passed" : "failed";
+  const report: FinalReport = {
+    runId,
+    scenarioId: contract.scenarioId,
+    status,
+    startedAt,
+    finishedAt: new Date().toISOString(),
+    target,
+    attempts,
+    artifactDirectory: runDirectory,
+    ...(blocker ? { blocker } : {})
+  };
+  await writeJson(path.join(runDirectory, "final-report.json"), report);
+  return report;
+}
