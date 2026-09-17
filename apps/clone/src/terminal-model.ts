@@ -75,6 +75,6 @@ const neofetchRows: Array<[string, string]> = [
 
 export const neofetchText = [
   "cd ..",
-  "~/.c/eDEX-UI  ❯ neofetch",
+  "~/.c/eDEX-UI ❯ neofetch",
   ...neofetchRows.map(([logo, info]) => `${logo.padEnd(30)}${info}`)
 ].join("\n");

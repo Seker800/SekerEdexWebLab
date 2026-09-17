@@ -88,7 +88,7 @@ app.innerHTML = `
       <span class="terminal-times"><span id="terminal-time">SESSION // READY</span><span id="terminal-time-secondary"></span></span>
       <div class="terminal-output" id="terminal-output" role="log" aria-live="polite"></div>
       <form class="terminal-prompt" id="terminal-form">
-        <label for="terminal-input">~/.c/eDEX-UI ❯</label>
+        <label class="terminal-powerline" for="terminal-input"><span>~/.c/</span><strong>eDEX-UI</strong><span class="terminal-powerline__chevron"> ❯</span></label>
         <input id="terminal-input" autocomplete="off" spellcheck="false" aria-label="Terminal command" />
         <span class="cursor" aria-hidden="true"></span>
       </form>
@@ -182,6 +182,9 @@ function renderTerminal(): void {
     const content = escapeHtml(entry.text).replace(
       "■ ■ ■ ■ ■ ■ ■ ■",
       `<span class="neofetch-swatches" aria-label="terminal color palette">${Array.from({ length: 8 }, () => "<i></i>").join("")}</span>`
+    ).replace(
+      "~/.c/eDEX-UI ❯ neofetch",
+      `<span class="terminal-powerline"><span>~/.c/</span><strong>eDEX-UI</strong><span class="terminal-powerline__chevron"> ❯</span></span>  <span class="terminal-command-name">neofetch</span>`
     );
     return `<pre class="terminal-entry terminal-entry--${entry.kind}">${content}</pre>`;
   }).join("");

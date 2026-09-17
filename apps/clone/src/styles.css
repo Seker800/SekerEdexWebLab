@@ -35,7 +35,7 @@
   --capture-network-status-scale-x: 1.0215;
   --capture-network-status-offset-x: 1px;
   --capture-network-status-offset-y: 3px;
-  --capture-network-chart-scale-y: 1.01;
+  --capture-network-chart-scale-y: 1.008;
   --capture-globe-scale: .966;
   --capture-globe-offset-y: 2px;
   --capture-process-right-column-offset-x: 8px;
@@ -47,9 +47,9 @@
   --capture-file-scale-y: 1.038;
   --capture-file-offset-x: 0px;
   --capture-file-offset-y: 3px;
-  --capture-directory-icon-scale-y: .94;
-  --capture-directory-icon-offset-y: 1px;
-  --capture-file-icon-scale-y: .94;
+  --capture-directory-icon-scale-y: .95;
+  --capture-directory-icon-offset-y: .5px;
+  --capture-file-icon-scale-y: .945;
   --capture-file-second-row-label-offset-y: -2px;
   --capture-file-second-row-label-scale-y: .96;
   --capture-file-footer-scale-x: .99;
@@ -359,10 +359,9 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 /* Electron 4 rasterized the source 0.18vh frame as two pixels. The inset
    reproduces that stroke without shrinking the terminal's content box. */
 .terminal-panel { --border: rgba(var(--signal-rgb), .5); grid-column: 2 / 4; grid-row: 1; margin: 0 -3px -2px 0; display: flex; flex-direction: column; background: var(--surface); box-shadow: inset 0 0 0 1px var(--border); }
-/* Preserve both raster rows of the source's 0.18vh top frame. Chromium paints
-   the negative-z active tab over the inner row when the frame is only an
-   inset shadow, while Electron 4 kept the complete two-pixel rule visible. */
-.terminal-panel::after { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: color-mix(in srgb, var(--signal) 48%, var(--surface)); pointer-events: none; z-index: 3; }
+/* The inset frame supplies one row and this overlay preserves the second
+   source raster row above the negative-z active tab. */
+.terminal-panel::after { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: color-mix(in srgb, var(--signal) 48%, var(--surface)); pointer-events: none; z-index: 3; }
 .terminal-panel > * { translate: var(--capture-terminal-offset-x) 0; scale: var(--capture-terminal-scale-x) 1; transform-origin: center; }
 .terminal-greeting { display: none; margin: auto; opacity: 0; font: 400 3.9vh var(--font-ui); text-transform: none; transition: opacity .5s cubic-bezier(.4,0,1,1); }
 .terminal-greeting em { font-style: normal; font-weight: bold; }
@@ -376,11 +375,12 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .terminal-tabs button span { display: block; transform: skewX(-35deg); }
 .terminal-status { position: relative; top: -2px; padding: .22vh .55vw .12vh; display: flex; justify-content: space-between; color: var(--dim); font: .7vw var(--font-mono); text-transform: none; }
 .terminal-status span:first-child { color: var(--signal); font-weight: 700; }
+.terminal-status > span:first-child { transform: translateX(-.75px) scaleX(1.106); transform-origin: left center; }
 .terminal-times { position: absolute; top: calc(5.05vh - 4px); right: .65vw; z-index: 2; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; color: var(--dim); font: 400 .78vw/1.39 var(--font-mono); text-transform: none; }
 .terminal-output { position: relative; top: -1px; flex: 1; min-height: 0; overflow: auto; padding: 0 .45vw .7vh; scrollbar-width: none; }
 .terminal-entry { margin: 0 0 .7vh; white-space: pre-wrap; color: var(--signal); font: .78vw/1.39 var(--font-mono); text-transform: none; }
 .terminal-entry--command { color: white; background: linear-gradient(90deg, rgba(var(--signal-rgb), .12), transparent 45%); }
-.neofetch-swatches { display: inline-flex; width: 11.2vw; height: 2vh; vertical-align: middle; }
+.neofetch-swatches { display: inline-flex; width: 11.2vw; height: 21px; vertical-align: middle; transform: translateY(-1px); }
 .neofetch-swatches i { flex: 1; height: 100%; background: rgb(0, 0, 0); }
 .neofetch-swatches i:nth-child(2) { background: rgb(94, 105, 106); }
 .neofetch-swatches i:nth-child(3) { background: rgb(130, 142, 142); }
@@ -389,12 +389,18 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .neofetch-swatches i:nth-child(6) { background: rgb(117, 128, 129); }
 .neofetch-swatches i:nth-child(7) { background: rgb(126, 137, 138); }
 .neofetch-swatches i:nth-child(8) { background: rgb(199, 210, 211); }
-.terminal-prompt { position: absolute; left: 0; right: 0; bottom: 7.6vh; display: flex; align-items: center; gap: .4vw; min-height: 3.7vh; padding: 0 .65vw; font: .78vw var(--font-mono); text-transform: none; }
-.terminal-prompt label { color: #fff; }
+.terminal-prompt { position: absolute; left: 0; right: 0; bottom: 7.6vh; display: flex; align-items: center; gap: .4vw; min-height: 3.7vh; padding: 0 .65vw; font: .78vw var(--font-mono); text-transform: none; transform: translate(-4.5px, -.5px); }
+.terminal-powerline { position: relative; display: inline-block; height: 21px; color: #fff; background: #000; line-height: 21px; white-space: nowrap; }
+.terminal-powerline::after { content: ""; position: absolute; top: 0; left: 100%; border-top: 10.5px solid transparent; border-bottom: 10.5px solid transparent; border-left: 9px solid #000; }
+.terminal-powerline strong { font-weight: 700; }
+.terminal-powerline__chevron { color: transparent; }
+.terminal-entry .terminal-powerline { vertical-align: top; }
+.terminal-command-name { position: relative; left: 3px; }
 .terminal-prompt input { flex: 0 0 auto; field-sizing: content; width: auto; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; text-transform: none; caret-color: transparent; }
 .cursor { width: .48vw; height: 1.65vh; background: var(--signal); animation: cursor-blink 1s steps(1,end) infinite; }
 .terminal-footer { position: absolute; left: 0; right: 0; bottom: 7.6vh; min-height: 3.7vh; display: flex; justify-content: flex-end; align-items: center; gap: 1.25vw; padding: 0 .65vw; color: var(--dim); font: .7vw var(--font-mono); text-transform: none; }
 .terminal-footer span:first-child { display: none; }
+.terminal-footer > span { transform: scaleX(1.108); transform-origin: right center; }
 .terminal-footer b { color: var(--signal); }
 .terminal-footer #terminal-footer-time::before { content: "❮"; margin-right: .55vw; }
 

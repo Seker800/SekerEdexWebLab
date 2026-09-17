@@ -210,6 +210,7 @@ try {
       backgroundImage: deck ? getComputedStyle(deck).backgroundImage : "none",
       memoryPoints: document.querySelectorAll("#memory-grid > i").length,
       originalFileIcons: document.querySelectorAll(".file-grid button svg").length,
+      powerlinePrompts: document.querySelectorAll(".terminal-powerline").length,
       sourceFilesystemScrollbars: document.querySelectorAll(".filesystem-source-scrollbar").length,
       globeCanvas: document.querySelectorAll("#edex-globe canvas").length,
       leftBootModules: document.querySelectorAll(".system-panel [data-boot-module]").length,
@@ -221,6 +222,7 @@ try {
   }
   if (sourceDrivenState.memoryPoints !== 440) throw new Error(`Expected 440 canonical memory points; observed ${sourceDrivenState.memoryPoints}`);
   if (sourceDrivenState.originalFileIcons !== 22) throw new Error(`Expected 22 upstream file icons; observed ${sourceDrivenState.originalFileIcons}`);
+  if (sourceDrivenState.powerlinePrompts !== 2) throw new Error(`Expected two source Powerline prompt segments; observed ${sourceDrivenState.powerlinePrompts}`);
   if (sourceDrivenState.sourceFilesystemScrollbars !== 1) throw new Error(`Expected the Electron source filesystem scrollbar compatibility layer; observed ${sourceDrivenState.sourceFilesystemScrollbars}`);
   if (sourceDrivenState.globeCanvas !== 1) throw new Error(`Expected one upstream ENCOM globe canvas; observed ${sourceDrivenState.globeCanvas}`);
   if (sourceDrivenState.leftBootModules !== 6) throw new Error(`Expected six upstream left boot modules; observed ${sourceDrivenState.leftBootModules}`);

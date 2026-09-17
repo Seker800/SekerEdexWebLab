@@ -15,6 +15,13 @@ This file records source-plausible changes that deterministic capture disproved.
 | Preserve the screenshot-era Electron window alpha ramp in application rendering and browser collection | whole image 86,213 / 4.075% | 51,880 / 2.452% | Accepted after channel analysis found 42,196 reference pixels whose RGB already matched but whose alpha had been flattened by collection |
 | Fine tune the shared terminal child transform to `translateX(-1.9px) scaleX(.9963)` | terminal 18,875; whole image 51,892 | terminal 18,031; whole image 51,050 | Accepted by coarse search, fine search and full-image recapture |
 | Fine tune the network status horizontal scale from `1.02` to `1.0215` | network status crop 1,705; whole image 51,050 | network status crop 1,670; whole image 51,015 | Accepted in two local searches and one full-image recapture |
+| Restore the source terminal cell width for the welcome status through an isolated `scaleX(1.106)` and `translateX(-.75px)` | terminal status crop 1,320; whole image 51,008 | terminal status crop 805; whole image 50,494 | Accepted after source-size analysis, local search and full-image recapture without changing flex geometry |
+| Reduce the terminal top-frame overlay from two rows to one, alongside the existing inset frame | terminal tabs 3,084; whole image 50,500 | terminal tabs 1,848; whole image 49,264 | Accepted after row-by-row evidence showed the combined Chromium frame had three rows while the source capture has two |
+| Fine tune the network traffic chart's shared vertical scale from `1.01` to `1.008` | chart crop 2,632; whole image 49,256 | chart crop 2,402; whole image 49,026 | Accepted by a two-dimensional local search and full-image recapture |
+| Restore the Powerline prompt segment and align it independently with `translate(-4.5px, -.5px)` | prompt crop 566; whole image 49,028 | prompt crop 426; whole image 48,884 | Accepted from the captured shell structure; restores the black segment, bold directory name and wedge while preserving input geometry |
+| Restore the xterm-equivalent footer cell width with an isolated right-anchored `scaleX(1.108)` | footer crop 800; whole image 48,903 | footer crop 601; whole image 48,696 | Accepted by local search, visual inspection and full-image recapture |
+| Restore the neofetch palette to its source-effective 21 px height and move it one pixel upward | palette crop 550 | 0 | Accepted after the candidate produced a pixel-identical palette crop |
+| Fine tune the original directory/file SVG vertical transforms as one asset-family repair | file grid 5,353; whole image 48,600 | file grid 5,287; whole image 48,534 | Accepted after separate directory and file searches plus combined full-image recapture |
 
 ## Rejected changes
 
@@ -30,6 +37,9 @@ This file records source-plausible changes that deterministic capture disproved.
 | Move the ENCOM globe canvas horizontally from its current centered position | globe crop 5,639 | best shifted candidate 5,831 | Horizontal translation regressed |
 | Change the frozen ENCOM camera angle away from `6.260` by 0.005-radian steps | globe crop 5,655 | nearest candidates 5,678 and 5,769 | Current angle is the measured local optimum |
 | Change the shared system-section scale away from `1.005 × 1.01` over a 13 × 13 local grid | system crop 9,448 | nearest candidate 9,612 | Current shared scale is the unique measured optimum; use module-specific hypotheses instead |
+| Set the terminal welcome status to the source's literal 15 px font size inside the compatibility layout | whole image 51,015 | 60,513 | The larger line box moved all following flex content; preserve layout height and calibrate only the glyph cell width |
+| Register all terminal tabs through the synthetic-bold compatibility face | terminal tabs 3,084 | 3,161 | It made the raster less accurate; the frame-row mismatch was the dominant shared cause |
+| Change the CPU chart shared transform away from `scale(.995, .99)` and `translateY(1px)` | CPU charts crop 1,410 | nearest candidate 1,415 | The current horizontal scale, vertical scale and offset are the measured local optimum |
 
 ## Use
 
