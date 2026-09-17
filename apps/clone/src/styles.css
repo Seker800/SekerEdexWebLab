@@ -58,7 +58,7 @@
   --capture-keyboard-row-4-scale-x: 1.02;
   --capture-keyboard-row-4-offset-x: 1px;
   --capture-keyboard-row-4-offset-y: -4px;
-  --capture-keyboard-space-scale-x: .97;
+  --capture-keyboard-space-scale-x: .974;
   --capture-keyboard-space-offset-x: -12px;
   --capture-ruler-offset-y: 6px;
 }
@@ -472,7 +472,7 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .key-row-1 > .key:nth-child(1) { translate: -1px 0; }
 .key-row-2 > .key:nth-child(1) { translate: -1px -1px; }
 .key-row-4 > .key:nth-child(1) { translate: -5px 1px; }
-.key-row-4 > .key:nth-child(2) { translate: -4px 1px; }
+.key-row-4 > .key:nth-child(2) { translate: -5px 1px; }
 .key-row-4 > .key:nth-child(4) { translate: -10px 1px; }
 .key-row-4 > .key:nth-child(5) { translate: 0 1px; }
 .key-row-4 > .key:nth-child(6) { translate: -1px 1px; }
