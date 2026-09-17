@@ -5,7 +5,7 @@ import path from "node:path";
 import type { ScenarioContract } from "../config/contract.js";
 import type { PageCollector, RepairAgent, RepairWorkspace } from "../domain/ports.js";
 import type { AttemptReport, FinalReport, RepairRequest } from "../domain/types.js";
-import { compareScreenshots } from "../comparison/visual-comparator.js";
+import { compareScreenshotRegion, compareScreenshots } from "../comparison/visual-comparator.js";
 import { judgeVisualResult } from "../judge/visual-judge.js";
 
 export interface WorkflowOptions {
@@ -110,6 +110,22 @@ export async function runWorkflow(options: WorkflowOptions): Promise<FinalReport
       const verdict = judgeVisualResult(metrics, replica.diagnostics, contract.maxDifferenceRatio);
       const verdictPath = path.join(attemptDirectory, "verdict.json");
       await writeJson(verdictPath, verdict);
+      const regionEvidence = (await Promise.all(
+        Object.entries(contract.comparisonRegions ?? {}).map(async ([name, region]) => {
+          const regionDirectory = path.join(attemptDirectory, "regions", name);
+          await mkdir(regionDirectory, { recursive: true });
+          const diffScreenshotPath = path.join(regionDirectory, "diff.png");
+          const regionMetrics = await compareScreenshotRegion(
+            target.screenshotPath,
+            replica.screenshotPath,
+            diffScreenshotPath,
+            region,
+            contract.comparisonOptions
+          );
+          await writeJson(path.join(regionDirectory, "metrics.json"), regionMetrics);
+          return { name, diffScreenshotPath, metrics: regionMetrics };
+        })
+      )).sort((left, right) => right.metrics.differentPixels - left.metrics.differentPixels);
 
       const attemptReport: AttemptReport = { attempt, replica, verdict };
       attempts.push(attemptReport);
@@ -137,6 +153,7 @@ export async function runWorkflow(options: WorkflowOptions): Promise<FinalReport
             candidateDifferenceRatio: previousAttempt.repairCandidate.verdict.metrics.differenceRatio
           }];
         }),
+        ...(regionEvidence.length > 0 ? { regionEvidence } : {}),
         ...(contract.sourceEvidence ? { sourceEvidence: contract.sourceEvidence } : {})
       };
 

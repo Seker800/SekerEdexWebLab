@@ -20,6 +20,13 @@ const sourceEvidenceSchema = z.object({
   }).strict()).min(1).optional()
 }).strict();
 
+const screenshotRegionSchema = z.object({
+  x: z.number().int().min(0),
+  y: z.number().int().min(0),
+  width: z.number().int().min(1),
+  height: z.number().int().min(1)
+}).strict();
+
 export const scenarioContractSchema = z.object({
   scenarioId: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
   targetUrl: z.string().url().optional(),
@@ -35,6 +42,7 @@ export const scenarioContractSchema = z.object({
     threshold: z.number().min(0).max(1),
     includeAA: z.boolean()
   }).strict().optional(),
+  comparisonRegions: z.record(z.string().min(1), screenshotRegionSchema).optional(),
   maxAttempts: z.number().int().min(1).max(20).default(1),
   allowedPaths: z.array(z.string().min(1)).default([]),
   validationCommands: z.array(commandSchema).default([]),

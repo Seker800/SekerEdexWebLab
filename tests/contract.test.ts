@@ -9,11 +9,15 @@ describe("scenario contract", () => {
       replicaUrl: "http://127.0.0.1:3000",
       viewport: { width: 1280, height: 720 },
       maxDifferenceRatio: 0.01,
-      comparisonOptions: { threshold: 0.08, includeAA: true }
+      comparisonOptions: { threshold: 0.08, includeAA: true },
+      comparisonRegions: {
+        terminal: { x: 100, y: 20, width: 900, height: 500 }
+      }
     });
     expect(contract.maxAttempts).toBe(1);
     expect(contract.allowedPaths).toEqual([]);
     expect(contract.comparisonOptions).toEqual({ threshold: 0.08, includeAA: true });
+    expect(contract.comparisonRegions?.terminal).toEqual({ x: 100, y: 20, width: 900, height: 500 });
   });
 
   it("rejects unbounded attempts and invalid ratios", () => {

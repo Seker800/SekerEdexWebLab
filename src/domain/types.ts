@@ -90,6 +90,11 @@ export interface RepairRequest {
     baselineDifferenceRatio: number;
     candidateDifferenceRatio: number;
   }>;
+  regionEvidence?: Array<{
+    name: string;
+    diffScreenshotPath: string;
+    metrics: VisualMetrics;
+  }> | undefined;
   sourceEvidence?: SourceEvidence;
 }
 

@@ -59,12 +59,19 @@ export function buildRepairPrompt(request: RepairRequest): string {
       `- Attempt ${entry.attempt}: ${entry.summary}; files: ${entry.changedFiles.join(", ") || "none"}; ${entry.reason}`
     )
   ] : [];
+  const regionInstructions = request.regionEvidence?.length ? [
+    "Prioritize these regional differences by mismatched pixel count. Inspect the named diff before selecting its matching source module:",
+    ...request.regionEvidence.map((region) =>
+      `- ${region.name}: ${region.metrics.differentPixels} pixels (${(region.metrics.differenceRatio * 100).toFixed(3)}%); diff ${region.diffScreenshotPath}`
+    )
+  ] : [];
 
   return [
     `Repair visual replication scenario ${request.scenarioId}, attempt ${request.attempt}.`,
     `Read the frozen contract at ${request.contractPath}.`,
     ...sourceInstructions,
     ...rejectedRepairInstructions,
+    ...regionInstructions,
     `Inspect the target screenshot ${request.targetScreenshotPath}, replica screenshot ${request.replicaScreenshotPath}, diff ${request.diffScreenshotPath}, and verdict ${request.verdictPath}.`,
     `You may edit only these repository paths: ${request.allowedPaths.join(", ")}.`,
     `Run these validation commands after editing: ${request.validationCommands.map((command) => command.join(" ")).join("; ")}.`,

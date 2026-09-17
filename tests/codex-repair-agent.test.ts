@@ -13,6 +13,22 @@ const request: RepairRequest = {
   allowedPaths: ["apps/clone"],
   validationCommands: [["npm", "test"]],
   rejectedRepairs: [],
+  regionEvidence: [{
+    name: "network",
+    diffScreenshotPath: "/artifacts/regions/network/diff.png",
+    metrics: {
+      targetWidth: 300,
+      targetHeight: 600,
+      replicaWidth: 300,
+      replicaHeight: 600,
+      comparedWidth: 300,
+      comparedHeight: 600,
+      differentPixels: 12000,
+      totalPixels: 180000,
+      differenceRatio: 1 / 15,
+      dimensionsMatch: true
+    }
+  }],
   sourceEvidence: {
     repositoryUrl: "https://github.com/example/reference-app.git",
     revision: "0123456789abcdef",
@@ -36,6 +52,8 @@ describe("Codex repair prompt", () => {
     expect(prompt).toContain("Source module network-globe");
     expect(prompt).toContain(".cache/upstream/reference-app/src/globe.ts");
     expect(prompt).toContain("identify the highest-impact visual module");
+    expect(prompt).toContain("network: 12000 pixels (6.667%)");
+    expect(prompt).toContain("/artifacts/regions/network/diff.png");
     expect(prompt.indexOf("Read the source evidence first")).toBeLessThan(prompt.indexOf("Inspect the target screenshot"));
     expect(prompt).toContain("Use screenshots to calibrate runtime state and verify the port");
     expect(prompt).toContain("Do not add styles or behavior that only apply during screenshot capture or static mode");

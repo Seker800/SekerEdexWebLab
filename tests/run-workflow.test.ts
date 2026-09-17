@@ -91,6 +91,7 @@ describe("workflow failure handling", () => {
     let repaired = false;
     let rollbacks = 0;
     const rejectedHistoryLengths: number[] = [];
+    const regionalEvidence: Array<{ name: string; differentPixels: number }> = [];
     const collector: PageCollector = {
       async capture(url, _viewport, outputPath) {
         const image = new PNG({ width: 2, height: 1 });
@@ -112,6 +113,10 @@ describe("workflow failure handling", () => {
     const repairAgent: RepairAgent = {
       async repair(request) {
         rejectedHistoryLengths.push(request.rejectedRepairs.length);
+        regionalEvidence.push(...(request.regionEvidence ?? []).map((region) => ({
+          name: region.name,
+          differentPixels: region.metrics.differentPixels
+        })));
         repaired = true;
         return { status: "changed", summary: "candidate", changedFiles: ["apps/clone/a"], validations: [], remainingDifferences: [] };
       }
@@ -132,6 +137,9 @@ describe("workflow failure handling", () => {
         replicaUrl: "http://replica.example",
         viewport: { width: 2, height: 1 },
         maxDifferenceRatio: 0,
+        comparisonRegions: {
+          leadingPixel: { x: 0, y: 0, width: 1, height: 1 }
+        },
         maxAttempts: 3,
         allowedPaths: ["apps/clone"],
         validationCommands: []
@@ -151,6 +159,15 @@ describe("workflow failure handling", () => {
     expect(report.attempts[1]?.verdict.metrics.differentPixels).toBe(1);
     expect(report.attempts[2]?.verdict.metrics.differentPixels).toBe(1);
     expect(rejectedHistoryLengths).toEqual([0, 1]);
+    expect(regionalEvidence).toEqual([
+      { name: "leadingPixel", differentPixels: 1 },
+      { name: "leadingPixel", differentPixels: 1 }
+    ]);
+    const firstRegionMetrics = JSON.parse(await readFile(
+      path.join(artifactRoot, "reject-run", "attempts", "1", "regions", "leadingPixel", "metrics.json"),
+      "utf8"
+    ));
+    expect(firstRegionMetrics.differentPixels).toBe(1);
     expect(rollbacks).toBe(2);
     expect(repaired).toBe(false);
   });
