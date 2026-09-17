@@ -57,10 +57,10 @@
   --capture-keyboard-scale-x: 1.015;
   --capture-keyboard-row-3-scale-x: 1.02;
   --capture-keyboard-row-3-offset-x: -4px;
-  --capture-keyboard-row-4-scale-x: 1.02;
-  --capture-keyboard-row-4-offset-x: 1px;
+  --capture-keyboard-row-4-scale-x: 1.019;
+  --capture-keyboard-row-4-offset-x: .15px;
   --capture-keyboard-row-4-offset-y: -4px;
-  --capture-keyboard-space-scale-x: .982;
+  --capture-keyboard-space-scale-x: .97;
   --capture-keyboard-space-offset-x: -12px;
   --capture-ruler-offset-y: 6px;
 }
