@@ -33,6 +33,7 @@ npm run check
 npm test
 npm run demo
 npm run app:verify
+npm run app:hotspots
 npm run assets:verify
 npm run verify
 ```
@@ -44,6 +45,8 @@ The product MVP lives in `apps/clone`. Start it with `npm run app:dev`, open the
 `npm run upstream:sync` checks out the exact eDEX-UI `v2.2.8` commit into `.cache/upstream/edex-ui-v2.2.8` and verifies the commit plus the renderer files used by the port. Run it once on a new machine and whenever the cache is removed. Visual repair reads this frozen source before consulting the screenshot.
 
 Run `npm run app:verify` to exercise startup phases, boot sound order and source volumes, audio asset loading, the six left and three right boot modules, replay and skip controls, sound mute, terminal input, the on-screen keyboard, terminal tabs, required layout regions, responsive behavior and browser error gates. It also captures every important startup state and records a directional pixel comparison against the frozen eDEX-UI 2.2 screenshot.
+
+After `app:verify`, run `npm run app:hotspots` to write `artifacts/app-verification/visible-hotspots.json`. This diagnostic composites both screenshots over black before ranking 64×64 cells, so transparent-black pixels in the upstream PNG do not displace visible component differences. It never changes target evidence, thresholds or the formal verdict.
 
 Run `npm run assets:verify` to verify the SHA-256 manifest for the original audio, fonts, boot log, ENCOM globe, grid data and filesystem icon bundle.
 

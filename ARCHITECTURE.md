@@ -18,6 +18,8 @@ Captures normalized screenshots and browser diagnostics for live targets and rep
 
 Consumes two captured PNG files and writes a diff image plus numeric metrics. It has no browser or agent dependency.
 
+The optional hotspot diagnostic composites both images over the product's black background and ranks fixed-size cells by visible difference. It is used to prioritize repairs when a reference PNG contains transparency. It is explicitly diagnostic-only: the judge continues to use the untouched PNGs and frozen acceptance threshold.
+
 ### Judge
 
 Applies the frozen threshold to comparator metrics and browser diagnostics. It returns a typed verdict.
