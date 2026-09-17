@@ -147,15 +147,32 @@ const staticGlobeLayers: EdexGlobeLayers = staticMode && staticGlobeLayerMode !=
   localEndpoint: staticGlobeLayerMode === "pins" || staticGlobeLayerMode === "local",
   connections: staticGlobeLayerMode === "pins" || staticGlobeLayerMode === "connections"
 } : { satellites: true, localEndpoint: true, connections: true };
-await initializeEdexGlobe(
-  document.querySelector<HTMLElement>("#edex-globe")!,
-  !staticMode,
-  staticMode ? staticGlobeAngle : undefined,
-  staticGlobeSeed,
-  staticMode ? canonicalNetworkConnectionLocations : [],
-  staticGlobeLayers,
-  staticMode ? canonicalGlobeConstellation : undefined
-);
+const globeContainer = document.querySelector<HTMLElement>("#edex-globe")!;
+let globeInitialization: Promise<boolean> | undefined;
+const initializeRuntimeGlobe = (speed = 1): Promise<boolean> => {
+  globeInitialization ??= initializeEdexGlobe(globeContainer, {
+    animate: true,
+    connectionLocations: canonicalNetworkConnectionLocations,
+    layers: staticGlobeLayers,
+    sourceTimingScale: speed
+  });
+  return globeInitialization;
+};
+if (staticMode) {
+  await initializeEdexGlobe(globeContainer, {
+    animate: false,
+    fixedCameraAngle: staticGlobeAngle,
+    fixedRandomSeed: staticGlobeSeed,
+    connectionLocations: canonicalNetworkConnectionLocations,
+    layers: staticGlobeLayers,
+    constellationLocations: canonicalGlobeConstellation
+  });
+} else {
+  document.addEventListener("edex:module-runtime-start", (event) => {
+    const speed = (event as CustomEvent<{ speed?: number }>).detail.speed ?? 1;
+    void initializeRuntimeGlobe(speed);
+  });
+}
 let entries: TerminalEntry[] = [{ kind: "output", text: neofetchText }];
 let capsLock = false;
 let shift = false;

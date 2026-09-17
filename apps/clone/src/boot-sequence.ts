@@ -61,8 +61,15 @@ export async function runBootSequence(elements: BootElements, audio: AudioDeck, 
   const duration = (milliseconds: number): number => Math.max(1, Math.round(milliseconds * speed));
   const bootModules = (): HTMLElement[] => [...elements.deck.querySelectorAll<HTMLElement>("[data-boot-module]")];
   let skipped = false;
+  let moduleRuntimeStarted = false;
+  const startModuleRuntime = (): void => {
+    if (moduleRuntimeStarted) return;
+    moduleRuntimeStarted = true;
+    document.dispatchEvent(new CustomEvent("edex:module-runtime-start", { detail: { speed } }));
+  };
   const finish = (): void => {
     skipped = true;
+    startModuleRuntime();
     bootModules().forEach((panel) => panel.classList.add("module-visible"));
     setPhase(elements, "complete");
     elements.overlay.hidden = true;
@@ -136,6 +143,7 @@ export async function runBootSequence(elements: BootElements, audio: AudioDeck, 
   elements.deck.classList.add("keyboard-complete");
   await wait(duration(400));
   elements.deck.classList.remove("greeting-fading");
+  startModuleRuntime();
   elements.deck.classList.add("reveal-panels");
   const leftModules = [...elements.deck.querySelectorAll<HTMLElement>(".system-panel [data-boot-module]")];
   const rightModules = [...elements.deck.querySelectorAll<HTMLElement>(".network-panel [data-boot-module]")];

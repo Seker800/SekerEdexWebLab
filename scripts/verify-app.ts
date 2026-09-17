@@ -62,6 +62,9 @@ await page.addInitScript(() => {
 try {
   await page.goto("http://127.0.0.1:4174/", { waitUntil: "networkidle" });
   await page.locator('[data-phase="gate"]').waitFor();
+  if (await page.locator("#edex-globe canvas").count() !== 0) {
+    throw new Error("Globe runtime started before the source module initialization stage");
+  }
   await page.screenshot({ path: path.join(artifactDirectory, "boot-gate.png"), animations: "disabled" });
   await page.getByRole("button", { name: "Initialize system" }).click();
   await page.waitForFunction(() => document.querySelector("#boot-log")?.textContent?.includes("Boot Complete") ?? false);
@@ -92,6 +95,8 @@ try {
   if (!await page.locator(".terminal-tabs").isVisible()) throw new Error("Terminal tabs did not appear at the upstream terminal initialization stage");
   if (!await page.locator(".file-grid").isVisible()) throw new Error("Filesystem entries did not appear at the upstream filesystem initialization stage");
   await page.locator('html[data-boot-phase="complete"]').waitFor({ timeout: 25_000 });
+  await page.locator('#edex-globe[data-globe-ready="true"]').waitFor({ timeout: 5_000 });
+  await page.locator('#edex-globe[data-globe-pins-ready="true"]').waitFor({ timeout: 5_000 });
 
   // The fading greeting is a 500 ms source state and can finish while the
   // preceding full-page artifact is being encoded. It was observed live

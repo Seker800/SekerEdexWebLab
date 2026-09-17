@@ -47,6 +47,16 @@ export interface EdexSatelliteLocation {
   altitude: number;
 }
 
+export interface EdexGlobeOptions {
+  animate: boolean;
+  fixedCameraAngle?: number;
+  fixedRandomSeed?: number;
+  connectionLocations?: ReadonlyArray<{ latitude: number; longitude: number }>;
+  layers?: EdexGlobeLayers;
+  constellationLocations?: ReadonlyArray<EdexSatelliteLocation>;
+  sourceTimingScale?: number;
+}
+
 const allGlobeLayers: EdexGlobeLayers = {
   satellites: true,
   localEndpoint: true,
@@ -61,18 +71,27 @@ declare global {
 
 export async function initializeEdexGlobe(
   container: HTMLElement,
-  animate: boolean,
-  fixedCameraAngle?: number,
-  fixedRandomSeed = 0x22e2d8,
-  connectionLocations: ReadonlyArray<{ latitude: number; longitude: number }> = [],
-  layers: EdexGlobeLayers = allGlobeLayers,
-  constellationLocations?: ReadonlyArray<EdexSatelliteLocation>
+  options: EdexGlobeOptions
 ): Promise<boolean> {
+  const {
+    animate,
+    fixedCameraAngle,
+    fixedRandomSeed = 0x22e2d8,
+    connectionLocations = [],
+    layers = allGlobeLayers,
+    constellationLocations,
+    sourceTimingScale = 1
+  } = options;
   const Globe = window.ENCOM?.Globe;
   if (!Globe) return false;
+  const runtimeStartedAt = performance.now();
   const response = await fetch("/grid.json");
   if (!response.ok) return false;
   const grid = await response.json() as { tiles: unknown[] };
+  if (animate) {
+    const sourceConstructionDelay = Math.max(1, Math.round(2_000 * sourceTimingScale));
+    await new Promise<void>((resolve) => window.setTimeout(resolve, Math.max(1, sourceConstructionDelay - (performance.now() - runtimeStartedAt))));
+  }
   const bounds = container.getBoundingClientRect();
   const width = Math.max(220, Math.round(bounds.width));
   const height = Math.max(220, Math.round(bounds.height));
@@ -128,14 +147,24 @@ export async function initializeEdexGlobe(
     globe.cameraAngle = fixedCameraAngle;
     globe.lastRenderDate = new Date();
   }
-  if (layers.localEndpoint) {
-    globe.addPin(-42.8987, 1.2674, "", 1.2);
-    globe.addMarker(-42.8987, 1.2674, "", false);
-  }
-  if (layers.connections) {
-    connectionLocations.forEach(({ latitude, longitude }) => {
-      globe.addPin(latitude, longitude, "", 1.2);
-    });
+  const addRuntimePins = (): void => {
+    if (layers.localEndpoint) {
+      globe.addPin(-42.8987, 1.2674, "", 1.2);
+      globe.addMarker(-42.8987, 1.2674, "", false);
+    }
+    if (layers.connections) {
+      connectionLocations.forEach(({ latitude, longitude }) => {
+        globe.addPin(latitude, longitude, "", 1.2);
+      });
+    }
+    container.dataset.globeLayers = Object.entries(layers).filter(([, enabled]) => enabled).map(([name]) => name).join(",") || "base";
+    container.dataset.globePinsReady = "true";
+  };
+  if (animate) {
+    const sourcePinDelay = Math.max(1, Math.round(4_000 * sourceTimingScale));
+    window.setTimeout(addRuntimePins, Math.max(1, sourcePinDelay - (performance.now() - runtimeStartedAt)));
+  } else {
+    addRuntimePins();
   }
   const advanceFrame = (): Promise<void> => new Promise((resolve) => {
     window.requestAnimationFrame(() => { globe.tick(); resolve(); });
@@ -148,7 +177,6 @@ export async function initializeEdexGlobe(
     };
     window.requestAnimationFrame(frame);
   }
-  container.dataset.globeLayers = Object.entries(layers).filter(([, enabled]) => enabled).map(([name]) => name).join(",") || "base";
   container.dataset.globeReady = "true";
   return true;
 }
