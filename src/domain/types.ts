@@ -45,6 +45,12 @@ export interface AttemptReport {
     verdict: Verdict;
     decision: "accepted" | "rejected";
     reason: string;
+    regionChanges?: Array<{
+      name: string;
+      baseline: VisualMetrics;
+      candidate: VisualMetrics;
+      differentPixelsDelta: number;
+    }> | undefined;
   };
 }
 

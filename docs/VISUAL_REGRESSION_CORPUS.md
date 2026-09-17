@@ -43,6 +43,7 @@ This file records source-plausible changes that deterministic capture disproved.
 | Remove keyboard compatibility scaling | keyboard 16,129 | 20,081 | Region score regressed |
 | Move the ENCOM globe canvas horizontally from its current centered position | globe crop 5,639 | best shifted candidate 5,831 | Horizontal translation regressed |
 | Change the frozen ENCOM camera angle away from `6.260` by 0.005-radian steps | globe crop 5,655 | nearest candidates 5,678 and 5,769 | Current angle is the measured local optimum |
+| Replace the frozen ENCOM random seed with any of 76 prior and newly generated deterministic seeds | globe formal 5,241; perceptual 7,624 | nearest perceptual candidate 5,364 / 7,669 | A broad source-rendered search confirmed `0x1f872855` is the unique dual-metric optimum in the tested corpus |
 | Change the shared system-section scale away from `1.005 × 1.01` over a 13 × 13 local grid | system crop 9,448 | nearest candidate 9,612 | Current shared scale is the unique measured optimum; use module-specific hypotheses instead |
 | Set the terminal welcome status to the source's literal 15 px font size inside the compatibility layout | whole image 51,015 | 60,513 | The larger line box moved all following flex content; preserve layout height and calibrate only the glyph cell width |
 | Register all terminal tabs through the synthetic-bold compatibility face | terminal tabs 3,084 | 3,161 | It made the raster less accurate; the frame-row mismatch was the dominant shared cause |

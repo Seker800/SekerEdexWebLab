@@ -140,6 +140,8 @@ Source evidence is grouped by visible module as well as shared shell files. The 
 
 The scenario also declares canonical comparison regions. Every repair attempt writes a separate diff and metrics file for each region, sorts those regions by mismatched pixel count, and supplies the evidence to the repair adapter. The agent therefore chooses between system, terminal, network, filesystem and keyboard work using measured impact rather than scanning the full-screen diff by eye.
 
+Candidate recapture repeats the same regional comparisons and stores each region's pixel delta in the transactional decision. Small whole-screen changes can therefore be attributed to a concrete module without being confused with run-to-run animation variance elsewhere on the screen.
+
 `docs/SOURCE_PORT_MAP.md` records the upstream class, stylesheet and asset used by each local browser module. Keep that map current when a module boundary or source dependency changes.
 
 `scripts/verify-app.ts` performs startup, sound, browser interaction, responsive and error checks, captures each important startup state, and records both formal and antialias-aware perceptual comparisons. `scripts/verify-replication.ts` runs the frozen eDEX reference through the same orchestrator and visual judge used for other scenarios. Numeric pixel comparison is supporting evidence because large shared dark regions can hide obvious component differences; a separate qualitative visual verdict is required.

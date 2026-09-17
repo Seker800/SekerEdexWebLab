@@ -154,7 +154,13 @@ describe("workflow failure handling", () => {
     expect(report.attempts[0]?.verdict.metrics.differentPixels).toBe(1);
     expect(report.attempts[0]?.repairCandidate).toMatchObject({
       decision: "rejected",
-      verdict: { metrics: { differentPixels: 2 } }
+      verdict: { metrics: { differentPixels: 2 } },
+      regionChanges: [{
+        name: "leadingPixel",
+        baseline: { differentPixels: 1 },
+        candidate: { differentPixels: 1 },
+        differentPixelsDelta: 0
+      }]
     });
     expect(report.attempts[1]?.verdict.metrics.differentPixels).toBe(1);
     expect(report.attempts[2]?.verdict.metrics.differentPixels).toBe(1);
@@ -168,6 +174,11 @@ describe("workflow failure handling", () => {
       "utf8"
     ));
     expect(firstRegionMetrics.differentPixels).toBe(1);
+    const firstCandidateRegionMetrics = JSON.parse(await readFile(
+      path.join(artifactRoot, "reject-run", "attempts", "1", "candidate", "regions", "leadingPixel", "metrics.json"),
+      "utf8"
+    ));
+    expect(firstCandidateRegionMetrics.differentPixels).toBe(1);
     expect(rollbacks).toBe(2);
     expect(repaired).toBe(false);
   });

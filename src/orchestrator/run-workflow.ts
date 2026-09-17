@@ -196,6 +196,31 @@ export async function runWorkflow(options: WorkflowOptions): Promise<FinalReport
           contract.maxDifferenceRatio
         );
         await writeJson(path.join(candidateDirectory, "verdict.json"), candidateVerdict);
+        const candidateRegionMetrics = await Promise.all(
+          Object.entries(contract.comparisonRegions ?? {}).map(async ([name, region]) => {
+            const regionDirectory = path.join(candidateDirectory, "regions", name);
+            await mkdir(regionDirectory, { recursive: true });
+            const regionMetrics = await compareScreenshotRegion(
+              target.screenshotPath,
+              candidateReplica.screenshotPath,
+              path.join(regionDirectory, "diff.png"),
+              region,
+              contract.comparisonOptions
+            );
+            await writeJson(path.join(regionDirectory, "metrics.json"), regionMetrics);
+            return { name, metrics: regionMetrics };
+          })
+        );
+        const baselineRegionMetrics = new Map(regionEvidence.map((region) => [region.name, region.metrics]));
+        const regionChanges = candidateRegionMetrics.flatMap(({ name, metrics: candidate }) => {
+          const baseline = baselineRegionMetrics.get(name);
+          return baseline ? [{
+            name,
+            baseline,
+            candidate,
+            differentPixelsDelta: candidate.differentPixels - baseline.differentPixels
+          }] : [];
+        }).sort((left, right) => left.differentPixelsDelta - right.differentPixelsDelta);
 
         const candidateHealthy = candidateReplica.diagnostics.consoleErrors.length === 0
           && candidateReplica.diagnostics.pageErrors.length === 0;
@@ -214,11 +239,13 @@ export async function runWorkflow(options: WorkflowOptions): Promise<FinalReport
           replica: candidateReplica,
           verdict: candidateVerdict,
           decision: improved ? "accepted" : "rejected",
-          reason
+          reason,
+          ...(regionChanges.length > 0 ? { regionChanges } : {})
         };
         await writeJson(path.join(candidateDirectory, "decision.json"), {
           decision: attemptReport.repairCandidate.decision,
-          reason
+          reason,
+          ...(regionChanges.length > 0 ? { regionChanges } : {})
         });
         if (improved) await options.repairWorkspace?.accept();
         else await options.repairWorkspace?.rollback();
