@@ -31,6 +31,7 @@ This file records source-plausible changes that deterministic capture disproved.
 | Scope the screenshot-era xterm Canvas effective foreground RGB to terminal cells | terminal formal 15,186; terminal perceptual 33,329 | terminal formal 15,112; terminal perceptual 33,302 | Accepted after the autonomous whole-screen transaction and an isolated two-metric terminal recalc proved the small improvement was independent of ENCOM run-to-run variance |
 | Compensate the terminal's right-anchored session timestamp block by 1 px after the shared xterm content scale | terminal perceptual 33,302; whole perceptual 100,578 / 4.754% | terminal perceptual 32,053; whole perceptual 99,366 / 4.696% | Accepted by regional candidate attribution; all other static regions were unchanged |
 | Keep the source-independent terminal tab strip outside the shared xterm content compensation and offset it by `.1px` | terminal perceptual 32,053; whole perceptual 99,342 / 4.695% | terminal perceptual 31,803; whole perceptual 99,105 / 4.684% | Accepted by regional candidate attribution and transactional recapture |
+| Scope the Electron-effective `166,203,205` signal RGB to the system column while retaining the canonical `tron` token globally | system formal 8,459; perceptual 20,708 | system formal 8,463; perceptual 20,156 | Accepted from an exhaustive local color search and direct target/baseline/candidate inspection; the four-pixel formal tradeoff is negligible beside 552 visible edge matches |
 
 ## Rejected changes
 
@@ -56,6 +57,8 @@ This file records source-plausible changes that deterministic capture disproved.
 | Add a `.05px` text stroke to the terminal as an Electron raster compensation | formal whole image 47,711 | 47,629 | The formal score improved, but the antialias-aware perceptual score regressed from 101,289 to 101,521; rejected because it made visible edge coverage less faithful |
 | Remove the terminal's compatibility font smoothing after restoring ANSI colors | perceptual whole image 100,617 / 4.756% | 101,091 / 4.778% | The autonomous transaction recaptured the candidate and rolled it back because visible glyph edges regressed |
 | Synthesize bold weight for the neofetch ASCII logo and ANSI-blue labels | terminal perceptual 33,329 | 33,356 | The source stream carries bold semantics, but modern Chromium's synthetic Fira Mono bold moved the raster farther from the captured xterm Canvas output; the autonomous transaction rolled it back |
+| Apply a logo-only fractional translation or `0.01px`–`0.15px` stroke to the neofetch ASCII mark | terminal formal 14,185; perceptual 31,806 | best perceptual candidate 14,179 / 31,804; `0.08px` candidate 14,123 / 31,807 | The two-pixel best result is below capture variance, while stronger strokes trade perceptual fidelity for the formal score; no candidate was retained |
+| Replace the CPU chart transform with the perceptual-only optimum `.994 × .986` at `1.25px` | chart formal 1,410; perceptual 2,785 | chart formal 1,482; perceptual 2,550 | Direct three-way inspection did not justify the 72-pixel formal regression; retain the current dual-purpose transform until a combination improves both metrics or has clearer visual evidence |
 
 ## Use
 

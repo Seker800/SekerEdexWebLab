@@ -24,6 +24,9 @@
      effective color in the screenshot-era renderer. Keep that renderer
      correction local to terminal cells instead of weakening the UI theme. */
   --terminal-foreground: rgb(168, 206, 208);
+  /* Electron 4 composited the system column's repeated signal strokes a few
+     levels below the nominal tron token. Scope that effective output here. */
+  --system-signal-rgb: 166, 203, 205;
   --font-ui: "United Sans", "Arial Narrow", sans-serif;
   --font-mono: "Fira Mono", "SFMono-Regular", Consolas, monospace;
   /* Current Chromium normalization for the frozen Electron 4 capture. */
@@ -273,7 +276,7 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 
 /* Source mod columns do not draw an outer divider; retain the border box only
    so the already-calibrated module geometry stays stable in modern Chromium. */
-.system-panel { --border: rgba(var(--signal-rgb), .4); grid-column: 1; grid-row: 1; border-width: 0 1px 0 0; border-color: transparent; margin-right: 0.95vw; display: flex; flex-direction: column; text-transform: none; font-family: var(--font-ui); font-weight: 300; }
+.system-panel { --signal-rgb: var(--system-signal-rgb); --border: rgba(var(--signal-rgb), .4); grid-column: 1; grid-row: 1; border-width: 0 1px 0 0; border-color: transparent; margin-right: 0.95vw; display: flex; flex-direction: column; text-transform: none; font-family: var(--font-ui); font-weight: 300; }
 .system-panel > section { scale: var(--capture-system-scale-x) var(--capture-system-scale-y); transform-origin: center; }
 .system-panel > .machine-id { translate: var(--capture-machine-offset-x) var(--capture-machine-offset-y); scale: var(--capture-machine-scale-x) var(--capture-machine-scale-y); }
 .network-panel { grid-column: 4; grid-row: 1; border-width: 0 0 0 1px; border-color: transparent; margin-left: 0.95vw; display: flex; flex-direction: column; overflow: visible; text-transform: none; font-family: var(--font-ui); font-weight: 300; letter-spacing: .092vh; }
