@@ -88,10 +88,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Chromium's Fira Mono is slightly lighter than the screenshot-era Electron
-   raster. Keep the source face and restore its effective edge coverage. */
-.terminal-panel { -webkit-text-stroke: .05px currentColor; }
-
 button, input { color: inherit; font: inherit; }
 button { text-transform: uppercase; }
 

@@ -20,6 +20,8 @@ Consumes two captured PNG files and writes a diff image plus numeric metrics. It
 
 The optional hotspot diagnostic composites both images over the product's black background and ranks fixed-size cells by visible difference. It is used to prioritize repairs when a reference PNG contains transparency. It is explicitly diagnostic-only: the judge continues to use the untouched PNGs and frozen acceptance threshold.
 
+Application verification records two complementary comparisons. The frozen formal metric keeps the scenario gate stable with Pixelmatch's antialias suppression. A diagnostic perceptual metric uses a stricter color threshold and includes antialiased pixels, so thin glyphs, one-pixel frames, ENCOM satellites and other details that remain obvious to a person cannot disappear from repair prioritization. A candidate that only improves the formal metric while regressing the perceptual metric requires direct visual evidence before acceptance.
+
 ### Judge
 
 Applies the frozen threshold to comparator metrics and browser diagnostics. It returns a typed verdict.
@@ -134,4 +136,4 @@ The scenario contract carries this provenance in `sourceEvidence`. Because it is
 
 `docs/SOURCE_PORT_MAP.md` records the upstream class, stylesheet and asset used by each local browser module. Keep that map current when a module boundary or source dependency changes.
 
-`scripts/verify-app.ts` performs startup, sound, browser interaction, responsive and error checks and captures each important startup state. `scripts/verify-replication.ts` runs the frozen eDEX reference through the same orchestrator and visual judge used for other scenarios. Numeric pixel comparison is supporting evidence because large shared dark regions can hide obvious component differences; a separate qualitative visual verdict is required.
+`scripts/verify-app.ts` performs startup, sound, browser interaction, responsive and error checks, captures each important startup state, and records both formal and antialias-aware perceptual comparisons. `scripts/verify-replication.ts` runs the frozen eDEX reference through the same orchestrator and visual judge used for other scenarios. Numeric pixel comparison is supporting evidence because large shared dark regions can hide obvious component differences; a separate qualitative visual verdict is required.

@@ -19,6 +19,8 @@ export interface VisualHotspotReport {
   differenceRatio: number;
   cellWidth: number;
   cellHeight: number;
+  threshold: number;
+  includeAA: boolean;
   hotspots: VisualHotspot[];
 }
 
@@ -43,7 +45,7 @@ function crop(source: PNG, x: number, y: number, width: number, height: number):
 export async function analyzeVisualHotspots(
   targetPath: string,
   replicaPath: string,
-  options: { cellWidth?: number; cellHeight?: number; limit?: number } = {}
+  options: { cellWidth?: number; cellHeight?: number; limit?: number; threshold?: number; includeAA?: boolean } = {}
 ): Promise<VisualHotspotReport> {
   const [targetBuffer, replicaBuffer] = await Promise.all([readFile(targetPath), readFile(replicaPath)]);
   const target = compositeOnBlack(PNG.sync.read(targetBuffer));
@@ -55,6 +57,8 @@ export async function analyzeVisualHotspots(
   const cellWidth = options.cellWidth ?? 64;
   const cellHeight = options.cellHeight ?? 64;
   const limit = options.limit ?? 40;
+  const threshold = options.threshold ?? 0.1;
+  const includeAA = options.includeAA ?? false;
   if (cellWidth <= 0 || cellHeight <= 0 || limit <= 0) throw new Error("Hotspot dimensions and limit must be positive");
 
   const hotspots: VisualHotspot[] = [];
@@ -64,12 +68,12 @@ export async function analyzeVisualHotspots(
       const height = Math.min(cellHeight, target.height - y);
       const expected = crop(target, x, y, width, height);
       const observed = crop(replica, x, y, width, height);
-      const differentPixels = pixelmatch(expected.data, observed.data, undefined, width, height, { threshold: 0.1, includeAA: false });
+      const differentPixels = pixelmatch(expected.data, observed.data, undefined, width, height, { threshold, includeAA });
       hotspots.push({ x, y, width, height, differentPixels, differenceRatio: differentPixels / (width * height) });
     }
   }
 
-  const differentPixels = pixelmatch(target.data, replica.data, undefined, target.width, target.height, { threshold: 0.1, includeAA: false });
+  const differentPixels = pixelmatch(target.data, replica.data, undefined, target.width, target.height, { threshold, includeAA });
   const totalPixels = target.width * target.height;
   return {
     diagnosticOnly: true,
@@ -79,6 +83,8 @@ export async function analyzeVisualHotspots(
     differenceRatio: differentPixels / totalPixels,
     cellWidth,
     cellHeight,
+    threshold,
+    includeAA,
     hotspots: hotspots.sort((left, right) => right.differentPixels - left.differentPixels).slice(0, limit)
   };
 }

@@ -17,6 +17,16 @@ export interface ScreenshotRegion {
   height: number;
 }
 
+export interface VisualComparisonOptions {
+  threshold?: number;
+  includeAA?: boolean;
+}
+
+const pixelmatchOptions = (options: VisualComparisonOptions): { threshold: number; includeAA: boolean } => ({
+  threshold: options.threshold ?? 0.1,
+  includeAA: options.includeAA ?? false
+});
+
 function crop(source: PNG, region: ScreenshotRegion): PNG {
   const clipped = new PNG({ width: region.width, height: region.height });
   PNG.bitblt(source, clipped, region.x, region.y, region.width, region.height, 0, 0);
@@ -27,7 +37,8 @@ export async function compareScreenshotRegion(
   targetPath: string,
   replicaPath: string,
   diffPath: string,
-  region: ScreenshotRegion
+  region: ScreenshotRegion,
+  options: VisualComparisonOptions = {}
 ): Promise<VisualMetrics> {
   const [targetBuffer, replicaBuffer] = await Promise.all([readFile(targetPath), readFile(replicaPath)]);
   const target = PNG.sync.read(targetBuffer);
@@ -47,7 +58,7 @@ export async function compareScreenshotRegion(
     diff.data,
     region.width,
     region.height,
-    { threshold: 0.1, includeAA: false }
+    pixelmatchOptions(options)
   );
   await writeFile(diffPath, PNG.sync.write(diff));
   const totalPixels = region.width * region.height;
@@ -68,7 +79,8 @@ export async function compareScreenshotRegion(
 export async function compareScreenshots(
   targetPath: string,
   replicaPath: string,
-  diffPath: string
+  diffPath: string,
+  options: VisualComparisonOptions = {}
 ): Promise<VisualMetrics> {
   const [targetBuffer, replicaBuffer] = await Promise.all([readFile(targetPath), readFile(replicaPath)]);
   const target = PNG.sync.read(targetBuffer);
@@ -85,7 +97,7 @@ export async function compareScreenshots(
     diff.data,
     width,
     height,
-    { threshold: 0.1, includeAA: false }
+    pixelmatchOptions(options)
   );
   const totalPixels = width * height;
   await writeFile(diffPath, PNG.sync.write(diff));

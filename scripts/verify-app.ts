@@ -284,6 +284,12 @@ try {
     path.join(artifactDirectory, "command-deck.png"),
     path.join(artifactDirectory, "upstream-diff.png")
   );
+  const perceptualMetrics = await compareScreenshots(
+    path.resolve("references/edex-ui-v2.2.8/screenshot_default.png"),
+    path.join(artifactDirectory, "command-deck.png"),
+    path.join(artifactDirectory, "upstream-perceptual-diff.png"),
+    { threshold: 0.08, includeAA: true }
+  );
   const regionMetrics = Object.fromEntries(await Promise.all(Object.entries(canonicalRegionDefinitions).map(async ([name, definition]) => [
     name,
     await compareScreenshotRegion(
@@ -291,6 +297,16 @@ try {
       path.join(artifactDirectory, "command-deck.png"),
       path.join(artifactDirectory, `upstream-diff-${name}.png`),
       definition.comparisonBounds
+    )
+  ])));
+  const perceptualRegionMetrics = Object.fromEntries(await Promise.all(Object.entries(canonicalRegionDefinitions).map(async ([name, definition]) => [
+    name,
+    await compareScreenshotRegion(
+      path.resolve("references/edex-ui-v2.2.8/screenshot_default.png"),
+      path.join(artifactDirectory, "command-deck.png"),
+      path.join(artifactDirectory, `upstream-perceptual-diff-${name}.png`),
+      definition.comparisonBounds,
+      { threshold: 0.08, includeAA: true }
     )
   ])));
   const report = {
@@ -306,12 +322,14 @@ try {
     consoleErrors,
     pageErrors,
     upstreamVisualMetrics: metrics,
+    upstreamPerceptualMetrics: perceptualMetrics,
     canonicalBounds,
     upstreamRegionMetrics: regionMetrics,
-    note: "Pixel difference is supporting evidence. Startup, sound, interaction, structure, responsive layout, console, and qualitative visual gates determine the verdict."
+    upstreamPerceptualRegionMetrics: perceptualRegionMetrics,
+    note: "The formal metric preserves the workflow threshold. The perceptual metric includes antialiased pixels so thin glyphs, globe details and one-pixel strokes remain visible to diagnostics."
   };
   await writeFile(path.join(artifactDirectory, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
-  process.stdout.write(`App verification ${report.status}; boot ${bootEvidence.phases.join(" → ")}; upstream difference ${(metrics.differenceRatio * 100).toFixed(2)}%\n`);
+  process.stdout.write(`App verification ${report.status}; boot ${bootEvidence.phases.join(" → ")}; upstream difference ${(metrics.differenceRatio * 100).toFixed(2)}%; perceptual ${(perceptualMetrics.differenceRatio * 100).toFixed(2)}%\n`);
   if (report.status !== "passed") process.exitCode = 1;
 } finally {
   await context.close();

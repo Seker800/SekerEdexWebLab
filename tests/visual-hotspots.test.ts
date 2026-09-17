@@ -22,6 +22,7 @@ describe("visual hotspot diagnostics", () => {
     const report = await analyzeVisualHotspots(targetPath, replicaPath, { cellWidth: 1, cellHeight: 1, limit: 2 });
 
     expect(report.differentPixels).toBe(1);
+    expect(report).toMatchObject({ threshold: 0.1, includeAA: false });
     expect(report.hotspots[0]).toMatchObject({ x: 1, y: 0, differentPixels: 1 });
     expect(report.hotspots[1]).toMatchObject({ x: 0, y: 0, differentPixels: 0 });
   });
