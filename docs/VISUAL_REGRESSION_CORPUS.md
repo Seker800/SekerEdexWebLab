@@ -11,6 +11,7 @@ This file records source-plausible changes that deterministic capture disproved.
 | Apply one shared process-list transform: `translate(-.25px, 5px) scaleX(.999)` | system 9,199 | system 9,159 | Accepted in two independent captures |
 | Restore separate source ruler/tick baselines, Electron-era terminal framing, and remove invented outer dividers | whole image 94,965 / 4.488% | 87,328 / 4.127% | Accepted by transactional recapture |
 | Preserve the terminal's second top-frame raster row and restore source keyboard content-box sizing | whole image 87,334 / 4.128% | 87,028 / 4.113% | Accepted by transactional recapture |
+| Restore the canonical neofetch logo indentation and calibrate the two terminal timestamps as one shared block | whole image 87,023 / 4.113% | 86,224 / 4.075% | Accepted by source comparison, local grid search and full-image recapture |
 
 ## Rejected changes
 

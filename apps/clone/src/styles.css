@@ -348,7 +348,7 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .terminal-tabs button span { display: block; transform: skewX(-35deg); }
 .terminal-status { position: relative; top: -2px; padding: .22vh .55vw .12vh; display: flex; justify-content: space-between; color: var(--dim); font: .7vw var(--font-mono); text-transform: none; }
 .terminal-status span:first-child { color: var(--signal); font-weight: 700; }
-.terminal-times { position: absolute; top: 5.05vh; right: .65vw; z-index: 2; display: flex; flex-direction: column; align-items: flex-end; gap: .55vh; color: var(--dim); font: 400 .78vw/1.39 var(--font-mono); text-transform: none; }
+.terminal-times { position: absolute; top: calc(5.05vh - 4px); right: .65vw; z-index: 2; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; color: var(--dim); font: 400 .78vw/1.39 var(--font-mono); text-transform: none; }
 .terminal-output { position: relative; top: -1px; flex: 1; min-height: 0; overflow: auto; padding: 0 .45vw .7vh; scrollbar-width: none; }
 .terminal-entry { margin: 0 0 .7vh; white-space: pre-wrap; color: var(--signal); font: .78vw/1.39 var(--font-mono); text-transform: none; }
 .terminal-entry--command { color: white; background: linear-gradient(90deg, rgba(var(--signal-rgb), .12), transparent 45%); }

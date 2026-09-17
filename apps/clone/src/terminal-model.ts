@@ -51,10 +51,10 @@ export function executeCommand(rawCommand: string, now = new Date()): CommandRes
 }
 
 const neofetchRows: Array<[string, string]> = [
-  ["    _,met$$$$$gg.", "squared@batcore-home"],
+  ["       _,met$$$$$gg.", "squared@batcore-home"],
   ["    ,g$$$$$$$$$$$$$$$P.", "--------------------"],
-  [" ,g$$P\"     \"\"\"Y$$.\".", "OS: Debian GNU/Linux 9.9 (stretch) x86_64"],
-  [",$$P'              `$$$.", "Model: G551JK 1.0"],
+  ["  ,g$$P\"     \"\"\"Y$$.\".", "OS: Debian GNU/Linux 9.9 (stretch) x86_64"],
+  [" ,$$P'              `$$$.", "Model: G551JK 1.0"],
   ["'$$P       ,ggs.     `$$b:", "Kernel: 4.9.0-9-amd64"],
   ["`d$$'     ,$P\"'   .    $$$", "Uptime: 1d 9h 51m"],
   [" $$P      d$'     ,    $$P", "Packages: 2319"],
