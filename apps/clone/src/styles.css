@@ -323,9 +323,9 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .cpu-block svg:nth-of-type(2) polyline { opacity: .65; stroke-width: 2.6; }
 #net-line-b { opacity: .65; stroke-width: 1.5; }
 .quad-metrics { display: grid; grid-template-columns: repeat(4,1fr); border-top: 1px dashed var(--faint); padding-top: .76vh; margin: .25vh auto 0; width: 95%; color: var(--signal); font-size: 1.3vh; font-weight: 300; text-align: center; transform: translate(-1px, -3px) scaleX(.98); transform-origin: center; }
-.quad-metrics > span:nth-child(1) { translate: -8px 1px; }
+.quad-metrics > span:nth-child(1) { translate: -11px 1px; }
 .quad-metrics > span:nth-child(2) { translate: -2px 1px; }
-.quad-metrics > span:nth-child(3) { translate: 0 1px; }
+.quad-metrics > span:nth-child(3) { translate: 8px 1px; }
 .quad-metrics > span:nth-child(4) { translate: 2px 1px; }
 .quad-metrics b { display: block; margin-top: .08vh; color: rgba(var(--signal-rgb), .5); font: 300 1.3vh/1.5vh var(--font-ui); }
 
