@@ -60,7 +60,7 @@
   --capture-keyboard-row-4-scale-x: 1.02;
   --capture-keyboard-row-4-offset-x: 1px;
   --capture-keyboard-row-4-offset-y: -4px;
-  --capture-keyboard-space-scale-x: .974;
+  --capture-keyboard-space-scale-x: .982;
   --capture-keyboard-space-offset-x: -12px;
   --capture-ruler-offset-y: 6px;
 }
@@ -195,13 +195,15 @@ button { text-transform: uppercase; }
   align-items: center;
   justify-content: space-between;
   padding: 0 0.72vw;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 0;
   font: 600 1.02vh/normal var(--font-ui);
   letter-spacing: 0;
   transform: translateY(var(--capture-ruler-offset-y));
   z-index: 2;
 }
-.global-line::after { content: ""; position: absolute; left: 0; right: 0; bottom: -3px; height: 5px; background: repeating-linear-gradient(90deg, var(--faint) 0 1px, transparent 1px 24px); }
+/* Keep the source title rule and its tick strip on their independent baselines. */
+.global-line::before { content: ""; position: absolute; left: 0; right: 0; bottom: 3px; border-bottom: 1px solid rgba(var(--signal-rgb), .3); }
+.global-line::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 5px; background: repeating-linear-gradient(90deg, var(--faint) 0 1px, transparent 1px 24px); }
 .global-line--left { left: .55vw; width: 15.6vw; }
 .global-line--center { left: 17vw; width: 65.2vw; }
 .global-line--right { right: .55vw; width: 16.7vw; }
@@ -228,10 +230,12 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
   overflow: hidden;
 }
 
-.system-panel { --border: rgba(var(--signal-rgb), .4); grid-column: 1; grid-row: 1; border-width: 0 1px 0 0; margin-right: 0.95vw; display: flex; flex-direction: column; text-transform: none; font-family: var(--font-ui); font-weight: 300; }
+/* Source mod columns do not draw an outer divider; retain the border box only
+   so the already-calibrated module geometry stays stable in modern Chromium. */
+.system-panel { --border: rgba(var(--signal-rgb), .4); grid-column: 1; grid-row: 1; border-width: 0 1px 0 0; border-color: transparent; margin-right: 0.95vw; display: flex; flex-direction: column; text-transform: none; font-family: var(--font-ui); font-weight: 300; }
 .system-panel > section { scale: var(--capture-system-scale-x) var(--capture-system-scale-y); transform-origin: center; }
 .system-panel > .machine-id { translate: var(--capture-machine-offset-x) var(--capture-machine-offset-y); scale: var(--capture-machine-scale-x) var(--capture-machine-scale-y); }
-.network-panel { grid-column: 4; grid-row: 1; border-width: 0 0 0 1px; margin-left: 0.95vw; display: flex; flex-direction: column; overflow: visible; text-transform: none; font-family: var(--font-ui); font-weight: 300; letter-spacing: .092vh; }
+.network-panel { grid-column: 4; grid-row: 1; border-width: 0 0 0 1px; border-color: transparent; margin-left: 0.95vw; display: flex; flex-direction: column; overflow: visible; text-transform: none; font-family: var(--font-ui); font-weight: 300; letter-spacing: .092vh; }
 .network-panel > .network-status { translate: var(--capture-network-status-offset-x) var(--capture-network-status-offset-y); scale: var(--capture-network-status-scale-x) 1; transform-origin: center; }
 
 .data-block { border-bottom: 1px solid var(--border); padding: 0.58vh 0.7vw; }
@@ -324,8 +328,14 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .process-block header small { translate: var(--capture-process-header-offset-x) 2px; transform: scaleX(var(--capture-process-header-scale-x)); transform-origin: right center; }
 .process-block header small { color: rgba(var(--signal-rgb), .75); }
 
-.terminal-panel { --border: rgba(var(--signal-rgb), .55); grid-column: 2 / 4; grid-row: 1; margin: 1px -3px -1px 0; display: flex; flex-direction: column; background: var(--surface); }
-.terminal-panel > * { translate: var(--capture-terminal-offset-x) -1px; scale: var(--capture-terminal-scale-x) 1; transform-origin: center; }
+/* Electron 4 rasterized the source 0.18vh frame as two pixels. The inset
+   reproduces that stroke without shrinking the terminal's content box. */
+.terminal-panel { --border: rgba(var(--signal-rgb), .5); grid-column: 2 / 4; grid-row: 1; margin: 0 -3px -2px 0; display: flex; flex-direction: column; background: var(--surface); box-shadow: inset 0 0 0 1px var(--border); }
+/* Preserve both raster rows of the source's 0.18vh top frame. Chromium paints
+   the negative-z active tab over the inner row when the frame is only an
+   inset shadow, while Electron 4 kept the complete two-pixel rule visible. */
+.terminal-panel::after { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: color-mix(in srgb, var(--signal) 48%, var(--surface)); pointer-events: none; z-index: 3; }
+.terminal-panel > * { translate: var(--capture-terminal-offset-x) 0; scale: var(--capture-terminal-scale-x) 1; transform-origin: center; }
 .terminal-greeting { display: none; margin: auto; opacity: 0; font: 400 3.9vh var(--font-ui); text-transform: none; transition: opacity .5s cubic-bezier(.4,0,1,1); }
 .terminal-greeting em { font-style: normal; font-weight: bold; }
 .command-deck.reveal-terminal:not(.terminal-ready) .terminal-panel > :not(.terminal-greeting) { display: none; }
@@ -398,7 +408,7 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 #net-line-b, #net-line-d { display: none; }
 .chart-labels { fill: var(--signal); font: 300 9px var(--font-ui); text-anchor: end; }
 
-.filesystem-panel { grid-column: 1 / 3; grid-row: 2; border-width: 1px 1px 0 0; padding: 2.55vh .7vw .4vh; display: flex; flex-direction: column; overflow: visible; }
+.filesystem-panel { grid-column: 1 / 3; grid-row: 2; border-width: 1px 1px 0 0; border-color: transparent var(--border) transparent transparent; padding: 2.55vh .7vw .4vh; display: flex; flex-direction: column; overflow: visible; }
 .command-deck.reveal-lower:not(.terminal-ready) .filesystem-panel > * { visibility: hidden; }
 .section-label { height: 1.7vh; }
 .filesystem-panel .section-label { position: relative; top: .45vh; width: calc(100% + .7vw); font-size: 1.02vh; padding: 0 .925vh; }
@@ -456,10 +466,10 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .key.latched { color: var(--surface); background: var(--signal); border-color: transparent; }
 .key.blink { animation: key-feedback-blink .5s linear infinite; }
 .key-row:not(.key-row-3):not(.key-row-4) > .key:last-child, .key-row > .key:first-child { width: 8.33vh; min-width: 8.33vh; flex-basis: 8.33vh; font-size: 1.85vh; }
-.key--space { width: 47.68vh; min-width: 47.68vh; height: 3.52vh; flex-basis: 47.68vh; border-color: var(--border); transform: translateX(var(--capture-keyboard-space-offset-x)) scaleX(var(--capture-keyboard-space-scale-x)); }
+.key--space { box-sizing: content-box; width: 47.68vh; min-width: 47.68vh; height: 3.52vh; flex-basis: 47.68vh; border-color: var(--border); transform: translate(var(--capture-keyboard-space-offset-x), 1px) scaleX(var(--capture-keyboard-space-scale-x)); }
 .key--enter-upper { width: 9.72vh !important; min-width: 9.72vh !important; flex-basis: 9.72vh !important; border-color: var(--border); border-bottom-right-radius: 0; }
 .key--enter-lower { width: 7.78vh !important; min-width: 7.78vh !important; height: 6.389vh; flex-basis: 7.78vh !important; top: -.37vh; right: -1vh; margin-top: 0; border: .19vh solid var(--border); border-top: .3vh solid var(--surface); border-top-left-radius: 0; }
-.key--enter-upper { scale: 1.01 1; }
+.key--enter-upper { scale: 1.01 1; box-shadow: 0 -1px 0 var(--border); }
 .key--enter-lower { scale: 1.03; }
 .key-row-3 > .key:last-child { top: .278vh; }
 .key-row-4 > .key:nth-last-child(-n+3) { margin: 0; bottom: .278vh; }

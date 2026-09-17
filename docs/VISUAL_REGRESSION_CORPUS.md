@@ -9,6 +9,8 @@ This file records source-plausible changes that deterministic capture disproved.
 | Expand the terminal frame 3 px to the right and 1 px downward, then compensate terminal child content by 1 px upward | 97,826 pixels / 4.624% | 95,053 pixels / 4.493% | Accepted |
 | Remove the file grid's 1 px browser compatibility offset on the x axis | filesystem 13,462 | filesystem 13,421 | Accepted in two independent captures |
 | Apply one shared process-list transform: `translate(-.25px, 5px) scaleX(.999)` | system 9,199 | system 9,159 | Accepted in two independent captures |
+| Restore separate source ruler/tick baselines, Electron-era terminal framing, and remove invented outer dividers | whole image 94,965 / 4.488% | 87,328 / 4.127% | Accepted by transactional recapture |
+| Preserve the terminal's second top-frame raster row and restore source keyboard content-box sizing | whole image 87,334 / 4.128% | 87,028 / 4.113% | Accepted by transactional recapture |
 
 ## Rejected changes
 
