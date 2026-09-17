@@ -8,6 +8,7 @@ The browser replica directly reuses selected assets from GitSquared/eDEX-UI tag 
 | `public/fonts/*.woff2` | `src/assets/fonts/*.woff2` |
 | `public/boot_log.txt` | `src/assets/misc/boot_log.txt` |
 | `public/icons/edex-file-icons.json` | selected entries from `src/assets/icons/file-icons.json` |
+| `public/keyboard/en-US.json` | `src/assets/kb_layouts/en-US.json` |
 | `public/encom-globe.js` | `src/assets/vendor/encom-globe.js` |
 | `public/grid.json` | `src/assets/misc/grid.json` |
 

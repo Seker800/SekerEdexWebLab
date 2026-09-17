@@ -5,27 +5,9 @@ import { canonicalCpuTraces, canonicalGlobeConstellation, canonicalMemoryPointSt
 import { initializeEdexGlobe, loadEdexIcons, renderEdexIcon, type EdexGlobeLayers } from "./edex-assets.js";
 import { canonicalFileEntries } from "./filesystem-model.js";
 import { bindPhysicalKeyboardFeedback, bindPointerKeyboardFeedback, keyboardKeysForEvent } from "./keyboard-feedback.js";
+import { loadKeyboardLayout, resolveKeyboardCommand } from "./keyboard-layout.js";
 import { executeCommand, neofetchText, type TerminalEntry } from "./terminal-model.js";
 import { createTelemetrySnapshot, sparklinePoints } from "./telemetry.js";
-
-interface KeyboardKey { key: string; label?: string; shift?: string }
-const keyboardRows: KeyboardKey[][] = [
-  [
-    { key: "ESC" }, { key: "`", shift: "~" }, { key: "1", shift: "!" }, { key: "2", shift: "@" },
-    { key: "3", shift: "#" }, { key: "4", shift: "$" }, { key: "5", shift: "%" }, { key: "6", shift: "^" },
-    { key: "7", shift: "&" }, { key: "8", shift: "*" }, { key: "9", shift: "(" }, { key: "0", shift: ")" },
-    { key: "-", shift: "_" }, { key: "=", shift: "+" }, { key: "BACK", shift: "DELETE" }
-  ],
-  ["TAB", "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"].map<KeyboardKey>((key) => ({ key })).concat([
-    { key: "[", shift: "{" }, { key: "]", shift: "}" }, { key: "ENTER" }
-  ]),
-  ["CAPS", "A", "S", "D", "F", "G", "H", "J", "K", "L"].map<KeyboardKey>((key) => ({ key })).concat([
-    { key: ";", shift: ":" }, { key: "'", shift: "\"" }, { key: "\\", shift: "|" }, { key: "ENTER_LOWER", label: "" }
-  ]),
-  [{ key: "SHIFT" }, { key: "<", shift: ">" }, ...["Z", "X", "C", "V", "B", "N", "M"].map((key) => ({ key })),
-    { key: ",", shift: "<" }, { key: ".", shift: ">" }, { key: "/", shift: "?" }, { key: "SHIFT_RIGHT", label: "SHIFT" }, { key: "↑" }],
-  ["CTRL", "FN", "SPACE", "ALT GR", "CTRL_RIGHT", "←", "↓", "→"].map((key) => ({ key, label: key === "CTRL_RIGHT" ? "CTRL" : key }))
-];
 
 const arrowIcons: Record<string, string> = {
   "↑": '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-opacity="1" d="m12.00004 7.99999 4.99996 5h-2.99996v4.00001h-4v-4.00001h-3z"/><path stroke-linejoin="round" fill-opacity=".65" d="m4 3h16c1.1046 0 1-.10457 1 1v16c0 1.1046.1046 1-1 1h-16c-1.10457 0-1 .1046-1-1v-16c0-1.10457-.10457-1 1-1zm0 1v16h16v-16z"/></svg>',
@@ -39,7 +21,8 @@ if (!app) throw new Error("App root is missing");
 const searchParams = new URLSearchParams(window.location.search);
 const staticMode = searchParams.has("static");
 if (staticMode) document.documentElement.dataset.staticMode = "";
-const edexIcons = await loadEdexIcons();
+const [edexIcons, keyboardRows] = await Promise.all([loadEdexIcons(), loadKeyboardLayout()]);
+const keyboardKeys = new Map(keyboardRows.flat().map((key) => [key.key, key]));
 
 app.innerHTML = `
   <section class="boot-overlay" id="boot-overlay" data-phase="gate" aria-label="System startup">
@@ -143,9 +126,9 @@ app.innerHTML = `
     </section>
 
     <section class="keyboard-panel" aria-label="On-screen QWERTY keyboard">
-      ${keyboardRows.map((row, rowIndex) => `<div class="key-row key-row-${rowIndex}">${row.map(({ key, label = key, shift: shiftedLabel }) => {
+      ${keyboardRows.map((row, rowIndex) => `<div class="key-row key-row-${rowIndex}">${row.map(({ key, label, shift: shiftedLabel, alt, altShift, fn }) => {
         const specialClass = key === "SPACE" ? " key--space" : key === "ENTER" ? " key--enter-upper" : key === "ENTER_LOWER" ? " key--enter-lower" : "";
-        const keyContent = key === "SPACE" ? "" : arrowIcons[key] ?? `${shiftedLabel ? `<span class="key-shift">${escapeHtml(shiftedLabel)}</span>` : ""}<span class="key-main">${escapeHtml(label)}</span>`;
+        const keyContent = key === "SPACE" ? "" : arrowIcons[key] ?? `<span class="key-alt-shift">${escapeHtml(altShift ?? "")}</span><span class="key-fn">${escapeHtml(fn ?? "")}</span><span class="key-alt">${escapeHtml(alt ?? "")}</span><span class="key-shift">${escapeHtml(shiftedLabel ?? "")}</span><span class="key-main">${escapeHtml(label)}</span>`;
         return `<button type="button" class="key${specialClass}" data-key="${key}"${shiftedLabel ? ` data-shift="${escapeHtml(shiftedLabel)}"` : ""}>${keyContent}</button>`;
       }).join("")}</div>`).join("")}
     </section>
@@ -234,9 +217,9 @@ document.querySelectorAll<HTMLButtonElement>(".key").forEach((button) => {
     else if (key === "SHIFT" || key === "SHIFT_RIGHT") { shift = !shift; document.querySelectorAll('[data-key^="SHIFT"]').forEach((node) => node.classList.toggle("latched", shift)); }
     else if (["ESC", "TAB", "CTRL", "CTRL_RIGHT", "FN", "ALT GR", "←", "↓", "↑", "→"].includes(key)) return;
     else {
-      const shiftedValue = button.dataset.shift;
-      const shouldUppercase = capsLock !== shift;
-      input.value += shift && shiftedValue ? shiftedValue : shouldUppercase ? key.toUpperCase() : key.toLowerCase();
+      const layoutKey = keyboardKeys.get(key);
+      if (!layoutKey) return;
+      input.value += resolveKeyboardCommand(layoutKey, { shift, capsLock });
       if (shift) { shift = false; document.querySelectorAll('[data-key^="SHIFT"]').forEach((node) => node.classList.remove("latched")); }
     }
     input.focus();

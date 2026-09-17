@@ -33,6 +33,7 @@ const requiredPaths = [
   "src/assets/css/main_shell.css",
   "src/assets/css/filesystem.css",
   "src/assets/css/keyboard.css",
+  "src/assets/kb_layouts/en-US.json",
   "src/assets/themes/tron.json",
   "src/classes/keyboard.class.js",
   "src/classes/filesystem.class.js",

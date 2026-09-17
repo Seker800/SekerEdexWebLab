@@ -443,6 +443,7 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .key { height: 2.82vw; min-width: 2.82vw; flex: 0 0 2.82vw; margin: 0 .46vh; padding: 0; overflow: hidden; border-radius: .46vh; border: .18vh solid transparent; background: transparent; font: 600 2.4vh/1 var(--font-ui); white-space: nowrap; position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .key-main { position: relative; top: .278vh; font-size: 2.4vh; }
 .key-shift { position: absolute; top: .278vh; left: .278vh; margin: 0; font-size: 1.67vh; }
+.key-alt-shift, .key-fn, .key-alt { position: absolute; opacity: 0; }
 .key > svg { width: calc(100% - 1vh); height: calc(100% - 1vh); position: absolute; top: .5vh; fill: var(--signal); }
 .key-row > .key:first-child .key-shift,
 .key-row:not(.key-row-3):not(.key-row-4) > .key:last-child .key-shift { opacity: 0; }
