@@ -121,6 +121,17 @@ export async function runWorkflow(options: WorkflowOptions): Promise<FinalReport
         verdictPath,
         allowedPaths: contract.allowedPaths,
         validationCommands: contract.validationCommands,
+        rejectedRepairs: attempts.flatMap((previousAttempt) => {
+          if (previousAttempt.repairCandidate?.decision !== "rejected") return [];
+          return [{
+            attempt: previousAttempt.attempt,
+            summary: previousAttempt.repair?.summary ?? "Rejected repair",
+            changedFiles: previousAttempt.repair?.changedFiles ?? [],
+            reason: previousAttempt.repairCandidate.reason,
+            baselineDifferenceRatio: previousAttempt.verdict.metrics.differenceRatio,
+            candidateDifferenceRatio: previousAttempt.repairCandidate.verdict.metrics.differenceRatio
+          }];
+        }),
         ...(contract.sourceEvidence ? { sourceEvidence: contract.sourceEvidence } : {})
       };
 

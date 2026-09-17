@@ -46,6 +46,8 @@ The orchestrator owns attempt limits and artifact directories. Components commun
 
 Every live repair is transactional over the contract's allowed paths. The controller snapshots those paths before Codex runs, captures and judges the candidate immediately after validation, and accepts it only when browser diagnostics remain clean, dimensions match, and the visual difference ratio strictly decreases. Equal, worse, malformed or failed candidates restore the snapshot before another attempt. Candidate screenshots, metrics, verdicts and the accept/reject decision remain in the run artifacts.
 
+Rejected candidate summaries, paths and measured score changes are included in later repair requests as regression counterexamples. This prevents the agent from repeating a plausible source change that deterministic capture has already disproved.
+
 ## Dependency direction
 
 ```text

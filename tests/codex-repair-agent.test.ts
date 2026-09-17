@@ -12,6 +12,7 @@ const request: RepairRequest = {
   verdictPath: "/artifacts/verdict.json",
   allowedPaths: ["apps/clone"],
   validationCommands: [["npm", "test"]],
+  rejectedRepairs: [],
   sourceEvidence: {
     repositoryUrl: "https://github.com/example/reference-app.git",
     revision: "0123456789abcdef",
@@ -32,5 +33,25 @@ describe("Codex repair prompt", () => {
     expect(prompt).toContain("Use screenshots to calibrate runtime state and verify the port");
     expect(prompt).toContain("Do not add styles or behavior that only apply during screenshot capture or static mode");
     expect(prompt).toContain("must improve the normal interactive application");
+  });
+
+  it("includes rejected candidates as regression counterexamples", () => {
+    const prompt = buildRepairPrompt({
+      ...request,
+      attempt: 2,
+      rejectedRepairs: [{
+        attempt: 1,
+        summary: "Mapped normal text to the medium font face",
+        changedFiles: ["apps/clone/src/styles.css"],
+        reason: "Visual difference did not improve: 4.624% to 4.710%",
+        baselineDifferenceRatio: 0.04624,
+        candidateDifferenceRatio: 0.0471
+      }]
+    });
+
+    expect(prompt).toContain("regression counterexamples");
+    expect(prompt).toContain("Mapped normal text to the medium font face");
+    expect(prompt).toContain("4.624% to 4.710%");
+    expect(prompt).toContain("do not repeat them");
   });
 });

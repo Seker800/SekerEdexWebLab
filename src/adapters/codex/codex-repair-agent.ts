@@ -45,11 +45,18 @@ export function buildRepairPrompt(request: RepairRequest): string {
     "Port source structure, styles, assets, timing, and behavior before applying browser compatibility corrections.",
     "Use screenshots to calibrate runtime state and verify the port; do not infer source-visible structure from pixels."
   ] : [];
+  const rejectedRepairInstructions = request.rejectedRepairs.length > 0 ? [
+    "The controller already rejected the following repairs because deterministic recapture did not improve the result. Treat them as regression counterexamples and do not repeat them:",
+    ...request.rejectedRepairs.map((entry) =>
+      `- Attempt ${entry.attempt}: ${entry.summary}; files: ${entry.changedFiles.join(", ") || "none"}; ${entry.reason}`
+    )
+  ] : [];
 
   return [
     `Repair visual replication scenario ${request.scenarioId}, attempt ${request.attempt}.`,
     `Read the frozen contract at ${request.contractPath}.`,
     ...sourceInstructions,
+    ...rejectedRepairInstructions,
     `Inspect the target screenshot ${request.targetScreenshotPath}, replica screenshot ${request.replicaScreenshotPath}, diff ${request.diffScreenshotPath}, and verdict ${request.verdictPath}.`,
     `You may edit only these repository paths: ${request.allowedPaths.join(", ")}.`,
     `Run these validation commands after editing: ${request.validationCommands.map((command) => command.join(" ")).join("; ")}.`,

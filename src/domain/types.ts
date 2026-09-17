@@ -78,6 +78,14 @@ export interface RepairRequest {
   verdictPath: string;
   allowedPaths: string[];
   validationCommands: string[][];
+  rejectedRepairs: Array<{
+    attempt: number;
+    summary: string;
+    changedFiles: string[];
+    reason: string;
+    baselineDifferenceRatio: number;
+    candidateDifferenceRatio: number;
+  }>;
   sourceEvidence?: SourceEvidence;
 }
 
