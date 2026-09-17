@@ -22,6 +22,8 @@ The optional hotspot diagnostic composites both images over the product's black 
 
 Application verification records two complementary comparisons. The frozen formal metric keeps the scenario gate stable with Pixelmatch's antialias suppression. A diagnostic perceptual metric uses a stricter color threshold and includes antialiased pixels, so thin glyphs, one-pixel frames, ENCOM satellites and other details that remain obvious to a person cannot disappear from repair prioritization. A candidate that only improves the formal metric while regressing the perceptual metric requires direct visual evidence before acceptance.
 
+The autonomous eDEX repair command runs its transactional accept or rollback decision against the perceptual comparison. This prevents the repair loop from stopping at the looser formal threshold while visible glyph and globe differences remain. The frozen regression scenario keeps its original formal settings so historical pass criteria do not drift.
+
 ### Judge
 
 Applies the frozen threshold to comparator metrics and browser diagnostics. It returns a typed verdict.

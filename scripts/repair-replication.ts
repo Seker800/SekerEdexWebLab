@@ -7,13 +7,17 @@ import { assertCleanRepository, changedPaths, pathsOutsideAllowed } from "../src
 import { AllowedPathRepairWorkspace } from "../src/adapters/codex/repair-workspace.js";
 import { runValidationCommands } from "../src/adapters/process/validation-runner.js";
 import { loadContract } from "../src/config/contract.js";
-import { withRepairThreshold } from "../src/config/repair-contract.js";
+import { withRepairComparison } from "../src/config/repair-contract.js";
 import { runWorkflow } from "../src/orchestrator/run-workflow.js";
 
 const repositoryRoot = process.cwd();
 const configPath = path.resolve("specs/edex-command-deck.contract.json");
 const artifactRoot = path.resolve("artifacts/runs");
-const contract = withRepairThreshold(await loadContract(configPath), 0.04);
+const contract = withRepairComparison(
+  await loadContract(configPath),
+  0.04,
+  { threshold: 0.08, includeAA: true }
+);
 
 if (contract.allowedPaths.length === 0) throw new Error("Automated repair requires at least one allowed path");
 await assertCleanRepository(repositoryRoot);

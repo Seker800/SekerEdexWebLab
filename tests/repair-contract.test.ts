@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { withRepairThreshold } from "../src/config/repair-contract.js";
+import { withRepairComparison } from "../src/config/repair-contract.js";
 import type { ScenarioContract } from "../src/config/contract.js";
 
 describe("repair contract", () => {
@@ -15,9 +15,15 @@ describe("repair contract", () => {
       validationCommands: []
     };
 
-    const repairContract = withRepairThreshold(contract, 0.04);
+    const repairContract = withRepairComparison(
+      contract,
+      0.04,
+      { threshold: 0.08, includeAA: true }
+    );
 
     expect(repairContract.maxDifferenceRatio).toBe(0.04);
+    expect(repairContract.comparisonOptions).toEqual({ threshold: 0.08, includeAA: true });
     expect(contract.maxDifferenceRatio).toBe(0.07);
+    expect(contract.comparisonOptions).toBeUndefined();
   });
 });

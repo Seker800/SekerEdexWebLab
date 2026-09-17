@@ -31,6 +31,10 @@ export const scenarioContractSchema = z.object({
   }),
   readySelector: z.string().min(1).optional(),
   maxDifferenceRatio: z.number().min(0).max(1),
+  comparisonOptions: z.object({
+    threshold: z.number().min(0).max(1),
+    includeAA: z.boolean()
+  }).strict().optional(),
   maxAttempts: z.number().int().min(1).max(20).default(1),
   allowedPaths: z.array(z.string().min(1)).default([]),
   validationCommands: z.array(commandSchema).default([]),

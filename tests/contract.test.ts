@@ -8,10 +8,12 @@ describe("scenario contract", () => {
       targetUrl: "https://example.com",
       replicaUrl: "http://127.0.0.1:3000",
       viewport: { width: 1280, height: 720 },
-      maxDifferenceRatio: 0.01
+      maxDifferenceRatio: 0.01,
+      comparisonOptions: { threshold: 0.08, includeAA: true }
     });
     expect(contract.maxAttempts).toBe(1);
     expect(contract.allowedPaths).toEqual([]);
+    expect(contract.comparisonOptions).toEqual({ threshold: 0.08, includeAA: true });
   });
 
   it("rejects unbounded attempts and invalid ratios", () => {

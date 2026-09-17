@@ -100,7 +100,12 @@ export async function runWorkflow(options: WorkflowOptions): Promise<FinalReport
       await writeJson(path.join(attemptDirectory, "browser.json"), replica.diagnostics);
 
       const diffPath = path.join(attemptDirectory, "diff.png");
-      const metrics = await compareScreenshots(target.screenshotPath, replica.screenshotPath, diffPath);
+      const metrics = await compareScreenshots(
+        target.screenshotPath,
+        replica.screenshotPath,
+        diffPath,
+        contract.comparisonOptions
+      );
       await writeJson(path.join(attemptDirectory, "metrics.json"), metrics);
       const verdict = judgeVisualResult(metrics, replica.diagnostics, contract.maxDifferenceRatio);
       const verdictPath = path.join(attemptDirectory, "verdict.json");
@@ -164,7 +169,8 @@ export async function runWorkflow(options: WorkflowOptions): Promise<FinalReport
         const candidateMetrics = await compareScreenshots(
           target.screenshotPath,
           candidateReplica.screenshotPath,
-          path.join(candidateDirectory, "diff.png")
+          path.join(candidateDirectory, "diff.png"),
+          contract.comparisonOptions
         );
         await writeJson(path.join(candidateDirectory, "metrics.json"), candidateMetrics);
         const candidateVerdict = judgeVisualResult(
