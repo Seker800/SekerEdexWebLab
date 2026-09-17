@@ -54,6 +54,8 @@ export function buildRepairPrompt(request: RepairRequest): string {
     `You may edit only these repository paths: ${request.allowedPaths.join(", ")}.`,
     `Run these validation commands after editing: ${request.validationCommands.map((command) => command.join(" ")).join("; ")}.`,
     "Do not edit the contract, target evidence, judge, thresholds, schemas, or run artifacts.",
+    "Do not add styles or behavior that only apply during screenshot capture or static mode to reduce the score.",
+    "Every visual repair must improve the normal interactive application and remain faithful to the upstream source.",
     "Fix the shared root cause. Return the required structured result."
   ].join("\n");
 }

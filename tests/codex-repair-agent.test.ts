@@ -30,5 +30,7 @@ describe("Codex repair prompt", () => {
     expect(prompt).toContain("docs/SOURCE_PORT_MAP.md");
     expect(prompt.indexOf("Read the source evidence first")).toBeLessThan(prompt.indexOf("Inspect the target screenshot"));
     expect(prompt).toContain("Use screenshots to calibrate runtime state and verify the port");
+    expect(prompt).toContain("Do not add styles or behavior that only apply during screenshot capture or static mode");
+    expect(prompt).toContain("must improve the normal interactive application");
   });
 });
