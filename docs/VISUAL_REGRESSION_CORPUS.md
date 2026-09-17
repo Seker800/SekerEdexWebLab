@@ -29,6 +29,8 @@ This file records source-plausible changes that deterministic capture disproved.
 | Restore default Chromium smoothing for the network and filesystem modules | whole image 48,071 | whole image 47,729 | Accepted after global rejection, per-module isolation and five-region scoring; the perceptual metric also improved |
 | Restore the upstream xterm ANSI-blue semantics for the neofetch identity, separator and field labels | formal whole image 47,722; perceptual 101,279 / 4.787% | formal whole image 47,053; perceptual 100,605 / 4.755% | Accepted by the source-driven autonomous repair transaction and confirmed by the full application gate |
 | Scope the screenshot-era xterm Canvas effective foreground RGB to terminal cells | terminal formal 15,186; terminal perceptual 33,329 | terminal formal 15,112; terminal perceptual 33,302 | Accepted after the autonomous whole-screen transaction and an isolated two-metric terminal recalc proved the small improvement was independent of ENCOM run-to-run variance |
+| Compensate the terminal's right-anchored session timestamp block by 1 px after the shared xterm content scale | terminal perceptual 33,302; whole perceptual 100,578 / 4.754% | terminal perceptual 32,053; whole perceptual 99,366 / 4.696% | Accepted by regional candidate attribution; all other static regions were unchanged |
+| Keep the source-independent terminal tab strip outside the shared xterm content compensation and offset it by `.1px` | terminal perceptual 32,053; whole perceptual 99,342 / 4.695% | terminal perceptual 31,803; whole perceptual 99,105 / 4.684% | Accepted by regional candidate attribution and transactional recapture |
 
 ## Rejected changes
 

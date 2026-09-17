@@ -51,6 +51,13 @@
   --capture-process-header-scale-x: 1.045;
   --capture-terminal-scale-x: .9963;
   --capture-terminal-offset-x: -1.9px;
+  /* Upstream positions the tab strip independently with its own negative
+     margin. Keep it out of the xterm-content compensation used below. */
+  --capture-terminal-tabs-offset-x: .1px;
+  /* The source timestamp is right-aligned by xterm's canvas cell grid. The
+     DOM port inherits the shell-wide horizontal scale, so its right anchor
+     needs a one-pixel compensation to preserve the captured cell edge. */
+  --capture-terminal-right-anchor-offset-x: 1px;
   --capture-file-scale-x: 1.004;
   --capture-file-scale-y: 1.038;
   --capture-file-offset-x: 0px;
@@ -374,7 +381,7 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .command-deck.reveal-terminal:not(.terminal-ready) .terminal-panel > :not(.terminal-greeting) { display: none; }
 .command-deck.greeting-visible:not(.reveal-panels) .terminal-greeting { display: block; opacity: 1; }
 .command-deck.greeting-fading:not(.reveal-panels) .terminal-greeting { display: block; opacity: 0; }
-.terminal-tabs { height: calc(2.8vh - 1px); margin-bottom: 1px; display: flex; border-bottom: 2px solid var(--border); overflow: hidden; }
+.terminal-tabs { height: calc(2.8vh - 1px); margin-bottom: 1px; display: flex; border-bottom: 2px solid var(--border); overflow: hidden; translate: var(--capture-terminal-tabs-offset-x) 0; }
 .terminal-tabs button { flex: 1; margin: 0; border: 0; border-left: 2px solid var(--border); background: var(--surface); font: 400 .78vw var(--font-ui); letter-spacing: .06em; transform: skewX(35deg); }
 .terminal-tabs button:first-child { border-left: 0; }
 .terminal-tabs button.active { z-index: -1; color: var(--surface); background: var(--signal); font-weight: 600; transform: skewX(35deg) scale(1.05); }
@@ -382,7 +389,7 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .terminal-status { position: relative; top: -2px; padding: .22vh .55vw .12vh; display: flex; justify-content: space-between; color: var(--dim); font: .7vw var(--font-mono); text-transform: none; }
 .terminal-status span:first-child { color: var(--terminal-foreground); font-weight: 700; }
 .terminal-status > span:first-child { transform: translateX(-.75px) scaleX(1.106); transform-origin: left center; }
-.terminal-times { position: absolute; top: calc(5.05vh - 4px); right: .65vw; z-index: 2; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; color: var(--dim); font: 400 .78vw/1.39 var(--font-mono); text-transform: none; }
+.terminal-times { position: absolute; top: calc(5.05vh - 4px); right: .65vw; z-index: 2; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; color: var(--dim); font: 400 .78vw/1.39 var(--font-mono); text-transform: none; transform: translateX(var(--capture-terminal-right-anchor-offset-x)); }
 .terminal-output { position: relative; top: -1px; flex: 1; min-height: 0; overflow: auto; padding: 0 .45vw .7vh; scrollbar-width: none; }
 .terminal-entry { margin: 0 0 .7vh; white-space: pre-wrap; color: var(--terminal-foreground); font: .78vw/1.39 var(--font-mono); text-transform: none; }
 .terminal-entry--command { color: white; background: linear-gradient(90deg, rgba(var(--signal-rgb), .12), transparent 45%); }
