@@ -7,6 +7,8 @@ This file records source-plausible changes that deterministic capture disproved.
 | Change | Before | After | Decision |
 |---|---:|---:|---|
 | Expand the terminal frame 3 px to the right and 1 px downward, then compensate terminal child content by 1 px upward | 97,826 pixels / 4.624% | 95,053 pixels / 4.493% | Accepted |
+| Remove the file grid's 1 px browser compatibility offset on the x axis | filesystem 13,462 | filesystem 13,421 | Accepted in two independent captures |
+| Apply one shared process-list transform: `translate(-.25px, 5px) scaleX(.999)` | system 9,199 | system 9,159 | Accepted in two independent captures |
 
 ## Rejected changes
 
@@ -19,6 +21,8 @@ This file records source-plausible changes that deterministic capture disproved.
 | Set active terminal tab scale to source-literal `1.2` | terminal 22,289 | 22,407 | Region score regressed |
 | Remove terminal compatibility scaling | terminal 22,289 | 25,416 | Region score regressed |
 | Remove keyboard compatibility scaling | keyboard 16,129 | 20,081 | Region score regressed |
+| Move the ENCOM globe canvas horizontally from its current centered position | globe crop 5,639 | best shifted candidate 5,831 | Horizontal translation regressed |
+| Change the frozen ENCOM camera angle away from `6.260` by 0.005-radian steps | globe crop 5,655 | nearest candidates 5,678 and 5,769 | Current angle is the measured local optimum |
 
 ## Use
 

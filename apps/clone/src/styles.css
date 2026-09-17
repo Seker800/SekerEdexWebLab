@@ -45,7 +45,7 @@
   --capture-terminal-offset-x: -2px;
   --capture-file-scale-x: 1.004;
   --capture-file-scale-y: 1.038;
-  --capture-file-offset-x: 1px;
+  --capture-file-offset-x: 0px;
   --capture-file-offset-y: 3px;
   --capture-directory-icon-scale-y: .94;
   --capture-directory-icon-offset-y: 1px;
@@ -315,7 +315,7 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .memory-swap em { color: var(--dim); font-style: normal; text-align: right; white-space: nowrap; }
 
 .process-block { flex: none; height: 13.45vh; border-bottom: 0; min-height: 0; }
-.process-block ol { list-style: none; margin: .5vh 0 0; padding: 0; font: 300 1.49vh/1.23 var(--font-ui); letter-spacing: .092vh; text-transform: none; transform: translateY(5px); }
+.process-block ol { list-style: none; margin: .5vh 0 0; padding: 0; font: 300 1.49vh/1.23 var(--font-ui); letter-spacing: .092vh; text-transform: none; transform: translate(-.25px, 5px) scaleX(.999); transform-origin: left top; }
 .process-block li { display: grid; grid-template-columns: 1fr 2.4vw 2.05vw; color: var(--signal); }
 .process-block b, .process-block em { font-style: normal; font-weight: 400; color: var(--signal); }
 .process-block b { padding-left: .15vw; text-align: right; transform: translateX(-4px); }
