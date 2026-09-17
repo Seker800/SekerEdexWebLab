@@ -208,8 +208,7 @@ form.addEventListener("submit", (event) => {
 
 input.addEventListener("keydown", (event) => {
   const sourceKey = keyboardKeysForEvent(event).length > 0;
-  const repeatable = !event.code.startsWith("Shift") && !event.code.startsWith("Alt") && !event.code.startsWith("Control") && event.code !== "CapsLock";
-  if (sourceKey && (!event.repeat || repeatable)) audioDeck.play("stdin");
+  if (sourceKey) audioDeck.play("stdin");
 });
 
 document.addEventListener("keydown", (event) => {
