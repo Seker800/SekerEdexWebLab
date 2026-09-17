@@ -26,6 +26,7 @@ This file records source-plausible changes that deterministic capture disproved.
 | Fine tune the bottom keyboard row as one unit to `translateX(.15px) scaleX(1.019)` | row crop 2,664; whole image 48,326 | row crop 2,449; whole image 48,111 | Accepted by coarse position search, fine position search, scale search and full-image recapture |
 | Advance the original ENCOM constellation's shared `TextureAnimator` by 648 ms to the frozen satellite phase | globe crop 5,353; whole image 48,112 | globe crop 5,332; whole image 48,091 | Accepted after isolating the satellite layer, searching all 50 source texture frames and a full-image recapture |
 | Align the first and third CPU summary columns independently to `-11px` and `8px` while retaining the other calibrated columns | whole image 48,090 | whole image 48,061 | Accepted after per-column searches and independent full-image ablation captures |
+| Restore default Chromium smoothing for the network and filesystem modules, and add a `.05px` Electron-raster compensation to the terminal | whole image 48,071 | whole image 47,618 | Accepted after global rejection, per-module isolation, combined recapture and five-region scoring |
 
 ## Rejected changes
 
