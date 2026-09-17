@@ -9,8 +9,8 @@
   "allowedPaths": ["apps/clone"],
   "sourceEvidence": {
     "repositoryUrl": "https://github.com/GitSquared/edex-ui.git",
-    "revision": "7a9205bf934914407394442f57475d4fefd3213b",
-    "localPath": ".cache/upstream/edex-ui-v2.2.8",
+    "revision": "66ba190ee5369523195c4012d0a798fbe4d43391",
+    "localPath": ".cache/upstream/edex-ui-visual-66ba190",
     "guidePath": "docs/SOURCE_PORT_MAP.md",
     "entryPaths": [
       "src/_renderer.js",

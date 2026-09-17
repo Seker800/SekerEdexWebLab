@@ -171,7 +171,7 @@ The interface must expose sound on/off and replay controls. Keyboard input, term
 
 ## Original asset policy
 
-When the tagged eDEX-UI v2.2.8 source contains the required asset, use that asset directly and retain its provenance. This applies to United Sans and Fira Mono fonts, WAV cues, boot log text, filesystem SVG paths, the ENCOM globe implementation and its grid data. Do not replace an available upstream asset with a hand drawn approximation.
+When the exact screenshot-era source or the verified later eDEX-UI source contains the required asset, use that asset directly and retain its provenance. This applies to United Sans and Fira Mono fonts, WAV cues, boot log text, filesystem SVG paths, the ENCOM globe implementation and its grid data. Do not replace an available upstream asset with a hand drawn approximation.
 
 Custom assets are allowed only when the product needs an element that has no upstream equivalent. They must follow the same palette and geometry and must not be presented as source accurate.
 
@@ -179,7 +179,8 @@ Custom assets are allowed only when the product needs an element that has no ups
 
 This project has source access, so the canonical workflow is source-driven rather than screenshot-only:
 
-- read the v2.2.8 renderer, module classes and CSS before changing a visual region;
+- read commit `66ba190` (the exact screenshot source, with v2.2.0 application code) before changing a visual region;
+- consult v2.2.8 only for later fixes or assets and verify that target-facing behavior is unchanged;
 - port the original hierarchy and measurements, then adapt only unavailable Electron or host APIs;
 - freeze runtime values needed to reproduce the canonical screenshot;
 - compare the whole screen and the system, terminal, network, filesystem and keyboard regions independently;

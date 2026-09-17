@@ -6,7 +6,7 @@ An evidence driven loop for observing a target web page, comparing a replica, an
 
 The planned replica experience follows the visual language of [eDEX-UI 2.2](https://github.com/GitSquared/edex-ui) with its default `tron` theme, the `neofetch` terminal scene, and the QWERTY on-screen keyboard. See `docs/VISUAL_NORTH_STAR.md` for the palette, layout, typography, motion, component grammar, and visual acceptance rules.
 
-The replica is built from the frozen eDEX-UI v2.2.8 source. Its renderer DOM, CSS, fonts, icons, globe, boot log, sounds and timing are ported first; browser adapters replace Electron and host APIs; screenshots then verify the exact runtime state. This source-driven workflow is faster and more reliable than reconstructing source-available components from pixels alone. The module-by-module lookup table is in `docs/SOURCE_PORT_MAP.md`.
+The replica is built first from the exact eDEX-UI source associated with the target screenshot. Git history proves the frozen image is `media/screenshot_default.png` from commit `66ba190`, immediately after the v2.2.0 tag; its SHA-256 matches byte for byte. The later v2.2.8 source remains a secondary reference for fixes and unchanged assets. Renderer DOM, CSS, fonts, icons, globe, boot log, sounds and timing are ported before browser adapters replace Electron and host APIs. The module-by-module lookup table is in `docs/SOURCE_PORT_MAP.md`.
 
 ## What works now
 
@@ -42,7 +42,7 @@ The demo starts a local target and replica, captures both with Chromium, and wri
 
 The product MVP lives in `apps/clone`. Start it with `npm run app:dev`, open the printed URL, leave sound enabled and click **Initialize system**. The startup streams the original boot log, plays the upstream eDEX sound cues at the source mixing levels, displays the title sequence, expands the empty terminal, shows the `Welcome back` greeting, unfolds the keyboard rows, initializes the terminal and filesystem, then reveals the source module sequence. Use **REBOOT** to replay it and **SOUND ON/OFF** to control audio.
 
-`npm run upstream:sync` checks out the exact eDEX-UI `v2.2.8` commit into `.cache/upstream/edex-ui-v2.2.8` and verifies the commit plus the renderer files used by the port. Run it once on a new machine and whenever the cache is removed. Visual repair reads this frozen source before consulting the screenshot.
+`npm run upstream:sync` checks out the exact screenshot commit into `.cache/upstream/edex-ui-visual-66ba190`, checks out v2.2.8 into `.cache/upstream/edex-ui-v2.2.8`, verifies both revisions and verifies the target screenshot hash against the upstream media file. Run it once on a new machine and whenever the cache is removed. Visual repair reads the exact screenshot source before consulting the later implementation reference.
 
 Run `npm run app:verify` to exercise startup phases, boot sound order and source volumes, audio asset loading, the six left and three right boot modules, replay and skip controls, sound mute, terminal input, the on-screen keyboard, terminal tabs, required layout regions, responsive behavior and browser error gates. It also captures every important startup state and records a directional pixel comparison against the frozen eDEX-UI 2.2 screenshot.
 
@@ -69,7 +69,7 @@ npm run upstream:sync
 npm run replicate:repair
 ```
 
-`replicate:repair` owns the Vite server, captures the current replica, compares it with the frozen reference, and asks Codex for up to three bounded repairs against its stricter 4% improvement target. Each repair prompt requires Codex to inspect the original v2.2.8 implementation first. The controller limits edits to `apps/clone`, runs type checking, unit tests and the production build after every change, then captures again. It leaves accepted source changes in the working tree for review. Run `npm run verify` after the loop for the slower startup, audio, interaction and 7% regression gate.
+`replicate:repair` owns the Vite server, captures the current replica, compares it with the frozen reference, and asks Codex for up to three bounded repairs against its stricter 4% improvement target. Each repair prompt requires Codex to inspect the exact screenshot-era implementation first. The controller limits edits to `apps/clone`, runs type checking, unit tests and the production build after every change, then captures again. It leaves accepted source changes in the working tree for review. Run `npm run verify` after the loop for the slower startup, audio, interaction and 7% regression gate.
 
 ## Run a scenario
 

@@ -99,11 +99,11 @@ Future collectors and judges implement stable ports:
 
 The startup state machine emits observable `edex:boot-phase` events. The sound deck emits `edex:sound` events before playback. These events let browser verification prove that the experiential sequence occurred without coupling the verifier to timing implementation details.
 
-Original eDEX assets live under `apps/clone/public` and are loaded through `edex-assets.ts` and `audio-deck.ts`. Their source is the frozen v2.2.8 reference. The implementation must prefer these source assets over visually similar replacements.
+Original eDEX assets live under `apps/clone/public` and are loaded through `edex-assets.ts` and `audio-deck.ts`. Their provenance is checked against the exact screenshot-era checkout first and the later v2.2.8 checkout when an asset is unchanged or unavailable in the earlier source. The implementation must prefer these source assets over visually similar replacements.
 
 ### Source-driven browser port
 
-The eDEX replica is a browser port of the frozen v2.2.8 implementation. Upstream module DOM, CSS measurements, bundled assets, labels and sequencing are the primary specification. Browser-facing adapters supply deterministic terminal data, telemetry, filesystem entries, geolocation and audio activation where the original calls Electron or Node APIs.
+The eDEX replica is a browser port of the application code at commit `66ba190`, the repository revision containing the exact frozen screenshot and the direct child of v2.2.0. Upstream module DOM, CSS measurements, bundled assets, labels and sequencing at that revision are the primary specification. The v2.2.8 checkout is a secondary implementation reference. Browser-facing adapters supply deterministic terminal data, telemetry, filesystem entries, geolocation and audio activation where the original calls Electron or Node APIs.
 
 The adaptation boundary is intentionally narrow:
 
