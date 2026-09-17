@@ -18,7 +18,11 @@ const request: RepairRequest = {
     revision: "0123456789abcdef",
     localPath: ".cache/upstream/reference-app",
     guidePath: "docs/SOURCE_PORT_MAP.md",
-    entryPaths: ["src/shell.css", "src/shell.ts"]
+    entryPaths: ["src/shell.css", "src/shell.ts"],
+    modules: [{
+      name: "network-globe",
+      entryPaths: ["src/globe.ts", "src/globe.css"]
+    }]
   }
 };
 
@@ -29,6 +33,9 @@ describe("Codex repair prompt", () => {
     expect(prompt).toContain("0123456789abcdef");
     expect(prompt).toContain(".cache/upstream/reference-app/src/shell.css");
     expect(prompt).toContain("docs/SOURCE_PORT_MAP.md");
+    expect(prompt).toContain("Source module network-globe");
+    expect(prompt).toContain(".cache/upstream/reference-app/src/globe.ts");
+    expect(prompt).toContain("identify the highest-impact visual module");
     expect(prompt.indexOf("Read the source evidence first")).toBeLessThan(prompt.indexOf("Inspect the target screenshot"));
     expect(prompt).toContain("Use screenshots to calibrate runtime state and verify the port");
     expect(prompt).toContain("Do not add styles or behavior that only apply during screenshot capture or static mode");

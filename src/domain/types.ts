@@ -66,6 +66,10 @@ export interface SourceEvidence {
   localPath: string;
   guidePath?: string | undefined;
   entryPaths: string[];
+  modules?: Array<{
+    name: string;
+    entryPaths: string[];
+  }> | undefined;
 }
 
 export interface RepairRequest {

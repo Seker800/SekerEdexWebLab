@@ -13,7 +13,11 @@ const sourceEvidenceSchema = z.object({
   revision: z.string().min(1),
   localPath: repositoryRelativePathSchema,
   guidePath: repositoryRelativePathSchema.optional(),
-  entryPaths: z.array(repositoryRelativePathSchema).min(1)
+  entryPaths: z.array(repositoryRelativePathSchema).min(1),
+  modules: z.array(z.object({
+    name: z.string().min(1),
+    entryPaths: z.array(repositoryRelativePathSchema).min(1)
+  }).strict()).min(1).optional()
 }).strict();
 
 export const scenarioContractSchema = z.object({

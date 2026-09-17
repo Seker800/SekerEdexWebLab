@@ -38,10 +38,18 @@ function runProcess(command: string, args: string[], cwd: string, timeoutMs: num
 }
 
 export function buildRepairPrompt(request: RepairRequest): string {
+  const sourceModules = request.sourceEvidence?.modules?.flatMap((module) => [
+    `Source module ${module.name}:`,
+    ...module.entryPaths.map((entry) => `- ${path.join(request.sourceEvidence!.localPath, entry)}`)
+  ]) ?? [];
   const sourceInstructions = request.sourceEvidence ? [
     `Read the source evidence first. The canonical repository is ${request.sourceEvidence.repositoryUrl} at revision ${request.sourceEvidence.revision}, checked out at ${request.sourceEvidence.localPath}.`,
     ...(request.sourceEvidence.guidePath ? [`Read the source port guide at ${request.sourceEvidence.guidePath}.`] : []),
-    `Inspect these upstream entry points before editing: ${request.sourceEvidence.entryPaths.map((entry) => path.join(request.sourceEvidence!.localPath, entry)).join(", ")}.`,
+    `Inspect these shared upstream entry points before editing: ${request.sourceEvidence.entryPaths.map((entry) => path.join(request.sourceEvidence!.localPath, entry)).join(", ")}.`,
+    ...(sourceModules.length > 0 ? [
+      "Use the diff to identify the highest-impact visual module, then read every source entry declared for that module before editing its browser port.",
+      ...sourceModules
+    ] : []),
     "Port source structure, styles, assets, timing, and behavior before applying browser compatibility corrections.",
     "Use screenshots to calibrate runtime state and verify the port; do not infer source-visible structure from pixels."
   ] : [];

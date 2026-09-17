@@ -134,6 +134,8 @@ Visual modules should be ported one at a time and verified against their canonic
 
 The scenario contract carries this provenance in `sourceEvidence`. Because it is frozen into every run artifact, each autonomous repair attempt receives the same source revision and entry points. `npm run replicate:repair` starts the replica server and executes this bounded source-first loop without requiring a separately managed development server.
 
+Source evidence is grouped by visible module as well as shared shell files. The repair adapter uses the current diff to select the highest-impact module and requires its complete upstream class, stylesheet and asset entry set to be read before editing. This keeps source discovery deterministic and prevents a repair from falling back to screenshot inference because a relevant upstream file was omitted from the prompt.
+
 `docs/SOURCE_PORT_MAP.md` records the upstream class, stylesheet and asset used by each local browser module. Keep that map current when a module boundary or source dependency changes.
 
 `scripts/verify-app.ts` performs startup, sound, browser interaction, responsive and error checks, captures each important startup state, and records both formal and antialias-aware perceptual comparisons. `scripts/verify-replication.ts` runs the frozen eDEX reference through the same orchestrator and visual judge used for other scenarios. Numeric pixel comparison is supporting evidence because large shared dark regions can hide obvious component differences; a separate qualitative visual verdict is required.

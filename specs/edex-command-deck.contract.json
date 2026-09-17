@@ -16,13 +16,73 @@
       "src/_renderer.js",
       "src/assets/css/main.css",
       "src/assets/css/main_shell.css",
-      "src/assets/css/filesystem.css",
-      "src/assets/css/keyboard.css",
-      "src/assets/kb_layouts/en-US.json",
-      "src/classes/keyboard.class.js",
-      "src/classes/filesystem.class.js",
-      "src/classes/audiofx.class.js",
-      "src/classes/locationGlobe.class.js"
+      "src/assets/css/mod_column.css",
+      "src/assets/themes/tron.json"
+    ],
+    "modules": [
+      {
+        "name": "startup-and-audio",
+        "entryPaths": [
+          "src/_renderer.js",
+          "src/assets/css/boot_screen.css",
+          "src/assets/misc/boot_log.txt",
+          "src/classes/audiofx.class.js"
+        ]
+      },
+      {
+        "name": "system-telemetry",
+        "entryPaths": [
+          "src/classes/clock.class.js",
+          "src/classes/sysinfo.class.js",
+          "src/classes/cpuinfo.class.js",
+          "src/classes/ramwatcher.class.js",
+          "src/classes/toplist.class.js",
+          "src/classes/hardwareInspector.class.js",
+          "src/assets/css/mod_clock.css",
+          "src/assets/css/mod_sysinfo.css",
+          "src/assets/css/mod_cpuinfo.css",
+          "src/assets/css/mod_ramwatcher.css",
+          "src/assets/css/mod_toplist.css",
+          "src/assets/css/mod_hardwareInspector.css"
+        ]
+      },
+      {
+        "name": "terminal",
+        "entryPaths": [
+          "src/classes/terminal.class.js",
+          "src/assets/css/main_shell.css",
+          "src/assets/fonts/fira_mono.woff2"
+        ]
+      },
+      {
+        "name": "network-globe-and-traffic",
+        "entryPaths": [
+          "src/classes/netstat.class.js",
+          "src/classes/locationGlobe.class.js",
+          "src/classes/conninfo.class.js",
+          "src/assets/css/mod_netstat.css",
+          "src/assets/css/mod_globe.css",
+          "src/assets/css/mod_conninfo.css",
+          "src/assets/vendor/encom-globe.js",
+          "src/assets/misc/grid.json"
+        ]
+      },
+      {
+        "name": "filesystem",
+        "entryPaths": [
+          "src/classes/filesystem.class.js",
+          "src/assets/css/filesystem.css",
+          "src/assets/misc/file-icons-match.js"
+        ]
+      },
+      {
+        "name": "keyboard",
+        "entryPaths": [
+          "src/classes/keyboard.class.js",
+          "src/assets/css/keyboard.css",
+          "src/assets/kb_layouts/en-US.json"
+        ]
+      }
     ]
   },
   "validationCommands": [
