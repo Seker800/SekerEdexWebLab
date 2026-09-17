@@ -19,11 +19,12 @@
   /* xterm's generated blue slot: Tango blue, converted by terminal.class.js
      through grayscale().mix(themeColor, .3). Neofetch uses it for identity
      and field labels in the captured terminal stream. */
-  --terminal-ansi-blue: rgb(120, 131, 132);
-  /* xterm 3's canvas composited the nominal #AACFD1 foreground to this
-     effective color in the screenshot-era renderer. Keep that renderer
-     correction local to terminal cells instead of weakening the UI theme. */
-  --terminal-foreground: rgb(168, 206, 208);
+  --terminal-ansi-blue: rgb(116, 135, 136);
+  /* xterm 3's Canvas renderer produced blue-green LCD edge coverage around
+     the nominal #AACFD1 foreground. Modern Chromium rasterizes the browser
+     port with grayscale antialiasing, so compensate the two terminal color
+     slots together while keeping the canonical UI theme token unchanged. */
+  --terminal-foreground: rgb(164, 208, 212);
   /* Electron 4 composited the system column's repeated signal strokes a few
      levels below the nominal tron token. Scope that effective output here. */
   --system-signal-rgb: 166, 203, 205;
@@ -418,7 +419,7 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .cursor { width: .48vw; height: 1.65vh; background: var(--terminal-foreground); animation: cursor-blink 1s steps(1,end) infinite; }
 .terminal-footer { position: absolute; left: 0; right: 0; bottom: 7.6vh; min-height: 3.7vh; display: flex; justify-content: flex-end; align-items: center; gap: 1.25vw; padding: 0 .65vw; color: var(--dim); font: .7vw var(--font-mono); text-transform: none; }
 .terminal-footer span:first-child { display: none; }
-.terminal-footer > span { transform: scaleX(1.108); transform-origin: right center; }
+.terminal-footer > span { translate: 1px 1px; transform: scaleX(1.108); transform-origin: right center; }
 .terminal-footer b { color: var(--signal); }
 .terminal-footer #terminal-footer-time::before { content: "❮"; margin-right: .55vw; }
 
