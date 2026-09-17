@@ -40,9 +40,9 @@ export const canonicalNetworkTraces = {
  * Globe.addPin; keeping them as coordinates preserves that rendering path.
  */
 export const canonicalNetworkConnectionLocations = [
-  { latitude: 78, longitude: 153 },
-  { latitude: 37, longitude: -114 },
-  { latitude: 40, longitude: -139 },
+  { latitude: 78, longitude: 152 },
+  { latitude: 37, longitude: -113 },
+  { latitude: 38, longitude: -141 },
   { latitude: -14, longitude: 156 }
 ] as const;
 
