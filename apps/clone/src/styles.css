@@ -324,8 +324,8 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .process-block header small { translate: var(--capture-process-header-offset-x) 2px; transform: scaleX(var(--capture-process-header-scale-x)); transform-origin: right center; }
 .process-block header small { color: rgba(var(--signal-rgb), .75); }
 
-.terminal-panel { --border: rgba(var(--signal-rgb), .55); grid-column: 2 / 4; grid-row: 1; display: flex; flex-direction: column; background: var(--surface); }
-.terminal-panel > * { translate: var(--capture-terminal-offset-x) 0; scale: var(--capture-terminal-scale-x) 1; transform-origin: center; }
+.terminal-panel { --border: rgba(var(--signal-rgb), .55); grid-column: 2 / 4; grid-row: 1; margin: 1px -3px -1px 0; display: flex; flex-direction: column; background: var(--surface); }
+.terminal-panel > * { translate: var(--capture-terminal-offset-x) -1px; scale: var(--capture-terminal-scale-x) 1; transform-origin: center; }
 .terminal-greeting { display: none; margin: auto; opacity: 0; font: 400 3.9vh var(--font-ui); text-transform: none; transition: opacity .5s cubic-bezier(.4,0,1,1); }
 .terminal-greeting em { font-style: normal; font-weight: bold; }
 .command-deck.reveal-terminal:not(.terminal-ready) .terminal-panel > :not(.terminal-greeting) { display: none; }

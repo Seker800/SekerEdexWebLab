@@ -6,6 +6,8 @@ Run `npm run upstream:sync` to create the exact visual checkout at `.cache/upstr
 
 `specs/edex-command-deck.contract.json` exposes the exact screenshot checkout, commit, guide and entry files as machine-readable `sourceEvidence`. `npm run replicate:repair` passes that evidence to every Codex repair attempt before the screenshot and diff paths. `references/edex-ui-v2.2.8/provenance.json` records why the legacy reference directory name differs from the recovered source version.
 
+Read `docs/VISUAL_REGRESSION_CORPUS.md` before editing. It records source-plausible changes that deterministic Chromium capture has already rejected, including exact legacy xterm rendering and literal Electron-era CSS values that score worse in the browser port.
+
 | Feature | Upstream source | Browser port or evidence |
 |---|---|---|
 | Startup log and timing | `src/_renderer.js`, `src/assets/misc/boot_log.txt`, `main_shell.css` | `apps/clone/src/boot-sequence.ts`, `apps/clone/public/boot_log.txt`; preserves the kernel-line concatenation, canonical `squared` greeting and emphasis, greeting fade, keyboard hold and 500 ms panel cadence |
