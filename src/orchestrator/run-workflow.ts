@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { ScenarioContract } from "../config/contract.js";
-import type { PageCollector, RepairAgent } from "../domain/ports.js";
+import type { PageCollector, RepairAgent, RepairWorkspace } from "../domain/ports.js";
 import type { AttemptReport, FinalReport, RepairRequest } from "../domain/types.js";
 import { compareScreenshots } from "../comparison/visual-comparator.js";
 import { judgeVisualResult } from "../judge/visual-judge.js";
@@ -13,6 +13,7 @@ export interface WorkflowOptions {
   artifactRoot: string;
   collector: PageCollector;
   repairAgent?: RepairAgent;
+  repairWorkspace?: RepairWorkspace;
   afterRepair?: () => Promise<void>;
   runId?: string;
 }
@@ -31,6 +32,9 @@ async function sha256(filePath: string): Promise<string> {
 
 export async function runWorkflow(options: WorkflowOptions): Promise<FinalReport> {
   const { contract, collector } = options;
+  if (options.repairAgent && !options.repairWorkspace) {
+    throw new Error("A repair workspace is required when live repair is enabled");
+  }
   const runId = options.runId ?? defaultRunId();
   const runDirectory = path.resolve(options.artifactRoot, runId);
   const startedAt = new Date().toISOString();
@@ -121,9 +125,11 @@ export async function runWorkflow(options: WorkflowOptions): Promise<FinalReport
       };
 
       try {
+        await options.repairWorkspace?.checkpoint();
         attemptReport.repair = await options.repairAgent.repair(repairRequest);
         await writeJson(path.join(attemptDirectory, "repair.json"), attemptReport.repair);
         if (attemptReport.repair.status === "blocked") {
+          await options.repairWorkspace?.rollback();
           blocker = attemptReport.repair.summary;
           break;
         }
@@ -134,7 +140,56 @@ export async function runWorkflow(options: WorkflowOptions): Promise<FinalReport
         if (await sha256(target.screenshotPath) !== frozenTargetHash) {
           throw new Error("Target evidence changed during repair");
         }
+
+        const candidateDirectory = path.join(attemptDirectory, "candidate");
+        await mkdir(candidateDirectory, { recursive: true });
+        const candidateReplica = await collector.capture(
+          contract.replicaUrl,
+          contract.viewport,
+          path.join(candidateDirectory, "replica.png"),
+          contract.readySelector
+        );
+        await writeJson(path.join(candidateDirectory, "browser.json"), candidateReplica.diagnostics);
+        const candidateMetrics = await compareScreenshots(
+          target.screenshotPath,
+          candidateReplica.screenshotPath,
+          path.join(candidateDirectory, "diff.png")
+        );
+        await writeJson(path.join(candidateDirectory, "metrics.json"), candidateMetrics);
+        const candidateVerdict = judgeVisualResult(
+          candidateMetrics,
+          candidateReplica.diagnostics,
+          contract.maxDifferenceRatio
+        );
+        await writeJson(path.join(candidateDirectory, "verdict.json"), candidateVerdict);
+
+        const candidateHealthy = candidateReplica.diagnostics.consoleErrors.length === 0
+          && candidateReplica.diagnostics.pageErrors.length === 0;
+        const improved = candidateMetrics.dimensionsMatch
+          && candidateHealthy
+          && candidateMetrics.differenceRatio < metrics.differenceRatio;
+        const scoreChange = `${(metrics.differenceRatio * 100).toFixed(3)}% to ${(candidateMetrics.differenceRatio * 100).toFixed(3)}%`;
+        const reason = improved
+          ? `Visual difference improved from ${scoreChange}`
+          : !candidateMetrics.dimensionsMatch
+            ? "Candidate screenshot dimensions do not match the target"
+            : !candidateHealthy
+              ? "Candidate browser diagnostics contain errors"
+              : `Visual difference did not improve: ${scoreChange}`;
+        attemptReport.repairCandidate = {
+          replica: candidateReplica,
+          verdict: candidateVerdict,
+          decision: improved ? "accepted" : "rejected",
+          reason
+        };
+        await writeJson(path.join(candidateDirectory, "decision.json"), {
+          decision: attemptReport.repairCandidate.decision,
+          reason
+        });
+        if (improved) await options.repairWorkspace?.accept();
+        else await options.repairWorkspace?.rollback();
       } catch (error) {
+        await options.repairWorkspace?.rollback();
         blocker = error instanceof Error ? error.message : String(error);
         break;
       }

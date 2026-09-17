@@ -69,7 +69,7 @@ npm run upstream:sync
 npm run replicate:repair
 ```
 
-`replicate:repair` owns the Vite server, captures the current replica, compares it with the frozen reference, and asks Codex for up to three bounded repairs against its stricter 4% improvement target. Each repair prompt requires Codex to inspect the exact screenshot-era implementation first. The controller limits edits to `apps/clone`, runs type checking, unit tests and the production build after every change, then captures again. It leaves accepted source changes in the working tree for review. Run `npm run verify` after the loop for the slower startup, audio, interaction and 7% regression gate.
+`replicate:repair` owns the Vite server, captures the current replica, compares it with the frozen reference, and asks Codex for up to three bounded repairs against its stricter 4% improvement target. Each repair prompt requires Codex to inspect the exact screenshot-era implementation first. Before each repair, the controller snapshots `apps/clone`; it then runs type checking, unit tests and the production build, captures the candidate, and keeps the change only when browser diagnostics are clean, dimensions still match, and the measured visual difference strictly decreases. Rejected candidates are restored automatically. Accepted source changes remain in the working tree for review. Run `npm run verify` after the loop for the slower startup, audio, interaction and 7% regression gate.
 
 ## Run a scenario
 

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { PNG } from "pngjs";
 import { afterEach, describe, expect, it } from "vitest";
-import type { PageCollector } from "../src/domain/ports.js";
+import type { PageCollector, RepairAgent, RepairWorkspace } from "../src/domain/ports.js";
 import { runWorkflow } from "../src/orchestrator/run-workflow.js";
 
 const temporaryDirectories: string[] = [];
@@ -13,6 +13,32 @@ afterEach(async () => {
 });
 
 describe("workflow failure handling", () => {
+  it("requires transactional workspace handling for live repair", async () => {
+    const collector: PageCollector = {
+      async capture() { throw new Error("capture should not run"); },
+      async close() {}
+    };
+    const repairAgent: RepairAgent = {
+      async repair() { throw new Error("repair should not run"); }
+    };
+
+    await expect(runWorkflow({
+      contract: {
+        scenarioId: "unsafe-repair",
+        targetUrl: "https://target.example",
+        replicaUrl: "http://replica.example",
+        viewport: { width: 1, height: 1 },
+        maxDifferenceRatio: 0,
+        maxAttempts: 1,
+        allowedPaths: ["apps/clone"],
+        validationCommands: []
+      },
+      artifactRoot: tmpdir(),
+      collector,
+      repairAgent
+    })).rejects.toThrow("repair workspace is required");
+  });
+
   it("persists a blocked report when replica capture fails", async () => {
     const artifactRoot = await mkdtemp(path.join(tmpdir(), "edex-workflow-"));
     temporaryDirectories.push(artifactRoot);
@@ -51,5 +77,77 @@ describe("workflow failure handling", () => {
     expect(closed).toBe(true);
     const persisted = JSON.parse(await readFile(path.join(artifactRoot, "blocked-run", "final-report.json"), "utf8"));
     expect(persisted.status).toBe("blocked");
+  });
+
+  it("rejects and rolls back a repair candidate that worsens the visual score", async () => {
+    const artifactRoot = await mkdtemp(path.join(tmpdir(), "edex-workflow-"));
+    temporaryDirectories.push(artifactRoot);
+    const targetPath = path.join(artifactRoot, "target.png");
+    const targetImage = new PNG({ width: 2, height: 1 });
+    targetImage.data.fill(0);
+    for (let index = 3; index < targetImage.data.length; index += 4) targetImage.data[index] = 255;
+    await writeFile(targetPath, PNG.sync.write(targetImage));
+
+    let repaired = false;
+    let rollbacks = 0;
+    const collector: PageCollector = {
+      async capture(url, _viewport, outputPath) {
+        const image = new PNG({ width: 2, height: 1 });
+        image.data.fill(0);
+        for (let index = 3; index < image.data.length; index += 4) image.data[index] = 255;
+        image.data[0] = 255;
+        image.data[1] = 255;
+        image.data[2] = 255;
+        if (repaired) {
+          image.data[4] = 255;
+          image.data[5] = 255;
+          image.data[6] = 255;
+        }
+        await writeFile(outputPath, PNG.sync.write(image));
+        return { screenshotPath: outputPath, diagnostics: { consoleErrors: [], pageErrors: [], finalUrl: url } };
+      },
+      async close() {}
+    };
+    const repairAgent: RepairAgent = {
+      async repair() {
+        repaired = true;
+        return { status: "changed", summary: "candidate", changedFiles: ["apps/clone/a"], validations: [], remainingDifferences: [] };
+      }
+    };
+    const repairWorkspace: RepairWorkspace = {
+      async checkpoint() {},
+      async accept() {},
+      async rollback() {
+        repaired = false;
+        rollbacks += 1;
+      }
+    };
+
+    const report = await runWorkflow({
+      contract: {
+        scenarioId: "reject-regression",
+        targetScreenshotPath: targetPath,
+        replicaUrl: "http://replica.example",
+        viewport: { width: 2, height: 1 },
+        maxDifferenceRatio: 0,
+        maxAttempts: 2,
+        allowedPaths: ["apps/clone"],
+        validationCommands: []
+      },
+      artifactRoot,
+      collector,
+      repairAgent,
+      repairWorkspace,
+      runId: "reject-run"
+    });
+
+    expect(report.attempts[0]?.verdict.metrics.differentPixels).toBe(1);
+    expect(report.attempts[0]?.repairCandidate).toMatchObject({
+      decision: "rejected",
+      verdict: { metrics: { differentPixels: 2 } }
+    });
+    expect(report.attempts[1]?.verdict.metrics.differentPixels).toBe(1);
+    expect(rollbacks).toBe(1);
+    expect(repaired).toBe(false);
   });
 });

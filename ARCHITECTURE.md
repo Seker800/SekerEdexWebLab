@@ -35,12 +35,16 @@ Runs a finite state machine:
 ```text
 capture -> compare -> judge -> passed
                          |
-                         +-> repair -> validate -> capture
+                         +-> checkpoint -> repair -> validate -> candidate capture
+                                                          |              |
+                                                   improved: keep   flat/worse: rollback
                          |
                          +-> failed/blocked
 ```
 
 The orchestrator owns attempt limits and artifact directories. Components communicate through typed values and files.
+
+Every live repair is transactional over the contract's allowed paths. The controller snapshots those paths before Codex runs, captures and judges the candidate immediately after validation, and accepts it only when browser diagnostics remain clean, dimensions match, and the visual difference ratio strictly decreases. Equal, worse, malformed or failed candidates restore the snapshot before another attempt. Candidate screenshots, metrics, verdicts and the accept/reject decision remain in the run artifacts.
 
 ## Dependency direction
 
@@ -70,6 +74,13 @@ artifacts/runs/<run-id>/
     browser.json
     verdict.json
     repair.json
+    candidate/
+      replica.png
+      diff.png
+      metrics.json
+      browser.json
+      verdict.json
+      decision.json
   final-report.json
 ```
 

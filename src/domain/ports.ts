@@ -8,3 +8,9 @@ export interface PageCollector {
 export interface RepairAgent {
   repair(request: RepairRequest): Promise<RepairResult>;
 }
+
+export interface RepairWorkspace {
+  checkpoint(): Promise<void>;
+  accept(): Promise<void>;
+  rollback(): Promise<void>;
+}

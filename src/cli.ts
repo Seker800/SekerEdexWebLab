@@ -5,6 +5,7 @@ import { loadContract } from "./config/contract.js";
 import { PlaywrightCollector } from "./adapters/browser/playwright-collector.js";
 import { CodexRepairAgent } from "./adapters/codex/codex-repair-agent.js";
 import { assertCleanRepository, changedPaths, pathsOutsideAllowed } from "./adapters/codex/git-guard.js";
+import { AllowedPathRepairWorkspace } from "./adapters/codex/repair-workspace.js";
 import { runValidationCommands } from "./adapters/process/validation-runner.js";
 import { runWorkflow } from "./orchestrator/run-workflow.js";
 
@@ -51,6 +52,7 @@ async function main(): Promise<void> {
     artifactRoot,
     collector: new PlaywrightCollector(),
     ...(repairAgent ? { repairAgent } : {}),
+    ...(repairAgent ? { repairWorkspace: new AllowedPathRepairWorkspace(repositoryRoot, contract.allowedPaths) } : {}),
     ...(afterRepair ? { afterRepair } : {})
   });
 

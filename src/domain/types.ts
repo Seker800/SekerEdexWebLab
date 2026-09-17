@@ -40,6 +40,12 @@ export interface AttemptReport {
   replica: CaptureResult;
   verdict: Verdict;
   repair?: RepairResult;
+  repairCandidate?: {
+    replica: CaptureResult;
+    verdict: Verdict;
+    decision: "accepted" | "rejected";
+    reason: string;
+  };
 }
 
 export interface FinalReport {

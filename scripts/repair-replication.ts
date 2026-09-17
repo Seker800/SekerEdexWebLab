@@ -4,6 +4,7 @@ import { createServer } from "vite";
 import { PlaywrightCollector } from "../src/adapters/browser/playwright-collector.js";
 import { CodexRepairAgent } from "../src/adapters/codex/codex-repair-agent.js";
 import { assertCleanRepository, changedPaths, pathsOutsideAllowed } from "../src/adapters/codex/git-guard.js";
+import { AllowedPathRepairWorkspace } from "../src/adapters/codex/repair-workspace.js";
 import { runValidationCommands } from "../src/adapters/process/validation-runner.js";
 import { loadContract } from "../src/config/contract.js";
 import { withRepairThreshold } from "../src/config/repair-contract.js";
@@ -36,6 +37,7 @@ try {
     artifactRoot,
     collector: new PlaywrightCollector(),
     repairAgent,
+    repairWorkspace: new AllowedPathRepairWorkspace(repositoryRoot, contract.allowedPaths),
     afterRepair: async () => {
       const changed = await changedPaths(repositoryRoot);
       const outside = pathsOutsideAllowed(changed, contract.allowedPaths);
