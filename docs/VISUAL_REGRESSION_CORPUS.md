@@ -14,6 +14,7 @@ This file records source-plausible changes that deterministic capture disproved.
 | Restore the canonical neofetch logo indentation and calibrate the two terminal timestamps as one shared block | whole image 87,023 / 4.113% | 86,224 / 4.075% | Accepted by source comparison, local grid search and full-image recapture |
 | Preserve the screenshot-era Electron window alpha ramp in application rendering and browser collection | whole image 86,213 / 4.075% | 51,880 / 2.452% | Accepted after channel analysis found 42,196 reference pixels whose RGB already matched but whose alpha had been flattened by collection |
 | Fine tune the shared terminal child transform to `translateX(-1.9px) scaleX(.9963)` | terminal 18,875; whole image 51,892 | terminal 18,031; whole image 51,050 | Accepted by coarse search, fine search and full-image recapture |
+| Fine tune the network status horizontal scale from `1.02` to `1.0215` | network status crop 1,705; whole image 51,050 | network status crop 1,670; whole image 51,015 | Accepted in two local searches and one full-image recapture |
 
 ## Rejected changes
 
@@ -28,6 +29,7 @@ This file records source-plausible changes that deterministic capture disproved.
 | Remove keyboard compatibility scaling | keyboard 16,129 | 20,081 | Region score regressed |
 | Move the ENCOM globe canvas horizontally from its current centered position | globe crop 5,639 | best shifted candidate 5,831 | Horizontal translation regressed |
 | Change the frozen ENCOM camera angle away from `6.260` by 0.005-radian steps | globe crop 5,655 | nearest candidates 5,678 and 5,769 | Current angle is the measured local optimum |
+| Change the shared system-section scale away from `1.005 × 1.01` over a 13 × 13 local grid | system crop 9,448 | nearest candidate 9,612 | Current shared scale is the unique measured optimum; use module-specific hypotheses instead |
 
 ## Use
 

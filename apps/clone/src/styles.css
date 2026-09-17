@@ -32,7 +32,7 @@
   --capture-cpu-chart-scale-x: .995;
   --capture-cpu-chart-scale-y: .99;
   --capture-cpu-chart-offset-y: 1px;
-  --capture-network-status-scale-x: 1.02;
+  --capture-network-status-scale-x: 1.0215;
   --capture-network-status-offset-x: 1px;
   --capture-network-status-offset-y: 3px;
   --capture-network-chart-scale-y: 1.01;
