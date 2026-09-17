@@ -41,8 +41,8 @@
   --capture-process-right-column-offset-x: 8px;
   --capture-process-header-offset-x: 10px;
   --capture-process-header-scale-x: 1.045;
-  --capture-terminal-scale-x: .995;
-  --capture-terminal-offset-x: -2px;
+  --capture-terminal-scale-x: .9963;
+  --capture-terminal-offset-x: -1.9px;
   --capture-file-scale-x: 1.004;
   --capture-file-scale-y: 1.038;
   --capture-file-offset-x: 0px;
