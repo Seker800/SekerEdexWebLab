@@ -4,6 +4,7 @@ import { completeBootImmediately, runBootSequence, type BootElements } from "./b
 import { canonicalCpuTraces, canonicalGlobeConstellation, canonicalMemoryPointStates, canonicalNetworkConnectionLocations, canonicalNetworkTraces, type MemoryPointState } from "./canonical-runtime.js";
 import { initializeEdexGlobe, loadEdexIcons, renderEdexIcon, type EdexGlobeLayers } from "./edex-assets.js";
 import { canonicalFileEntries } from "./filesystem-model.js";
+import { bindPhysicalKeyboardFeedback, bindPointerKeyboardFeedback, keyboardKeysForEvent } from "./keyboard-feedback.js";
 import { executeCommand, neofetchText, type TerminalEntry } from "./terminal-model.js";
 import { createTelemetrySnapshot, sparklinePoints } from "./telemetry.js";
 
@@ -206,15 +207,26 @@ form.addEventListener("submit", (event) => {
 });
 
 input.addEventListener("keydown", (event) => {
-  if (event.key.length === 1 || event.key === "Backspace") audioDeck.play("stdin");
+  const sourceKey = keyboardKeysForEvent(event).length > 0;
+  const repeatable = !event.code.startsWith("Shift") && !event.code.startsWith("Alt") && !event.code.startsWith("Control") && event.code !== "CapsLock";
+  if (sourceKey && (!event.repeat || repeatable)) audioDeck.play("stdin");
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.code !== "CapsLock" || event.repeat) return;
+  capsLock = !capsLock;
+  document.querySelector<HTMLButtonElement>('[data-key="CAPS"]')?.classList.toggle("latched", capsLock);
+});
+
+document.addEventListener("keyup", (event) => {
+  if (event.code === "Enter") audioDeck.play("granted");
 });
 
 document.querySelectorAll<HTMLButtonElement>(".key").forEach((button) => {
+  bindPointerKeyboardFeedback(button);
   button.addEventListener("click", () => {
     const key = button.dataset.key!;
     audioDeck.play(key === "ENTER" || key === "ENTER_LOWER" ? "granted" : "stdin");
-    button.classList.add("pressed");
-    window.setTimeout(() => button.classList.remove("pressed"), 130);
     if (key === "BACK") input.value = input.value.slice(0, -1);
     else if (key === "ENTER" || key === "ENTER_LOWER") submitCommand();
     else if (key === "SPACE") input.value += " ";
@@ -230,6 +242,7 @@ document.querySelectorAll<HTMLButtonElement>(".key").forEach((button) => {
     input.focus();
   });
 });
+bindPhysicalKeyboardFeedback(document.querySelector(".keyboard-panel")!);
 
 document.querySelectorAll<HTMLButtonElement>(".terminal-tabs button").forEach((button) => {
   button.addEventListener("click", () => {

@@ -194,8 +194,8 @@ button { text-transform: uppercase; }
   justify-content: space-between;
   padding: 0 0.72vw;
   border-bottom: 1px solid var(--border);
-  font: 600 0.67vw/1 var(--font-ui);
-  letter-spacing: .04em;
+  font: 600 1.02vh/normal var(--font-ui);
+  letter-spacing: 0;
   transform: translateY(var(--capture-ruler-offset-y));
   z-index: 2;
 }
@@ -203,13 +203,13 @@ button { text-transform: uppercase; }
 .global-line--left { left: .55vw; width: 15.6vw; }
 .global-line--center { left: 17vw; width: 65.2vw; }
 .global-line--right { right: .55vw; width: 16.7vw; }
-.global-line--left > span:nth-child(1) { translate: -9px -1px; }
-.global-line--left > span:nth-child(2) { translate: 20px 0; }
-.global-line--center > span:nth-child(1) { translate: -9px 1px; }
-.global-line--center > span:nth-child(3) { translate: 39px 0; }
-.global-line--right > span:nth-child(1) { translate: 17px 0; }
-.global-line--right > span:nth-child(2) { translate: 7px 0; }
-.deck-controls { display: flex; align-self: stretch; opacity: 0; }
+.global-line--left > span:nth-child(1) { translate: -3px 0; }
+.global-line--left > span:nth-child(2) { translate: 5px 0; }
+.global-line--center > span:nth-child(1) { translate: -9px 0; }
+.global-line--center > span:nth-child(3) { translate: 20px 0; }
+.global-line--right > span:nth-child(1) { translate: 12px 0; }
+.global-line--right > span:nth-child(2) { translate: -3px 0; }
+.deck-controls { position: absolute; top: 0; bottom: 0; left: 50%; display: flex; align-self: stretch; opacity: 0; transform: translateX(-50%); }
 .global-line--center:hover .deck-controls, .deck-controls:focus-within { opacity: 1; }
 .deck-controls button { padding: 0 .48vw; border: 0; border-left: 1px solid var(--faint); background: transparent; color: var(--dim); font: 600 .54vw var(--font-mono); letter-spacing: .06em; }
 .deck-controls button:last-child { border-right: 1px solid var(--faint); }
@@ -406,7 +406,8 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .filesystem-panel .section-label > small { position: absolute; right: 0; }
 .file-grid { position: relative; left: -.093vw; width: calc(100% + .67vw); flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(8, 1fr); grid-auto-rows: 1fr; gap: .4vh .35vw; overflow: hidden; clip-path: inset(0 0 2.83vh 0); transform: translate(var(--capture-file-offset-x), var(--capture-file-offset-y)) scale(var(--capture-file-scale-x), var(--capture-file-scale-y)); transform-origin: center; }
 .file-grid button { width: 8.5vh; height: 8.5vh; min-width: 0; padding: 0; border: 0; background: transparent; justify-self: center; align-self: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .35vh; }
-.file-grid button:hover, .file-grid button:focus-visible { background: rgba(var(--signal-rgb), .12); outline: 1px solid var(--border); }
+.file-grid button:focus-visible { outline: 1px solid var(--border); }
+.file-grid button:active { animation: file-feedback-blink .1s linear infinite; }
 .file-grid b { position: relative; top: -.45vh; width: 5vh; height: 5vh; display: grid; place-items: center; }
 .file-grid button[data-icon="dir"] b { transform: translateY(var(--capture-directory-icon-offset-y)) scaleY(var(--capture-directory-icon-scale-y)); }
 .file-grid button[data-icon="file"] b { transform: scaleY(var(--capture-file-icon-scale-y)); }
@@ -445,8 +446,10 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .key > svg { width: calc(100% - 1vh); height: calc(100% - 1vh); position: absolute; top: .5vh; fill: var(--signal); }
 .key-row > .key:first-child .key-shift,
 .key-row:not(.key-row-3):not(.key-row-4) > .key:last-child .key-shift { opacity: 0; }
-.key:hover, .key:focus-visible { border-color: var(--border); outline: 0; }
-.key.pressed, .key.latched { color: var(--surface); background: var(--signal); border-color: transparent; box-shadow: 0 0 16px rgba(var(--signal-rgb), .3); }
+.key:focus-visible { border-color: var(--border); outline: 0; }
+.key.pressed { background: var(--signal); border-color: transparent; }
+.key.latched { color: var(--surface); background: var(--signal); border-color: transparent; }
+.key.blink { animation: key-feedback-blink .5s linear infinite; }
 .key-row:not(.key-row-3):not(.key-row-4) > .key:last-child, .key-row > .key:first-child { width: 8.33vh; min-width: 8.33vh; flex-basis: 8.33vh; font-size: 1.85vh; }
 .key--space { width: 47.68vh; min-width: 47.68vh; height: 3.52vh; flex-basis: 47.68vh; border-color: var(--border); transform: translateX(var(--capture-keyboard-space-offset-x)) scaleX(var(--capture-keyboard-space-scale-x)); }
 .key--enter-upper { width: 9.72vh !important; min-width: 9.72vh !important; flex-basis: 9.72vh !important; border-color: var(--border); border-bottom-right-radius: 0; }
@@ -462,20 +465,28 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .key-row-3 > .key:nth-last-child(2) .key-main { font-size: 1.8vh; }
 .key-row-3 > .key:nth-child(1) { translate: 1px -1px; }
 .key-row-3 > .key:nth-child(13) { translate: 2px -1px; }
-.key-row-3 > .key:nth-child(14) { translate: 2px -2px; }
+.key-row-3 > .key:nth-child(14) { translate: 6px -2px; }
 .key-row-0 > .key:nth-child(1) { translate: -2px 1px; }
 .key-row-0 > .key:last-child { translate: 1px 1px; }
 .key-row-1 > .key:nth-child(1) { translate: -1px 0; }
-.key-row-2 > .key:nth-child(1) { translate: 0 -1px; }
-.key-row-4 > .key:nth-child(1) { translate: 2px 1px; }
-.key-row-4 > .key:nth-child(2),
+.key-row-2 > .key:nth-child(1) { translate: -1px -1px; }
+.key-row-4 > .key:nth-child(1) { translate: -5px 1px; }
+.key-row-4 > .key:nth-child(2) { translate: -4px 1px; }
+.key-row-4 > .key:nth-child(4) { translate: -10px 1px; }
 .key-row-4 > .key:nth-child(5) { translate: 0 1px; }
-.key-row-4 > .key:nth-child(4) { translate: 2px 1px; }
 .key-row-4 > .key:nth-child(6) { translate: -1px 1px; }
 .key-row-4 > .key:nth-child(7) { translate: 1px 1px; }
 .key-row-4 > .key:nth-child(8) { translate: -1px 1px; }
 
 @keyframes cursor-blink { 50% { opacity: 0; } }
+@keyframes key-feedback-blink {
+  0%, 100% { background-color: rgba(var(--signal-rgb), 0); }
+  50% { background-color: rgb(var(--signal-rgb)); }
+}
+@keyframes file-feedback-blink {
+  0%, 100% { background-color: rgba(var(--signal-rgb), 0); }
+  50% { background-color: rgb(var(--signal-rgb)); }
+}
 
 @media (max-aspect-ratio: 4/3) {
   .command-deck { min-width: 0; grid-template-columns: 25% 75%; grid-template-rows: 64% 36%; }

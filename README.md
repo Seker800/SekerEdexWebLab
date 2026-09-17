@@ -55,7 +55,7 @@ Run the full deterministic replication state machine with:
 npm run replicate:verify
 ```
 
-This starts the app, freezes the source screenshot into a run, captures the implementation at 1934×1094, applies the current 4% visual threshold and browser error gates, and writes a complete report under `artifacts/runs/`.
+This starts the app, freezes the source screenshot into a run, captures the implementation at 1934×1094, applies the 7% regression threshold and browser error gates, and writes a complete report under `artifacts/runs/`.
 
 ## Run the source-first automatic repair loop
 
@@ -66,7 +66,7 @@ npm run upstream:sync
 npm run replicate:repair
 ```
 
-`replicate:repair` owns the Vite server, captures the current replica, compares it with the frozen reference, and asks Codex for up to three bounded repairs when the 4% visual gate fails. Each repair prompt requires Codex to inspect the original v2.2.8 implementation first. The controller limits edits to `apps/clone`, runs type checking, unit tests and the production build after every change, then captures again. It leaves accepted source changes in the working tree for review. Run `npm run verify` after the loop for the slower startup, audio, interaction and full visual gate.
+`replicate:repair` owns the Vite server, captures the current replica, compares it with the frozen reference, and asks Codex for up to three bounded repairs against its stricter 4% improvement target. Each repair prompt requires Codex to inspect the original v2.2.8 implementation first. The controller limits edits to `apps/clone`, runs type checking, unit tests and the production build after every change, then captures again. It leaves accepted source changes in the working tree for review. Run `npm run verify` after the loop for the slower startup, audio, interaction and 7% regression gate.
 
 ## Run a scenario
 

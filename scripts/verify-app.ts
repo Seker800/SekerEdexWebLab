@@ -205,6 +205,21 @@ try {
   await terminalInput.press("Enter");
   await page.getByText("INPUT MATRIX READY", { exact: false }).waitFor();
   await terminalInput.fill("");
+  const physicalHKey = page.locator('[data-key="H"]');
+  await terminalInput.focus();
+  await page.keyboard.down("h");
+  if (!await physicalHKey.evaluate((node) => node.classList.contains("pressed"))) {
+    throw new Error("Physical keyboard input did not light the matching on-screen key");
+  }
+  await page.keyboard.up("h");
+  if (!await physicalHKey.evaluate((node) => node.classList.contains("blink"))) {
+    throw new Error("Physical keyboard release did not blink the matching on-screen key");
+  }
+  await page.waitForTimeout(120);
+  if (await physicalHKey.evaluate((node) => node.classList.contains("pressed") || node.classList.contains("blink"))) {
+    throw new Error("Physical keyboard feedback did not settle after the source release interval");
+  }
+  await terminalInput.fill("");
   for (const key of ["H", "E", "L", "P"]) await page.locator(`[data-key="${key}"]`).click();
   await page.locator('[data-key="ENTER"]').click();
   await page.getByText("AVAILABLE COMMANDS", { exact: false }).waitFor();
