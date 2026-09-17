@@ -71,7 +71,7 @@ html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 [hidden] { display: none !important; }
 
 body {
-  background: var(--void);
+  background: transparent;
   color: var(--signal);
   font-family: var(--font-ui);
   font-stretch: condensed;
@@ -147,6 +147,34 @@ button { text-transform: uppercase; }
     var(--muted);
   background-size: 22.032px 22.032px;
   isolation: isolate;
+  /* Preserve the asymmetric alpha ramp produced by the screenshot-era
+     frameless Electron window shadow. */
+  -webkit-mask-image:
+    linear-gradient(to right,
+      transparent 0 4px, rgb(0 0 0 / 1.96078431%) 4px 5px,
+      #000 5px calc(100% - 9px),
+      rgb(0 0 0 / 32.15686275%) calc(100% - 9px) calc(100% - 8px),
+      rgb(0 0 0 / 28.62745098%) calc(100% - 8px) calc(100% - 7px),
+      rgb(0 0 0 / 24.70588235%) calc(100% - 7px) calc(100% - 6px),
+      rgb(0 0 0 / 20.78431373%) calc(100% - 6px) calc(100% - 5px),
+      rgb(0 0 0 / 16.47058824%) calc(100% - 5px) calc(100% - 4px),
+      rgb(0 0 0 / 12.54901961%) calc(100% - 4px) calc(100% - 3px),
+      rgb(0 0 0 / 8.62745098%) calc(100% - 3px) calc(100% - 2px),
+      rgb(0 0 0 / 5.09803922%) calc(100% - 2px) calc(100% - 1px),
+      rgb(0 0 0 / 1.96078431%) calc(100% - 1px)),
+    linear-gradient(to bottom,
+      transparent 0 4px, rgb(0 0 0 / 1.96078431%) 4px 5px,
+      #000 5px calc(100% - 9px),
+      rgb(0 0 0 / 32.15686275%) calc(100% - 9px) calc(100% - 8px),
+      rgb(0 0 0 / 28.62745098%) calc(100% - 8px) calc(100% - 7px),
+      rgb(0 0 0 / 24.70588235%) calc(100% - 7px) calc(100% - 6px),
+      rgb(0 0 0 / 20.78431373%) calc(100% - 6px) calc(100% - 5px),
+      rgb(0 0 0 / 16.47058824%) calc(100% - 5px) calc(100% - 4px),
+      rgb(0 0 0 / 12.54901961%) calc(100% - 4px) calc(100% - 3px),
+      rgb(0 0 0 / 8.62745098%) calc(100% - 3px) calc(100% - 2px),
+      rgb(0 0 0 / 5.09803922%) calc(100% - 2px) calc(100% - 1px),
+      rgb(0 0 0 / 1.96078431%) calc(100% - 1px));
+  -webkit-mask-composite: source-in;
   opacity: 0;
   transition: opacity .12s linear;
 }

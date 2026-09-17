@@ -32,7 +32,7 @@ export class PlaywrightCollector implements PageCollector {
     try {
       await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
       if (readySelector) await page.locator(readySelector).waitFor({ state: "visible", timeout: 10_000 });
-      await page.screenshot({ path: outputPath, fullPage: true, animations: "disabled" });
+      await page.screenshot({ path: outputPath, fullPage: true, animations: "disabled", omitBackground: true });
 
       return {
         screenshotPath: outputPath,

@@ -68,20 +68,20 @@ try {
   if (await page.locator("#edex-globe canvas").count() !== 0) {
     throw new Error("Globe runtime started before the source module initialization stage");
   }
-  await page.screenshot({ path: path.join(artifactDirectory, "boot-gate.png"), animations: "disabled" });
+  await page.screenshot({ path: path.join(artifactDirectory, "boot-gate.png"), animations: "disabled", omitBackground: true });
   await page.getByRole("button", { name: "Initialize system" }).click();
   await page.waitForFunction(() => document.querySelector("#boot-log")?.textContent?.includes("Boot Complete") ?? false);
   const bootLogText = await page.locator("#boot-log").textContent() ?? "";
   if (!bootLogText.includes("eDEX-UI Kernel version 2.2.0")) throw new Error("Boot kernel version does not match the exact screenshot-era source");
   if (!bootLogText.includes("<dict ID=")) throw new Error("Boot log did not decode the upstream HTML entities");
   if (bootLogText.includes("&lt;dict")) throw new Error("Boot log rendered encoded entity text instead of the upstream characters");
-  await page.screenshot({ path: path.join(artifactDirectory, "boot-log.png"), animations: "disabled" });
+  await page.screenshot({ path: path.join(artifactDirectory, "boot-log.png"), animations: "disabled", omitBackground: true });
   await page.locator(".boot-title.visible").waitFor({ timeout: 25_000 });
   await page.locator(".boot-title.filled").waitFor({ timeout: 2_000 });
   await page.locator(".boot-title.framed").waitFor({ timeout: 2_000 });
   await page.locator(".boot-title.glitch").waitFor({ timeout: 2_000 });
   await page.locator("#command-deck.reveal-terminal").waitFor({ timeout: 25_000 });
-  await page.screenshot({ path: path.join(artifactDirectory, "boot-reveal.png") });
+  await page.screenshot({ path: path.join(artifactDirectory, "boot-reveal.png"), omitBackground: true });
   if (await page.locator(".terminal-tabs").isVisible()) throw new Error("Terminal tabs appeared before the upstream terminal initialization stage");
   await page.locator("#command-deck.greeting-visible .terminal-greeting").waitFor({ timeout: 3_000 });
   if (await page.locator(".terminal-greeting").textContent() !== "Welcome back, squared") {
@@ -91,11 +91,11 @@ try {
     throw new Error("Boot greeting did not preserve the source username emphasis");
   }
   const fadingGreetingObserved = page.locator("#command-deck.greeting-fading").waitFor({ state: "attached", timeout: 3_000 });
-  await page.screenshot({ path: path.join(artifactDirectory, "boot-greeting.png") });
+  await page.screenshot({ path: path.join(artifactDirectory, "boot-greeting.png"), omitBackground: true });
   if (await page.locator(".file-grid").isVisible()) throw new Error("Filesystem entries appeared before the upstream filesystem initialization stage");
   await fadingGreetingObserved;
   await page.locator("#command-deck.terminal-ready").waitFor({ timeout: 4_000 });
-  await page.screenshot({ path: path.join(artifactDirectory, "boot-terminal-ready.png") });
+  await page.screenshot({ path: path.join(artifactDirectory, "boot-terminal-ready.png"), omitBackground: true });
   if (!await page.locator(".terminal-tabs").isVisible()) throw new Error("Terminal tabs did not appear at the upstream terminal initialization stage");
   if (!await page.locator(".file-grid").isVisible()) throw new Error("Filesystem entries did not appear at the upstream filesystem initialization stage");
   await page.locator('html[data-boot-phase="complete"]').waitFor({ timeout: 25_000 });
@@ -112,7 +112,7 @@ try {
     deck.classList.remove("reveal-panels");
     deck.classList.add("greeting-fading");
   });
-  await page.screenshot({ path: path.join(artifactDirectory, "boot-greeting-fading.png") });
+  await page.screenshot({ path: path.join(artifactDirectory, "boot-greeting-fading.png"), omitBackground: true });
   await page.evaluate(() => {
     const deck = document.querySelector<HTMLElement>("#command-deck")!;
     deck.className = deck.dataset.verifierClassName ?? deck.className;
@@ -133,7 +133,7 @@ try {
       title.className = `boot-title ${classes}`;
     }, { classes: titleClasses, showGrid: grid });
     await page.waitForTimeout(500);
-    await page.screenshot({ path: path.join(artifactDirectory, name) });
+    await page.screenshot({ path: path.join(artifactDirectory, name), omitBackground: true });
     const bounds = await page.locator("#boot-title h1").boundingBox();
     if (!bounds) throw new Error(`Boot title bounds were unavailable for ${name}`);
     return bounds;
@@ -264,7 +264,7 @@ try {
     canonicalBounds[name] = box;
     assertBounds(name, box, definition.expectedBounds);
   }
-  await page.screenshot({ path: path.join(artifactDirectory, "command-deck.png"), animations: "disabled" });
+  await page.screenshot({ path: path.join(artifactDirectory, "command-deck.png"), animations: "disabled", omitBackground: true });
 
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.reload({ waitUntil: "networkidle" });
@@ -276,7 +276,7 @@ try {
     vertical: document.documentElement.scrollHeight > window.innerHeight
   }));
   if (overflow.horizontal || overflow.vertical) throw new Error(`Responsive viewport overflowed: ${JSON.stringify(overflow)}`);
-  await page.screenshot({ path: path.join(artifactDirectory, "command-deck-1280x800.png"), animations: "disabled" });
+  await page.screenshot({ path: path.join(artifactDirectory, "command-deck-1280x800.png"), animations: "disabled", omitBackground: true });
   const metrics = await compareScreenshots(
     path.resolve("references/edex-ui-v2.2.8/screenshot_default.png"),
     path.join(artifactDirectory, "command-deck.png"),

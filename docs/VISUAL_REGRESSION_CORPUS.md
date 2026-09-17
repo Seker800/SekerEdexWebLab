@@ -12,6 +12,7 @@ This file records source-plausible changes that deterministic capture disproved.
 | Restore separate source ruler/tick baselines, Electron-era terminal framing, and remove invented outer dividers | whole image 94,965 / 4.488% | 87,328 / 4.127% | Accepted by transactional recapture |
 | Preserve the terminal's second top-frame raster row and restore source keyboard content-box sizing | whole image 87,334 / 4.128% | 87,028 / 4.113% | Accepted by transactional recapture |
 | Restore the canonical neofetch logo indentation and calibrate the two terminal timestamps as one shared block | whole image 87,023 / 4.113% | 86,224 / 4.075% | Accepted by source comparison, local grid search and full-image recapture |
+| Preserve the screenshot-era Electron window alpha ramp in application rendering and browser collection | whole image 86,213 / 4.075% | 51,880 / 2.452% | Accepted after channel analysis found 42,196 reference pixels whose RGB already matched but whose alpha had been flattened by collection |
 
 ## Rejected changes
 
