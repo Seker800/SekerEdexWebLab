@@ -103,8 +103,9 @@ export async function initializeEdexGlobe(
       maxMarkers: 100
     });
     container.replaceChildren(globe.domElement);
-    await new Promise<void>((resolve) => globe.init("#05080d", resolve));
-    if (layers.satellites) {
+    const initialized = new Promise<void>((resolve) => globe.init("#05080d", resolve));
+    const addSatellites = (): void => {
+      if (!layers.satellites) return;
       const generatedConstellation: EdexSatelliteLocation[] = [];
       for (let latitudeBand = 0; latitudeBand < 2; latitudeBand += 1) {
         for (let longitudeBand = 0; longitudeBand < 3; longitudeBand += 1) {
@@ -116,7 +117,10 @@ export async function initializeEdexGlobe(
         }
       }
       globe.addConstellation(constellationLocations ? [...constellationLocations] : generatedConstellation);
-    }
+    };
+    if (animate) addSatellites();
+    await initialized;
+    if (!animate) addSatellites();
   } finally {
     Math.random = nativeRandom;
   }
