@@ -1,7 +1,7 @@
 import "./styles.css";
 import { AudioDeck } from "./audio-deck.js";
 import { completeBootImmediately, runBootSequence, type BootElements } from "./boot-sequence.js";
-import { canonicalCpuTraces, canonicalEdexVersion, canonicalGlobeConstellation, canonicalMemoryPointStates, canonicalNetworkConnectionLocations, canonicalNetworkTraces, type MemoryPointState } from "./canonical-runtime.js";
+import { canonicalCpuTraces, canonicalEdexVersion, canonicalGlobeConstellation, canonicalMemoryPointStates, canonicalNetworkConnectionLocations, canonicalNetworkTraces, canonicalSatelliteAnimationAdvanceMs, type MemoryPointState } from "./canonical-runtime.js";
 import { initializeEdexGlobe, loadEdexIcons, renderEdexIcon, type EdexGlobeLayers } from "./edex-assets.js";
 import { canonicalFileEntries } from "./filesystem-model.js";
 import { bindPhysicalKeyboardFeedback, bindPointerKeyboardFeedback, keyboardKeysForEvent } from "./keyboard-feedback.js";
@@ -165,7 +165,8 @@ if (staticMode) {
     fixedRandomSeed: staticGlobeSeed,
     connectionLocations: canonicalNetworkConnectionLocations,
     layers: staticGlobeLayers,
-    constellationLocations: canonicalGlobeConstellation
+    constellationLocations: canonicalGlobeConstellation,
+    fixedSatelliteAnimationAdvanceMs: canonicalSatelliteAnimationAdvanceMs
   });
 } else {
   document.addEventListener("edex:module-runtime-start", (event) => {

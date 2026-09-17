@@ -29,6 +29,7 @@ interface EncomGlobeInstance {
   addMarker(latitude: number, longitude: number, label: string, connected?: boolean): unknown;
   addPin(latitude: number, longitude: number, label: string, scale?: number): unknown;
   addConstellation(points: Array<{ lat: number; lon: number; altitude: number }>): unknown;
+  satellites: Record<string, { animator?: { update(milliseconds: number): void } }>;
 }
 
 interface EncomGlobeConstructor {
@@ -55,6 +56,7 @@ export interface EdexGlobeOptions {
   layers?: EdexGlobeLayers;
   constellationLocations?: ReadonlyArray<EdexSatelliteLocation>;
   sourceTimingScale?: number;
+  fixedSatelliteAnimationAdvanceMs?: number;
 }
 
 const allGlobeLayers: EdexGlobeLayers = {
@@ -80,7 +82,8 @@ export async function initializeEdexGlobe(
     connectionLocations = [],
     layers = allGlobeLayers,
     constellationLocations,
-    sourceTimingScale = 1
+    sourceTimingScale = 1,
+    fixedSatelliteAnimationAdvanceMs = 0
   } = options;
   const Globe = window.ENCOM?.Globe;
   if (!Globe) return false;
@@ -170,6 +173,11 @@ export async function initializeEdexGlobe(
     window.requestAnimationFrame(() => { globe.tick(); resolve(); });
   });
   for (let frameIndex = 0; frameIndex < (animate ? 2 : 42); frameIndex += 1) await advanceFrame();
+  if (!animate && fixedSatelliteAnimationAdvanceMs > 0) {
+    Object.values(globe.satellites).find((satellite) => satellite.animator)?.animator?.update(fixedSatelliteAnimationAdvanceMs);
+    globe.lastRenderDate = new Date();
+    globe.tick();
+  }
   if (animate) {
     const frame = (): void => {
       globe.tick();

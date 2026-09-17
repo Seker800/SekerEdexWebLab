@@ -62,3 +62,6 @@ export const canonicalGlobeConstellation = [
   { lat: 31.978148951893672, lon: 30, altitude: 1.4846712108701468 },
   { lat: 36, lon: 150, altitude: 1.36 }
 ] as const satisfies ReadonlyArray<EdexSatelliteLocation>;
+
+/** Additional source TextureAnimator time needed to reach the frozen capture's shared satellite frame. */
+export const canonicalSatelliteAnimationAdvanceMs = 648;

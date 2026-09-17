@@ -24,6 +24,7 @@ This file records source-plausible changes that deterministic capture disproved.
 | Fine tune the original directory/file SVG vertical transforms as one asset-family repair | file grid 5,353; whole image 48,600 | file grid 5,287; whole image 48,534 | Accepted after separate directory and file searches plus combined full-image recapture |
 | Refine the source content-box spacebar scale from `.982` to `.97` | spacebar crop 1,305; whole image 48,532 | spacebar crop 1,098; whole image 48,325 | Accepted after an expanded grid search and exact bounding-box comparison |
 | Fine tune the bottom keyboard row as one unit to `translateX(.15px) scaleX(1.019)` | row crop 2,664; whole image 48,326 | row crop 2,449; whole image 48,111 | Accepted by coarse position search, fine position search, scale search and full-image recapture |
+| Advance the original ENCOM constellation's shared `TextureAnimator` by 648 ms to the frozen satellite phase | globe crop 5,353; whole image 48,112 | globe crop 5,332; whole image 48,091 | Accepted after isolating the satellite layer, searching all 50 source texture frames and a full-image recapture |
 
 ## Rejected changes
 
@@ -43,6 +44,7 @@ This file records source-plausible changes that deterministic capture disproved.
 | Register all terminal tabs through the synthetic-bold compatibility face | terminal tabs 3,084 | 3,161 | It made the raster less accurate; the frame-row mismatch was the dominant shared cause |
 | Change the CPU chart shared transform away from `scale(.995, .99)` and `translateY(1px)` | CPU charts crop 1,410 | nearest candidate 1,415 | The current horizontal scale, vertical scale and offset are the measured local optimum |
 | Switch the filesystem footer from the light compatibility face to the source medium face | footer crop 1,454; whole image 48,527 | footer crop 1,789; whole image 48,862 | Chromium's current light-face raster remains closer to the Electron capture |
+| Move the two lower-band satellites into the visible bottom corners while keeping the accepted source animation phase | globe crop 5,332; whole image 48,091 | globe crop 5,369; whole image 48,128 | The inferred centers looked plausible but the frozen screenshot score regressed; retain the existing calibrated coordinates |
 
 ## Use
 
