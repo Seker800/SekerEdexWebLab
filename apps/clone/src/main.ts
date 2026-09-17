@@ -180,7 +180,7 @@ let shift = false;
 
 function renderTerminal(): void {
   output.innerHTML = entries.map((entry) => {
-    const content = escapeHtml(entry.text).replace(
+    const content = renderTerminalText(entry.text).replace(
       "■ ■ ■ ■ ■ ■ ■ ■",
       `<span class="neofetch-swatches" aria-label="terminal color palette">${Array.from({ length: 8 }, () => "<i></i>").join("")}</span>`
     ).replace(
@@ -190,6 +190,25 @@ function renderTerminal(): void {
     return `<pre class="terminal-entry terminal-entry--${entry.kind}">${content}</pre>`;
   }).join("");
   output.scrollTop = output.scrollHeight;
+}
+
+const neofetchAnsiLabels = [
+  "OS", "Model", "Kernel", "Uptime", "Packages", "Shell", "Resolution", "DE",
+  "WM", "WM Theme", "Theme", "Icons", "Terminal", "CPU", "GPU", "Memory"
+];
+
+function renderTerminalText(value: string): string {
+  const escaped = escapeHtml(value);
+  if (value !== neofetchText) return escaped;
+
+  const withAnsiIdentity = escaped
+    .replace("squared@batcore-home", '<span class="neofetch-ansi-blue">squared@batcore-home</span>')
+    .replace("-------------------", '<span class="neofetch-ansi-blue">-------------------</span>');
+
+  return neofetchAnsiLabels.reduce(
+    (content, label) => content.replace(`${label}:`, `<span class="neofetch-ansi-blue">${label}:</span>`),
+    withAnsiIdentity
+  );
 }
 
 function escapeHtml(value: string): string {

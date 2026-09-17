@@ -16,6 +16,10 @@
   --border: rgba(var(--signal-rgb), 0.48);
   --faint: rgba(var(--signal-rgb), 0.2);
   --dim: rgba(var(--signal-rgb), 0.45);
+  /* xterm's generated blue slot: Tango blue, converted by terminal.class.js
+     through grayscale().mix(themeColor, .3). Neofetch uses it for identity
+     and field labels in the captured terminal stream. */
+  --terminal-ansi-blue: rgb(120, 131, 132);
   --font-ui: "United Sans", "Arial Narrow", sans-serif;
   --font-mono: "Fira Mono", "SFMono-Regular", Consolas, monospace;
   /* Current Chromium normalization for the frozen Electron 4 capture. */
@@ -378,6 +382,7 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .terminal-output { position: relative; top: -1px; flex: 1; min-height: 0; overflow: auto; padding: 0 .45vw .7vh; scrollbar-width: none; }
 .terminal-entry { margin: 0 0 .7vh; white-space: pre-wrap; color: var(--signal); font: .78vw/1.39 var(--font-mono); text-transform: none; }
 .terminal-entry--command { color: white; background: linear-gradient(90deg, rgba(var(--signal-rgb), .12), transparent 45%); }
+.neofetch-ansi-blue { color: var(--terminal-ansi-blue); }
 .neofetch-swatches { display: inline-flex; width: 11.2vw; height: 21px; vertical-align: middle; transform: translateY(-1px); }
 .neofetch-swatches i { flex: 1; height: 100%; background: rgb(0, 0, 0); }
 .neofetch-swatches i:nth-child(2) { background: rgb(94, 105, 106); }

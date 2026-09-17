@@ -27,6 +27,7 @@ This file records source-plausible changes that deterministic capture disproved.
 | Advance the original ENCOM constellation's shared `TextureAnimator` by 648 ms to the frozen satellite phase | globe crop 5,353; whole image 48,112 | globe crop 5,332; whole image 48,091 | Accepted after isolating the satellite layer, searching all 50 source texture frames and a full-image recapture |
 | Align the first and third CPU summary columns independently to `-11px` and `8px` while retaining the other calibrated columns | whole image 48,090 | whole image 48,061 | Accepted after per-column searches and independent full-image ablation captures |
 | Restore default Chromium smoothing for the network and filesystem modules | whole image 48,071 | whole image 47,729 | Accepted after global rejection, per-module isolation and five-region scoring; the perceptual metric also improved |
+| Restore the upstream xterm ANSI-blue semantics for the neofetch identity, separator and field labels | formal whole image 47,722; perceptual 101,279 / 4.787% | formal whole image 47,053; perceptual 100,605 / 4.755% | Accepted by the source-driven autonomous repair transaction and confirmed by the full application gate |
 
 ## Rejected changes
 
@@ -49,6 +50,7 @@ This file records source-plausible changes that deterministic capture disproved.
 | Move the two lower-band satellites into the visible bottom corners while keeping the accepted source animation phase | globe crop 5,332; whole image 48,091 | globe crop 5,369; whole image 48,128 | The inferred centers looked plausible but the frozen screenshot score regressed; retain the existing calibrated coordinates |
 | Move the fourth CPU summary column 11 px farther right based on a visual center estimate | whole image 48,090 | whole image 48,097 | The full-image capture disproved the estimate; retain the existing fourth-column calibration |
 | Add a `.05px` text stroke to the terminal as an Electron raster compensation | formal whole image 47,711 | 47,629 | The formal score improved, but the antialias-aware perceptual score regressed from 101,289 to 101,521; rejected because it made visible edge coverage less faithful |
+| Remove the terminal's compatibility font smoothing after restoring ANSI colors | perceptual whole image 100,617 / 4.756% | 101,091 / 4.778% | The autonomous transaction recaptured the candidate and rolled it back because visible glyph edges regressed |
 
 ## Use
 
