@@ -8,6 +8,9 @@ build/
 coverage/
 .astro/
 .vite/
+artifacts/
+.cache/
+.omx/
 playwright-report/
 test-results/
 *.log

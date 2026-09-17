@@ -1,50 +1,133 @@
 # SekerEdexWebLab
 
-一个非官方、开源的 Web 视觉复刻实验。当前目标只有一个：验证现代浏览器能否重现
-[eDEX-UI](https://github.com/GitSquared/edex-ui) 最有辨识度的全屏终端体验，并形成可用于个人博客主页的可靠基础。
+An evidence driven loop for observing a target web page, comparing a replica, and optionally asking Codex for a bounded repair.
 
-当前唯一视觉基准是上游官方默认截图：**neofetch on eDEX-UI 2.2、默认 `tron` 主题、
-QWERTY 键盘**。Phase 0 使用与原版一致的固定 1920×1080、16:9 逻辑画布，一比一复刻
-构图、比例、视觉语言和运行状态，再进行博客内容替换；其他主题不属于当前复刻范围。
+这是一个非官方、开源的 eDEX-UI Web 复刻实验。当前阶段以 eDEX-UI 2.2 默认
+`tron` 主题、`neofetch` 场景和 QWERTY 屏幕键盘为唯一视觉基准，先完成可运行的高保真
+控制台，再把文章、摄影和设计作品接入同一个工作台。
 
-本项目采用 Astro、React 与专用浏览器渲染层，不继承其他项目的技术路线，也不把普通终端
-主题包装成“复刻”。先用可运行垂直切片证明视觉、交互、声音和性能，再扩展博客内容与功能。
+## Visual target
 
-## 当前阶段
+The planned replica experience follows the visual language of [eDEX-UI 2.2](https://github.com/GitSquared/edex-ui) with its default `tron` theme, the `neofetch` terminal scene, and the QWERTY on-screen keyboard. See `docs/VISUAL_NORTH_STAR.md` for the palette, layout, typography, motion, component grammar, and visual acceptance rules.
 
-`Phase 0 — Feasibility`
+The replica is built first from the exact eDEX-UI source associated with the target screenshot. Git history proves the frozen image is `media/screenshot_default.png` from commit `66ba190`, immediately after the v2.2.0 tag; its SHA-256 matches byte for byte. The later v2.2.8 source remains a secondary reference for fixes and unchanged assets. Renderer DOM, CSS, fonts, icons, globe, boot log, sounds and timing are ported before browser adapters replace Electron and host APIs. The module-by-module lookup table is in `docs/SOURCE_PORT_MAP.md`.
 
-需要证明：
+## What works now
 
-- 固定 16:9 全屏三段式控制台能够保持 eDEX-UI 的构图和信息密度。
-- 中央终端、文件系统、实时监控和屏幕键盘可以互相联动。
-- 实体键盘输入、按键发光、程序化音效和动态监控能同时保持稳定帧率。
-- 博客文章、摄影和设计作品可以在同一控制台内打开，而不退化为传统长页面。
-- 移动端有明确的降级体验，不强行压缩桌面控制台。
+- schema validated scenario contracts;
+- deterministic Chromium capture;
+- immutable target capture per run;
+- pixel comparison and diff images;
+- console and page error gates;
+- finite retry state machine;
+- source-aware repair contracts that send a pinned upstream checkout and module entry points to Codex before screenshot evidence;
+- opt in `codex exec` repair with structured output;
+- clean Git and allowed path guards for live repair;
+- controller executed validation commands after every repair;
+- SHA-256 protection for the frozen contract and target screenshot;
+- durable JSON reports and screenshots.
 
-详细验收标准见 [`docs/visual-parity.md`](docs/visual-parity.md)。
+## Setup
 
-## 文档导航
+```bash
+npm install
+npm run install:browsers
+npm run upstream:sync
+npm run check
+npm test
+npm run demo
+npm run app:verify
+npm run app:hotspots
+npm run assets:verify
+npm run verify
+```
 
-| 文档 | 用途 |
-| --- | --- |
-| [`AGENTS.md`](AGENTS.md) | Agent 与维护者必须遵守的项目规则 |
-| [`docs/architecture.md`](docs/architecture.md) | 北极星、系统边界和长期不变量 |
-| [`docs/technical-route.md`](docs/technical-route.md) | 已选技术栈、渲染策略、目录边界与验证门禁 |
-| [`docs/visual-parity.md`](docs/visual-parity.md) | 视觉与交互复刻的验收合同 |
-| [`docs/research/edex-ui.md`](docs/research/edex-ui.md) | 原项目参考范围和证据记录 |
-| [`docs/adr/0002-lock-tron-reference.md`](docs/adr/0002-lock-tron-reference.md) | 锁定默认 Tron 官方截图为一比一复刻基准 |
-| [`docs/adr/0003-web-technology-route.md`](docs/adr/0003-web-technology-route.md) | 选择 Astro、React 与专用浏览器渲染层 |
-| [`docs/adr/0004-fixed-canvas-and-reference-fonts.md`](docs/adr/0004-fixed-canvas-and-reference-fonts.md) | 固定 16:9 画布与本地临时字体策略 |
-| [`docs/maintainer-guide.md`](docs/maintainer-guide.md) | 日常开发、验证、提交与推送入口 |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | 贡献、DCO 和 Pull Request 规则 |
-| [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | 第三方代码、素材和许可证边界 |
+The demo starts a local target and replica, captures both with Chromium, and writes a passing report under `artifacts/runs/`.
 
-## 来源与许可
+The product MVP lives in `apps/clone`. Start it with `npm run app:dev`, open the printed URL, leave sound enabled and click **Initialize system**. The startup streams the original boot log, plays the upstream eDEX sound cues at the source mixing levels, displays the title sequence, expands the empty terminal, shows the `Welcome back` greeting, unfolds the keyboard rows, initializes the terminal and filesystem, then reveals the source module sequence. Use **REBOOT** to replay it and **SOUND ON/OFF** to control audio.
 
-项目受 eDEX-UI 启发，但当前仓库未复制 eDEX-UI 源码、Logo、截图、字体或音效。
-若后续引入其 GPL 代码，必须先记录来源、固定 commit，并在同一个变更中更新许可证边界与
-`THIRD_PARTY_NOTICES.md`。
+`npm run upstream:sync` checks out the exact screenshot commit into `.cache/upstream/edex-ui-visual-66ba190`, checks out v2.2.8 into `.cache/upstream/edex-ui-v2.2.8`, verifies both revisions and verifies the target screenshot hash against the upstream media file. Run it once on a new machine and whenever the cache is removed. Visual repair reads the exact screenshot source before consulting the later implementation reference.
 
-本项目代码按 GPL-3.0-only 发布。个人文章、摄影和设计作品不因进入本仓库而自动采用 GPL；
-内容许可证必须由内容目录单独声明。
+Run `npm run app:verify` to exercise startup phases, boot sound order and source volumes, audio asset loading, the six left and three right boot modules, replay and skip controls, sound mute, terminal input, the on-screen keyboard, terminal tabs, required layout regions, responsive behavior and browser error gates. It also captures every important startup state and records a directional pixel comparison against the frozen eDEX-UI 2.2 screenshot.
+
+After `app:verify`, run `npm run app:hotspots` to write `artifacts/app-verification/visible-hotspots.json`. This diagnostic composites both screenshots over black before ranking 64×64 cells, so transparent-black pixels in the upstream PNG do not displace visible component differences. It never changes target evidence, thresholds or the formal verdict.
+
+Run `npm run assets:verify` to verify the SHA-256 manifest for the original audio, fonts, boot log, ENCOM globe, grid data and filesystem icon bundle.
+
+Run `npm run verify` for the complete local gate: upstream asset integrity, type checking, unit tests, production build, boot and interaction checks, regional visual comparison, and the bounded replication workflow.
+
+Run the full deterministic replication state machine with:
+
+```bash
+npm run replicate:verify
+```
+
+This starts the app, freezes the source screenshot into a run, captures the implementation at 1934×1094, applies the 7% regression threshold and browser error gates, and writes a complete report under `artifacts/runs/`.
+
+## Run the source-first automatic repair loop
+
+The eDEX contract includes the pinned upstream repository, exact commit, local checkout, source port guide and renderer entry points. Initialize the source and create a clean Git baseline, then run:
+
+```bash
+npm run upstream:sync
+npm run replicate:repair
+```
+
+`replicate:repair` owns the Vite server, captures the current replica, compares it with the frozen reference, and asks Codex for up to three bounded repairs against its stricter 4% improvement target. Each repair prompt requires Codex to inspect the exact screenshot-era implementation first. Before each repair, the controller snapshots `apps/clone`; it then runs type checking, unit tests and the production build, captures the candidate, and keeps the change only when browser diagnostics are clean, dimensions still match, and the measured visual difference strictly decreases. Rejected candidates are restored automatically. Accepted source changes remain in the working tree for review. Run `npm run verify` after the loop for the slower startup, audio, interaction and 7% regression gate.
+
+## Run a scenario
+
+Create a contract based on `examples/demo.contract.json`, start the replica application, then run:
+
+```bash
+npm run run -- --config ./my-scenario.contract.json
+```
+
+The command returns:
+
+- exit code `0` for `passed`;
+- exit code `1` for deterministic verification failure;
+- exit code `2` for a blocked run or invalid setup.
+
+## Enable bounded Codex repair
+
+Live repair requires a clean Git working tree and at least one `allowedPaths` entry:
+
+```bash
+npm run run -- --config ./my-scenario.contract.json --repair
+```
+
+The adapter runs `codex exec` without shell interpolation, requests output that conforms to `schemas/codex-repair-result.schema.json`, and checks the resulting Git paths before another verification attempt.
+
+## Scenario contract
+
+```json
+{
+  "scenarioId": "landing-page",
+  "targetUrl": "https://target.example/page",
+  "replicaUrl": "http://127.0.0.1:3000/page",
+  "viewport": { "width": 1440, "height": 900 },
+  "readySelector": "main",
+  "maxDifferenceRatio": 0.015,
+  "maxAttempts": 4,
+  "allowedPaths": ["apps/clone/src"],
+  "sourceEvidence": {
+    "repositoryUrl": "https://github.com/example/reference-app.git",
+    "revision": "0123456789abcdef",
+    "localPath": ".cache/upstream/reference-app",
+    "guidePath": "docs/SOURCE_PORT_MAP.md",
+    "entryPaths": ["src/app.ts", "src/app.css"]
+  },
+  "validationCommands": [["npm", "run", "check"], ["npm", "test"]]
+}
+```
+
+Read `NORTH_STAR.md` and `ARCHITECTURE.md` before extending the system.
+
+原有产品与维护文档继续保留在 `docs/architecture.md`、`docs/visual-parity.md`、
+`docs/technical-route.md` 和 `docs/maintainer-guide.md`。第三方源码和素材的固定版本、文件级
+来源与许可证记录在 `THIRD_PARTY_NOTICES.md` 及资产清单中。
+
+## Current boundary
+
+Version 0.1 verifies the startup and sound sequence, core interactions, two responsive viewports, completed deck appearance and browser errors. The terminal and telemetry are safe browser simulations. Authenticated sessions, route crawling, network contract comparison and real host telemetry remain extension points.

@@ -1,0 +1,11 @@
+{
+  "repositoryUrl": "https://github.com/GitSquared/edex-ui.git",
+  "screenshotCommit": "66ba190ee5369523195c4012d0a798fbe4d43391",
+  "screenshotPath": "media/screenshot_default.png",
+  "screenshotSha256": "c72ddbab1fc89c9ceb35ab18e864084f603861ba629ec72bd072ea9015173ef4",
+  "sourceParentTag": "v2.2.0",
+  "sourceParentCommit": "ba987432c11fcd833bc7d79511bdfdb58273140b",
+  "implementationReferenceTag": "v2.2.8",
+  "implementationReferenceCommit": "7a9205bf934914407394442f57475d4fefd3213b",
+  "note": "The directory name predates provenance recovery. The frozen image is the exact screenshot committed immediately after v2.2.0."
+}
