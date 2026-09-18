@@ -541,7 +541,9 @@ try {
     throw new Error(`Runtime indicators did not advance at independent cadences: ${JSON.stringify({ motionBefore, motionAfter })}`);
   }
   if (motionBefore.transientKeys !== 0 || motionAfter.transientKeys !== 0) throw new Error("Idle keyboard retained high-frequency transient feedback");
-  await motionPage.locator('.file-grid button[data-file-name="Blog"]').click();
+  if (!await motionPage.locator(".section-label small").textContent().then((value) => value?.endsWith("/Blog"))) {
+    throw new Error("Runtime filesystem did not start in the blog content root");
+  }
   await motionPage.locator('.file-grid button[data-file-name="posts"]').click();
   await motionPage.locator('.file-grid button[data-file-name="welcome.md"]').click();
   if (!await motionPage.locator("#content-reader").isVisible()) throw new Error("Markdown file did not open the central article reader");

@@ -225,7 +225,7 @@ if (staticMode) {
     });
   });
 }
-const commandDeck = new CommandDeckController(createSandboxFilesystem({ includeBlogContent: !staticMode }));
+const commandDeck = new CommandDeckController(createSandboxFilesystem({ includeBlogContent: !staticMode, startInBlog: !staticMode }));
 const imageViewer = new ImageViewer(commandDeckElement, () => audioDeck.play("denied"));
 lifecycle.add(() => imageViewer.dispose());
 

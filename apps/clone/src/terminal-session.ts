@@ -248,7 +248,7 @@ export class TerminalSessionDeck {
   private createSession(index: number, entries: TerminalEntry[]): TerminalSessionState {
     return {
       index,
-      cwd: this.filesystem.home,
+      cwd: this.filesystem.initialPath,
       draft: "",
       entries,
       history: [],

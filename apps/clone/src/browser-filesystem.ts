@@ -29,6 +29,7 @@ export type BrowserFilePreview = BrowserDocumentPreview | BrowserImagePreview;
 export interface BrowserFilesystem {
   readonly root: string;
   readonly home: string;
+  readonly initialPath: string;
   complete(cwd: string, partialPath: string): string[];
   entry(cwd: string, name: string): BrowserFileEntry | undefined;
   isDirectory(path: string): boolean;
@@ -182,8 +183,9 @@ function normalizeWithinRoot(cwd: string, requestedPath: string): string {
   return segments.length === 0 ? root : `${root}/${segments.join("/")}`;
 }
 
-export function createSandboxFilesystem(options: { includeBlogContent?: boolean } = {}): BrowserFilesystem {
+export function createSandboxFilesystem(options: { includeBlogContent?: boolean; startInBlog?: boolean } = {}): BrowserFilesystem {
   const includeBlogContent = options.includeBlogContent ?? true;
+  const initialPath = includeBlogContent && options.startInBlog ? blogRoot : home;
   const directorySeeds = new Map<string, readonly SeedEntry[]>([
     ...Object.entries(baseSeedDirectories),
     ...(includeBlogContent ? Object.entries(blogSeedDirectories) : [])
@@ -228,5 +230,5 @@ export function createSandboxFilesystem(options: { includeBlogContent?: boolean 
       .sort((a, b) => a.localeCompare(b));
   };
 
-  return { root, home, complete, entry, isDirectory, list, read, resolve };
+  return { root, home, initialPath, complete, entry, isDirectory, list, read, resolve };
 }

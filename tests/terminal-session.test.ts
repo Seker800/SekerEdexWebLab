@@ -41,6 +41,14 @@ describe("browser filesystem", () => {
     expect(filesystem.entry(`${filesystem.home}/Blog/posts`, "welcome.md")?.preview).toMatchObject({ kind: "document", title: "Welcome to the command deck" });
     expect(filesystem.entry(`${filesystem.home}/Blog/images`, "command-deck.svg")?.preview).toMatchObject({ kind: "image", mediaType: "image/svg+xml" });
     expect(createSandboxFilesystem({ includeBlogContent: false }).list(filesystem.home).map((entry) => entry.name)).not.toContain("Blog");
+    expect(createSandboxFilesystem({ startInBlog: true }).initialPath).toBe(`${filesystem.home}/Blog`);
+    expect(createSandboxFilesystem({ includeBlogContent: false, startInBlog: true }).initialPath).toBe(filesystem.home);
+  });
+
+  it("can start the runtime session directly in the blog content tree", () => {
+    const deck = new TerminalSessionDeck(createSandboxFilesystem({ startInBlog: true }));
+    expect(deck.current.cwd).toBe(`${deck.filesystem.home}/Blog`);
+    expect(deck.filesystemEntries().map((entry) => entry.name)).toEqual(["Show disks", "Go up", "posts", "projects", "images", "about.md"]);
   });
 });
 
