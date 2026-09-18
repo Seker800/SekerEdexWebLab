@@ -123,12 +123,9 @@ Version 0.1 is a Phase 0 feasibility build. It verifies the startup and sound se
 interactions, desktop and mobile viewports, completed deck appearance, and browser error gates. The
 terminal and telemetry currently use safe browser simulations.
 
-The next phase turns the command deck into the entrance for a personal technical blog, with articles,
-tags, search, projects, RSS, SEO, and responsive reading pages. Real shells, host telemetry, local disk
-access, and a complete desktop settings surface are outside the product roadmap. See the
-[Blog V1 product specification](specs/blog-v1/01-spec.md) and
-[ADR 0005](docs/adr/0005-blog-product-boundary.md). This project does not claim to be a drop-in
-replacement for the original desktop application.
+Authenticated sessions, route crawling, network contract comparison, and real host telemetry remain
+future extension points. This project does not claim to be a drop-in replacement for the original
+desktop application.
 
 ## Contributing
 

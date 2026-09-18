@@ -120,8 +120,6 @@ The startup state machine emits observable `edex:boot-phase` events. The sound d
 
 Original eDEX assets live under `apps/clone/public` and are loaded through `edex-assets.ts` and `audio-deck.ts`. Their provenance is checked against the exact screenshot-era checkout first and the later v2.2.8 checkout when an asset is unchanged or unavailable in the earlier source. The implementation must prefer these source assets over visually similar replacements.
 
-`apps/clone` remains the frozen reference implementation after Phase 0. The blog is a separate product application with a static content registry, semantic routes and small optional interactive islands. It may reuse licensed assets and visual tokens through explicit adapters, but it must not import the clone's global fixed-canvas CSS or treat simulated host data as product content. Ordinary links, search, the command surface and the deck filesystem resolve through the same blog navigation contract.
-
 ### Source-driven browser port
 
 The eDEX replica is a browser port of the application code at commit `66ba190`, the repository revision containing the exact frozen screenshot and the direct child of v2.2.0. Upstream module DOM, CSS measurements, bundled assets, labels and sequencing at that revision are the primary specification. The v2.2.8 checkout is a secondary implementation reference. Browser-facing adapters supply deterministic terminal data, telemetry, filesystem entries, geolocation and audio activation where the original calls Electron or Node APIs.

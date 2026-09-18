@@ -6,10 +6,9 @@ SekerEdexWebLab turns a target web experience into a reviewable sequence of evid
 
 ## Product direction
 
-The product uses [GitSquared/eDEX-UI](https://github.com/GitSquared/edex-ui), specifically eDEX-UI 2.2 with the default `tron` theme and QWERTY on-screen keyboard, as its primary visual reference. Phase 0 preserves that interface as a frozen browser reference. The long-term product is a personal technical blog whose optional command-deck entrance provides identity and navigation while semantic content pages provide reading, search, sharing, accessibility and indexing.
+The product uses [GitSquared/eDEX-UI](https://github.com/GitSquared/edex-ui), specifically eDEX-UI 2.2 with the default `tron` theme and QWERTY on-screen keyboard, as its primary visual reference. The intended experience is a fullscreen, functional science-fiction command interface inspired by TRON: Legacy: terminal-first, telemetry-rich, dark, precise, and suitable for sustained real use.
 
 The binding visual contract is documented in `docs/VISUAL_NORTH_STAR.md`.
-The blog product boundary is documented in `docs/adr/0005-blog-product-boundary.md` and `specs/blog-v1/01-spec.md`.
 
 ## Success statement
 
@@ -49,5 +48,3 @@ Screenshot-only inference is reserved for information absent from the source or 
 The first release supports deterministic visual comparison from a live URL or frozen screenshot, one or more viewports, structured run reports, and an opt in Codex repair adapter. The first product implementation is a browser-based eDEX command deck using the eDEX-UI 2.2 `tron` visual language, source startup sequence, original audio cues, SVG icons and ENCOM globe.
 
 Interaction graphs, network contract comparison, authenticated sessions, and automatic site crawling are later capabilities built on the same contracts.
-
-The next product slice builds a separate static blog application. It does not expand the reference application into a real shell, host monitor, disk browser or desktop replacement. The command surface and filesystem metaphor become alternate views of the same blog content registry.

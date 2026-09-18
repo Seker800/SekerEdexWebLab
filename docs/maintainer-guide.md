@@ -2,8 +2,8 @@
 
 ## 十分钟了解项目
 
-这是一个包含复刻证据系统、冻结 eDEX 参考应用和下一阶段个人技术博客的仓库。Phase 0 已证明
-高保真浏览器体验可行；后续产品开发以内容发现、阅读、搜索、SEO 和可访问性为核心。
+这是一个验证 eDEX-UI 级别 Web 体验是否可行的实验仓库。先证明运行效果，再决定长期框架。
+任何看起来像普通终端主题或静态 HUD 的实现都不能通过验收。
 
 阅读顺序：
 
@@ -16,14 +16,11 @@
 7. [`adr/0002-lock-tron-reference.md`](adr/0002-lock-tron-reference.md)
 8. [`adr/0003-web-technology-route.md`](adr/0003-web-technology-route.md)
 9. [`adr/0004-fixed-canvas-and-reference-fonts.md`](adr/0004-fixed-canvas-and-reference-fonts.md)
-10. [`adr/0005-blog-product-boundary.md`](adr/0005-blog-product-boundary.md)
-11. [`../specs/blog-v1/01-spec.md`](../specs/blog-v1/01-spec.md)
-12. [`../specs/blog-v1/02-task-contract.md`](../specs/blog-v1/02-task-contract.md)
 
 ## 当前开发流程
 
-复刻应用和验证工具链已经建立并由 `npm run verify` 维护。博客进入新的独立应用边界，采用
-Astro 静态输出和严格 TypeScript；实现每个 slice 时同时补充可执行的：
+技术路线已经确定，但代码脚手架尚未建立。第一个可运行原型使用 Node.js 22 LTS、pnpm 10、
+Astro 静态输出、React、严格 TypeScript，并在同一变更中补充可执行的：
 
 - 安装、开发、测试和生产构建命令。
 - Node/运行时版本与 lockfile 策略。
@@ -31,8 +28,7 @@ Astro 静态输出和严格 TypeScript；实现每个 slice 时同时补充可�
 - 截图或视觉回归命令。
 - 性能采样方法。
 
-`apps/clone` 的固定画布、模拟数据和全局 CSS 不得直接导入博客。不要在文档中保留无法执行的
-占位命令。
+不要在文档中保留无法执行的占位命令。
 
 ## Commit 与 Push
 
