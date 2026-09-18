@@ -74,6 +74,7 @@ Useful focused commands:
 | Command | Purpose |
 | --- | --- |
 | `npm run app:verify` | Verify startup, audio, interactions, layouts, and browser errors |
+| `npm run app:verify:webkit` | Verify core interactions, fixed-canvas geometry, mobile fallback, and browser errors in WebKit |
 | `npm run app:hotspots` | Rank the most visible 64×64 difference regions |
 | `npm run assets:verify` | Verify copied upstream assets and their SHA-256 manifest |
 | `npm run replicate:verify` | Run the frozen visual replication state machine |
@@ -122,9 +123,9 @@ Version 0.1 is a Phase 0 feasibility build. It verifies the startup and sound se
 interactions, desktop and mobile viewports, completed deck appearance, and browser error gates. The
 terminal and telemetry currently use safe browser simulations.
 
-Authenticated sessions, route crawling, network contract comparison, real host telemetry, and the
-personal content system remain future extension points. This project does not claim to be a full CMS or
-a drop-in replacement for the original desktop application.
+Authenticated sessions, route crawling, network contract comparison, and real host telemetry remain
+future extension points. This project does not claim to be a drop-in replacement for the original
+desktop application.
 
 ## Contributing
 

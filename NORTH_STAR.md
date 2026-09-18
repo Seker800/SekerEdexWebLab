@@ -45,6 +45,6 @@ Screenshot-only inference is reserved for information absent from the source or 
 
 ## Initial scope
 
-The first release supports deterministic visual comparison from a live URL or frozen screenshot, one or more viewports, structured run reports, and an opt in Codex repair adapter. The first product implementation is a browser-based eDEX command deck using the eDEX-UI 2.2 `tron` visual language, source startup sequence, original audio cues, fonts, SVG icons and ENCOM globe.
+The first release supports deterministic visual comparison from a live URL or frozen screenshot, one or more viewports, structured run reports, and an opt in Codex repair adapter. The first product implementation is a browser-based eDEX command deck using the eDEX-UI 2.2 `tron` visual language, source startup sequence, original audio cues, SVG icons and ENCOM globe.
 
 Interaction graphs, network contract comparison, authenticated sessions, and automatic site crawling are later capabilities built on the same contracts.

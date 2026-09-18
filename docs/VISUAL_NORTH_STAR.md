@@ -44,24 +44,6 @@ The initial tokens come directly from the upstream `tron.json` theme:
 
 Color usage is intentionally restrained. The blue-grey signal color carries text, geometry, charts, controls, and active feedback over near-black surfaces. Additional semantic colors require a concrete system state such as warning, failure, or success.
 
-## Typography
-
-The upstream theme uses:
-
-- `United Sans Medium` for primary interface labels;
-- `United Sans Light` for lighter interface text;
-- `Fira Mono` for terminal output.
-
-Our typography system should preserve these characteristics:
-
-- compact technical display text for headings and panel labels;
-- monospaced text for commands, paths, metrics, identifiers and logs;
-- uppercase or short labels with deliberate tracking;
-- strong hierarchy through weight, opacity and scale;
-- crisp rendering without heavy glow around body text.
-
-Font substitution must preserve width, density, legibility and the industrial character of the reference.
-
 ## Composition
 
 The canonical desktop composition is a three-column command deck with a lower interaction area:
@@ -171,7 +153,7 @@ The interface must expose sound on/off and replay controls. Keyboard input, term
 
 ## Original asset policy
 
-When the exact screenshot-era source or the verified later eDEX-UI source contains the required asset, use that asset directly and retain its provenance. This applies to United Sans and Fira Mono fonts, WAV cues, boot log text, filesystem SVG paths, the ENCOM globe implementation and its grid data. Do not replace an available upstream asset with a hand drawn approximation.
+When the exact screenshot-era source or the verified later eDEX-UI source contains the required asset, use that asset directly and retain its provenance. This applies to WAV cues, boot log text, filesystem SVG paths, the ENCOM globe implementation and its grid data. Do not replace an available upstream asset with a hand drawn approximation.
 
 Custom assets are allowed only when the product needs an element that has no upstream equivalent. They must follow the same palette and geometry and must not be presented as source accurate.
 
@@ -209,11 +191,10 @@ A screen satisfies this visual direction when:
 - the `#AACFD1` signal system and near-black surfaces dominate the palette;
 - the terminal is the primary visual and functional region;
 - side telemetry and the lower keyboard form a coherent command deck;
-- typography separates interface labels from terminal content;
 - panel borders, spacing, tabs and key states follow one geometric system;
 - live data and interaction feedback remain legible;
 - the full boot, title, reveal and sound sequence is present and replayable;
-- upstream fonts, icons, sounds and globe assets are used where available;
+- upstream icons, sounds and globe assets are used where available;
 - automated screenshots pass the scenario-specific visual threshold;
 - a qualitative side by side review reaches at least 90/100 and records remaining differences;
 - the browser console and page error gates remain clean.
