@@ -22,7 +22,21 @@ const fallbackLog = [
   "Boot Complete"
 ];
 
-const wait = (milliseconds: number): Promise<void> => new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+const wait = (milliseconds: number, signal?: AbortSignal): Promise<void> => new Promise((resolve, reject) => {
+  if (signal?.aborted) {
+    reject(new DOMException("Boot sequence aborted", "AbortError"));
+    return;
+  }
+  const onAbort = (): void => {
+    window.clearTimeout(timer);
+    reject(new DOMException("Boot sequence aborted", "AbortError"));
+  };
+  const timer = window.setTimeout(() => {
+    signal?.removeEventListener("abort", onAbort);
+    resolve();
+  }, milliseconds);
+  signal?.addEventListener("abort", onAbort, { once: true });
+});
 
 function decodeBootLine(value: string): string {
   const decoder = document.createElement("textarea");
@@ -58,7 +72,8 @@ function upstreamLineDelay(nextLineIndex: number, lineCount: number): number {
   return Math.pow(1 - (nextLineIndex / 1000), 3) * 25;
 }
 
-export async function runBootSequence(elements: BootElements, audio: AudioDeck, speed = 1): Promise<void> {
+export async function runBootSequence(elements: BootElements, audio: AudioDeck, speed = 1, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
   const duration = (milliseconds: number): number => Math.max(1, Math.round(milliseconds * speed));
   const bootModules = (): HTMLElement[] => [...elements.deck.querySelectorAll<HTMLElement>("[data-boot-module]")];
   let skipped = false;
@@ -96,67 +111,67 @@ export async function runBootSequence(elements: BootElements, audio: AudioDeck, 
     }
     elements.log.scrollTop = elements.log.scrollHeight;
     audio.play(line === "Boot Complete" ? "granted" : "stdout");
-    await wait(duration(upstreamLineDelay(index + 1, lines.length)));
+    await wait(duration(upstreamLineDelay(index + 1, lines.length)), signal);
   }
   if (skipped) return;
-  await wait(duration(300));
+  await wait(duration(300), signal);
 
   setPhase(elements, "title");
   audio.play("theme");
-  await wait(duration(400));
+  await wait(duration(400), signal);
   elements.overlay.classList.add("boot-overlay--grid");
   elements.title.classList.add("visible");
-  await wait(duration(200));
+  await wait(duration(200), signal);
   elements.overlay.classList.remove("boot-overlay--grid");
-  await wait(duration(100));
+  await wait(duration(100), signal);
   elements.title.classList.add("filled");
-  await wait(duration(300));
+  await wait(duration(300), signal);
   elements.title.classList.remove("filled");
   elements.title.classList.add("framed");
-  await wait(duration(100));
+  await wait(duration(100), signal);
   elements.title.classList.remove("framed");
   elements.title.classList.add("glitch");
-  await wait(duration(500));
+  await wait(duration(500), signal);
   elements.overlay.classList.add("boot-overlay--grid");
   elements.title.classList.remove("glitch");
   elements.title.classList.add("framed");
-  await wait(duration(1000));
+  await wait(duration(1000), signal);
   if (skipped) return;
 
   setPhase(elements, "reveal");
   elements.overlay.classList.remove("boot-overlay--grid");
   elements.overlay.classList.add("boot-overlay--departing");
   audio.play("expand");
-  await wait(duration(500));
+  await wait(duration(500), signal);
   elements.deck.classList.add("reveal-terminal");
-  await wait(duration(700));
+  await wait(duration(700), signal);
   elements.deck.classList.add("reveal-lower");
-  await wait(duration(280));
+  await wait(duration(280), signal);
   elements.deck.classList.add("greeting-visible", "keyboard-primed");
   audio.play("keyboard");
-  await wait(duration(100));
+  await wait(duration(100), signal);
   elements.deck.classList.add("keyboard-expanded");
-  await wait(duration(1000));
+  await wait(duration(1000), signal);
   elements.deck.classList.remove("greeting-visible");
   elements.deck.classList.add("greeting-fading");
-  await wait(duration(100));
+  await wait(duration(100), signal);
   elements.deck.classList.remove("keyboard-primed", "keyboard-expanded");
   elements.deck.classList.add("keyboard-complete");
-  await wait(duration(400));
+  await wait(duration(400), signal);
   elements.deck.classList.remove("greeting-fading");
   startModuleRuntime();
   elements.deck.classList.add("reveal-panels");
   const leftModules = [...elements.deck.querySelectorAll<HTMLElement>(".system-panel [data-boot-module]")];
   const rightModules = [...elements.deck.querySelectorAll<HTMLElement>(".network-panel [data-boot-module]")];
-  await wait(duration(100));
+  await wait(duration(100), signal);
   elements.deck.classList.add("terminal-ready");
-  await wait(duration(400));
+  await wait(duration(400), signal);
   for (let index = 0; index < 6 && !skipped; index += 1) {
     audio.play("panels");
     if (index === 4) audio.play("scan");
     leftModules[index]?.classList.add("module-visible");
     rightModules[index]?.classList.add("module-visible");
-    await wait(duration(500));
+    await wait(duration(500), signal);
   }
   if (skipped) return;
   finish();

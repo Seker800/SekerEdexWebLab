@@ -56,6 +56,10 @@ Phase 0 只实现一个参考配置：eDEX-UI 2.2、默认 `tron` 主题、QWERT
 | motion | 启动、面板、扫描、故障与恢复动画 |
 | scheduler | 统一管理周期采样和逐帧渲染，随页面可见性启停 |
 
+当前浏览器实现通过 `CommandDeckController` 落实上述状态边界：所有输入路径发送类型化 intent，
+控制器返回不可变快照，DOM 层只负责渲染和焦点。页面级 `DisposableRegistry` 统一释放事件监听、
+音频、启动任务、Globe 渲染器与调度器，避免重启、隐藏页面或热重载后遗留写入者。
+
 ## Invariants
 
 - 桌面主页是固定单屏工作台，不通过整页纵向滚动承载主要内容。

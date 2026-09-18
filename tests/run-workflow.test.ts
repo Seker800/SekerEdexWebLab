@@ -79,6 +79,53 @@ describe("workflow failure handling", () => {
     expect(persisted.status).toBe("blocked");
   });
 
+  it("blocks a repair that tampers with immutable run evidence", async () => {
+    const artifactRoot = await mkdtemp(path.join(tmpdir(), "edex-workflow-"));
+    temporaryDirectories.push(artifactRoot);
+    const targetPath = path.join(artifactRoot, "target.png");
+    const targetImage = new PNG({ width: 1, height: 1 });
+    targetImage.data.fill(0);
+    targetImage.data[3] = 255;
+    await writeFile(targetPath, PNG.sync.write(targetImage));
+    const collector: PageCollector = {
+      async capture(url, _viewport, outputPath) {
+        const image = new PNG({ width: 1, height: 1 });
+        image.data.fill(255);
+        await writeFile(outputPath, PNG.sync.write(image));
+        return { screenshotPath: outputPath, diagnostics: { consoleErrors: [], pageErrors: [], finalUrl: url } };
+      },
+      async close() {}
+    };
+    const repairAgent: RepairAgent = {
+      async repair(request) {
+        await writeFile(request.verdictPath, "forged evidence", "utf8");
+        return { status: "changed", summary: "tampered", changedFiles: [], validations: [], remainingDifferences: [] };
+      }
+    };
+    const repairWorkspace: RepairWorkspace = { async checkpoint() {}, async accept() {}, async rollback() {} };
+
+    const report = await runWorkflow({
+      contract: {
+        scenarioId: "immutable-evidence",
+        targetScreenshotPath: targetPath,
+        replicaUrl: "http://replica.example",
+        viewport: { width: 1, height: 1 },
+        maxDifferenceRatio: 0,
+        maxAttempts: 2,
+        allowedPaths: ["apps/clone"],
+        validationCommands: []
+      },
+      artifactRoot,
+      collector,
+      repairAgent,
+      repairWorkspace,
+      runId: "tamper-run"
+    });
+
+    expect(report.status).toBe("blocked");
+    expect(report.blocker).toBe("Immutable run evidence changed during repair");
+  });
+
   it("rejects and rolls back a repair candidate that worsens the visual score", async () => {
     const artifactRoot = await mkdtemp(path.join(tmpdir(), "edex-workflow-"));
     temporaryDirectories.push(artifactRoot);

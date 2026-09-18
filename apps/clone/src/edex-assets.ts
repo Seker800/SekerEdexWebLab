@@ -57,7 +57,12 @@ export interface EdexGlobeOptions {
   constellationLocations?: ReadonlyArray<EdexSatelliteLocation>;
   sourceTimingScale?: number;
   fixedSatelliteAnimationAdvanceMs?: number;
-  runAnimation?: (callback: () => void) => void;
+  runAnimation?: (callback: () => void) => () => void;
+  signal?: AbortSignal;
+}
+
+export interface EdexGlobeHandle {
+  dispose(): void;
 }
 
 const allGlobeLayers: EdexGlobeLayers = {
@@ -75,7 +80,7 @@ declare global {
 export async function initializeEdexGlobe(
   container: HTMLElement,
   options: EdexGlobeOptions
-): Promise<boolean> {
+): Promise<EdexGlobeHandle | null> {
   const {
     animate,
     fixedCameraAngle,
@@ -85,17 +90,30 @@ export async function initializeEdexGlobe(
     constellationLocations,
     sourceTimingScale = 1,
     fixedSatelliteAnimationAdvanceMs = 0,
-    runAnimation
+    runAnimation,
+    signal
   } = options;
   const Globe = window.ENCOM?.Globe;
-  if (!Globe) return false;
+  if (!Globe) return null;
+  signal?.throwIfAborted();
   const runtimeStartedAt = performance.now();
   const response = await fetch("/grid.json");
-  if (!response.ok) return false;
+  if (!response.ok) return null;
+  signal?.throwIfAborted();
   const grid = await response.json() as { tiles: unknown[] };
   if (animate) {
     const sourceConstructionDelay = Math.max(1, Math.round(2_000 * sourceTimingScale));
-    await new Promise<void>((resolve) => window.setTimeout(resolve, Math.max(1, sourceConstructionDelay - (performance.now() - runtimeStartedAt))));
+    await new Promise<void>((resolve, reject) => {
+      const onAbort = (): void => {
+        window.clearTimeout(timer);
+        reject(new DOMException("Globe initialization aborted", "AbortError"));
+      };
+      const timer = window.setTimeout(() => {
+        signal?.removeEventListener("abort", onAbort);
+        resolve();
+      }, Math.max(1, sourceConstructionDelay - (performance.now() - runtimeStartedAt)));
+      signal?.addEventListener("abort", onAbort, { once: true });
+    });
   }
   const bounds = container.getBoundingClientRect();
   const width = Math.max(220, Math.round(bounds.width));
@@ -144,6 +162,10 @@ export async function initializeEdexGlobe(
     };
     if (animate) addSatellites();
     await initialized;
+    if (signal?.aborted) {
+      container.replaceChildren();
+      return null;
+    }
     if (!animate) addSatellites();
   } finally {
     Math.random = nativeRandom;
@@ -152,7 +174,12 @@ export async function initializeEdexGlobe(
     globe.cameraAngle = fixedCameraAngle;
     globe.lastRenderDate = new Date();
   }
+  let disposed = false;
+  let pinTimer: number | undefined;
+  let animationFrame: number | undefined;
+  let stopScheduledAnimation: (() => void) | undefined;
   const addRuntimePins = (): void => {
+    if (disposed) return;
     if (layers.localEndpoint) {
       globe.addPin(-42.8987, 1.2674, "", 1.2);
       globe.addMarker(-42.8987, 1.2674, "", false);
@@ -167,29 +194,45 @@ export async function initializeEdexGlobe(
   };
   if (animate) {
     const sourcePinDelay = Math.max(1, Math.round(4_000 * sourceTimingScale));
-    window.setTimeout(addRuntimePins, Math.max(1, sourcePinDelay - (performance.now() - runtimeStartedAt)));
+    pinTimer = window.setTimeout(addRuntimePins, Math.max(1, sourcePinDelay - (performance.now() - runtimeStartedAt)));
   } else {
     addRuntimePins();
   }
   const advanceFrame = (): Promise<void> => new Promise((resolve) => {
-    window.requestAnimationFrame(() => { globe.tick(); resolve(); });
+    animationFrame = window.requestAnimationFrame(() => { if (!disposed) globe.tick(); resolve(); });
   });
   for (let frameIndex = 0; frameIndex < (animate ? 2 : 42); frameIndex += 1) await advanceFrame();
+  if (signal?.aborted) {
+    container.replaceChildren();
+    return null;
+  }
   if (!animate && fixedSatelliteAnimationAdvanceMs > 0) {
     Object.values(globe.satellites).find((satellite) => satellite.animator)?.animator?.update(fixedSatelliteAnimationAdvanceMs);
     globe.lastRenderDate = new Date();
     globe.tick();
   }
   if (animate) {
-    if (runAnimation) runAnimation(() => globe.tick());
+    if (runAnimation) stopScheduledAnimation = runAnimation(() => globe.tick());
     else {
       const frame = (): void => {
+        if (disposed) return;
         globe.tick();
-        window.requestAnimationFrame(frame);
+        animationFrame = window.requestAnimationFrame(frame);
       };
-      window.requestAnimationFrame(frame);
+      animationFrame = window.requestAnimationFrame(frame);
     }
   }
   container.dataset.globeReady = "true";
-  return true;
+  const dispose = (): void => {
+    if (disposed) return;
+    disposed = true;
+    if (pinTimer !== undefined) window.clearTimeout(pinTimer);
+    if (animationFrame !== undefined) window.cancelAnimationFrame(animationFrame);
+    stopScheduledAnimation?.();
+    container.replaceChildren();
+    delete container.dataset.globeReady;
+    delete container.dataset.globePinsReady;
+  };
+  signal?.addEventListener("abort", dispose, { once: true });
+  return { dispose };
 }

@@ -288,6 +288,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 1px solid 
 .deck-controls button:last-child { border-right: 1px solid var(--faint); }
 .deck-controls button:hover, .deck-controls button:focus-visible { color: var(--surface); background: var(--signal); outline: 0; }
 html[data-static-mode] .deck-controls { visibility: hidden; }
+html[data-static-mode] .telemetry-source { display: none; }
 html[data-static-mode] .command-deck *,
 html[data-static-mode] .command-deck *::before,
 html[data-static-mode] .command-deck *::after { animation: none !important; transition: none !important; }
@@ -349,6 +350,7 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 
 .cpu-block { flex: 1; min-height: 0; }
 .cpu-block header > span { translate: 0 2px; }
+.telemetry-source { margin-left: .28cqw; color: var(--dim); font-size: .48cqw; font-style: normal; letter-spacing: .08em; }
 .cpu-block header small { translate: 0 1px; transform: translateX(-1px) scaleX(.95); transform-origin: right center; }
 .cpu-core-row { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 5.83cqh; margin: 0; }
 .cpu-block header + .cpu-core-row { margin-top: .65cqh; }

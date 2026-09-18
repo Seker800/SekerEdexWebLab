@@ -12,7 +12,7 @@ Loads and validates the run contract before any browser or agent process starts.
 
 ### Browser collector
 
-Captures normalized screenshots and browser diagnostics for live targets and replicas. Frozen screenshot targets bypass browser collection and are copied into the immutable run evidence. The collector does not compare images or edit code.
+Captures viewport-bounded screenshots and browser diagnostics for live targets and replicas. Diagnostics retain the browser version and normalized locale, timezone, motion, color and scale settings needed to reproduce a capture. Frozen screenshot targets bypass browser collection and are copied into the immutable run evidence. The collector does not compare images or edit code.
 
 ### Visual comparator
 
@@ -30,7 +30,7 @@ Applies the frozen threshold to comparator metrics and browser diagnostics. It r
 
 ### Codex adapter
 
-Receives a bounded repair request and invokes `codex exec` with a JSON output schema. When the contract declares source evidence, the request identifies the canonical repository, exact revision, verified local checkout, source port guide and module entry points. The repair prompt orders source inspection before screenshot calibration. The adapter cannot change the frozen run contract or target evidence.
+Receives a bounded repair request and invokes `codex exec` with a JSON output schema. When the contract declares source evidence, the controller verifies the checkout revision and required paths before the request identifies the canonical repository, source port guide and module entry points. The repair prompt orders source inspection before screenshot calibration. Codex runs with workspace-write roots derived from `allowedPaths`; source checkouts, controller code and run evidence remain read-only to the repair process.
 
 ### Orchestrator
 
@@ -48,7 +48,9 @@ capture -> compare -> judge -> passed
 
 The orchestrator owns attempt limits and artifact directories. Components communicate through typed values and files.
 
-Every live repair is transactional over the contract's allowed paths. The controller snapshots those paths before Codex runs, captures and judges the candidate immediately after validation, and accepts it only when browser diagnostics remain clean, dimensions match, and the visual difference ratio strictly decreases. Equal, worse, malformed or failed candidates restore the snapshot before another attempt. Candidate screenshots, metrics, verdicts and the accept/reject decision remain in the run artifacts.
+Every live repair is transactional over the contract's allowed paths. The controller requires a clean Git worktree, restricts Codex's writable sandbox roots, and restores the complete Git worktree plus newly created untracked files when a repair is rejected or fails. It captures and judges the candidate immediately after validation, and accepts it only when browser diagnostics remain clean, dimensions match, and the visual difference ratio strictly decreases. Equal, worse, malformed or failed candidates restore the baseline before another attempt. Candidate screenshots, metrics, verdicts and the accept/reject decision remain in the run artifacts.
+
+Before each repair, the orchestrator hashes every existing run artifact. It verifies the complete file manifest before writing trusted repair output or capturing a candidate, so a repair cannot rewrite earlier evidence or add forged evidence files. Contract validation rejects repair roots that overlap controller, schema, contract, reference or artifact paths.
 
 Rejected candidate summaries, paths and measured score changes are included in later repair requests as regression counterexamples. This prevents the agent from repeating a plausible source change that deterministic capture has already disproved.
 
@@ -112,7 +114,7 @@ Future collectors and judges implement stable ports:
 
 ## Product implementation
 
-`apps/clone` is the first product built through this workflow. Its UI modules own terminal commands, telemetry adapters, the startup state machine, the sound deck and the upstream asset adapter. The presentation layer consumes those modules rather than embedding behavior in CSS selectors.
+`apps/clone` is the first product built through this workflow. `CommandDeckController` receives typed intents from physical keyboard, on-screen keyboard, pointer and filesystem adapters and exposes immutable snapshots to the DOM presentation layer. Its UI modules own terminal commands, telemetry adapters, the startup state machine, the sound deck and the upstream asset adapter. A shared disposable registry owns listeners and renderer lifecycles; the scheduler owns continuing sampling and frame callbacks.
 
 The startup state machine emits observable `edex:boot-phase` events. The sound deck emits `edex:sound` events before playback. These events let browser verification prove that the experiential sequence occurred without coupling the verifier to timing implementation details.
 

@@ -5,6 +5,7 @@ import { PlaywrightCollector } from "../src/adapters/browser/playwright-collecto
 import { CodexRepairAgent } from "../src/adapters/codex/codex-repair-agent.js";
 import { assertCleanRepository, changedPaths, pathsOutsideAllowed } from "../src/adapters/codex/git-guard.js";
 import { AllowedPathRepairWorkspace } from "../src/adapters/codex/repair-workspace.js";
+import { verifySourceEvidence } from "../src/adapters/codex/source-evidence.js";
 import { runValidationCommands } from "../src/adapters/process/validation-runner.js";
 import { loadContract } from "../src/config/contract.js";
 import { withRepairComparison } from "../src/config/repair-contract.js";
@@ -21,6 +22,7 @@ const contract = withRepairComparison(
 
 if (contract.allowedPaths.length === 0) throw new Error("Automated repair requires at least one allowed path");
 await assertCleanRepository(repositoryRoot);
+if (contract.sourceEvidence) await verifySourceEvidence(repositoryRoot, contract.sourceEvidence);
 await mkdir(artifactRoot, { recursive: true });
 
 const server = await createServer({

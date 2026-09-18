@@ -9,6 +9,16 @@ export interface BrowserDiagnostics {
   consoleErrors: string[];
   pageErrors: string[];
   finalUrl: string;
+  browser?: { name: string; version: string };
+  capture?: {
+    viewport: Viewport;
+    deviceScaleFactor: number;
+    colorScheme: "light" | "dark";
+    reducedMotion: "reduce" | "no-preference";
+    locale: string;
+    timezoneId: string;
+    fullPage: boolean;
+  };
 }
 
 export interface CaptureResult {

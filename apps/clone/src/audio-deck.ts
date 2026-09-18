@@ -19,6 +19,7 @@ const cueVolumes: Record<SoundCue, number> = {
 export class AudioDeck {
   private enabled = true;
   private readonly sources = new Map<SoundCue, HTMLAudioElement>();
+  private readonly active = new Set<HTMLAudioElement>();
 
   constructor() {
     for (const cue of Object.keys(cueVolumes) as SoundCue[]) {
@@ -49,6 +50,19 @@ export class AudioDeck {
     if (!source) return;
     const instance = source.cloneNode(true) as HTMLAudioElement;
     instance.volume = cueVolumes[cue];
-    void instance.play().catch(() => undefined);
+    this.active.add(instance);
+    instance.addEventListener("ended", () => this.active.delete(instance), { once: true });
+    void instance.play().catch(() => this.active.delete(instance));
+  }
+
+  dispose(): void {
+    for (const audio of [...this.sources.values(), ...this.active]) {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.removeAttribute("src");
+      audio.load();
+    }
+    this.active.clear();
+    this.sources.clear();
   }
 }

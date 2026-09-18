@@ -1,4 +1,5 @@
 export interface TelemetrySnapshot {
+  source: "simulated";
   cpu: number;
   memory: number;
   temperature: number;
@@ -14,6 +15,7 @@ const wave = (length: number, phase: number, center: number, amplitude: number):
 
 export function createTelemetrySnapshot(tick: number): TelemetrySnapshot {
   return {
+    source: "simulated",
     cpu: Math.round(48 + Math.sin(tick * 0.38) * 13),
     memory: Math.round(62 + Math.cos(tick * 0.21) * 7),
     temperature: Math.round(51 + Math.sin(tick * 0.17) * 5),

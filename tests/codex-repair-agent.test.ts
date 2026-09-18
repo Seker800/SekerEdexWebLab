@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRepairPrompt } from "../src/adapters/codex/codex-repair-agent.js";
+import { buildRepairPrompt, runProcess } from "../src/adapters/codex/codex-repair-agent.js";
 import type { RepairRequest } from "../src/domain/types.js";
 
 const request: RepairRequest = {
@@ -78,5 +78,17 @@ describe("Codex repair prompt", () => {
     expect(prompt).toContain("Mapped normal text to the medium font face");
     expect(prompt).toContain("4.624% to 4.710%");
     expect(prompt).toContain("do not repeat them");
+  });
+
+  it("waits for a timed-out process to exit before rejecting", async () => {
+    const startedAt = Date.now();
+    await expect(runProcess(
+      process.execPath,
+      ["-e", "process.on('SIGTERM', () => undefined); setInterval(() => undefined, 1000)"],
+      process.cwd(),
+      100,
+      50
+    )).rejects.toThrow("timed out");
+    expect(Date.now() - startedAt).toBeGreaterThanOrEqual(140);
   });
 });

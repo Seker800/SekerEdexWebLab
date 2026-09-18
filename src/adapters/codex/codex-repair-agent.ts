@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { lstat, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import type { RepairAgent } from "../../domain/ports.js";
@@ -13,31 +13,74 @@ const repairResultSchema = z.object({
   remainingDifferences: z.array(z.string())
 }).strict();
 
-function runProcess(command: string, args: string[], cwd: string, timeoutMs: number): Promise<void> {
+function signalProcess(pid: number | undefined, signal: NodeJS.Signals): void {
+  if (pid === undefined) return;
+  try {
+    if (process.platform === "win32") process.kill(pid, signal);
+    else process.kill(-pid, signal);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ESRCH") return;
+  }
+}
+
+export function runProcess(
+  command: string,
+  args: string[],
+  cwd: string,
+  timeoutMs: number,
+  terminationGraceMs = 2_000
+): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd, stdio: ["ignore", "ignore", "pipe"] });
+    const child = spawn(command, args, {
+      cwd,
+      detached: process.platform !== "win32",
+      stdio: ["ignore", "ignore", "pipe"]
+    });
     let stderr = "";
+    let timedOut = false;
+    let forceKillTimer: ReturnType<typeof setTimeout> | undefined;
     child.stderr.on("data", (chunk: Buffer) => {
       stderr = `${stderr}${chunk.toString()}`.slice(-4000);
     });
     const timer = setTimeout(() => {
-      child.kill("SIGTERM");
-      reject(new Error(`Codex repair timed out after ${timeoutMs}ms`));
+      timedOut = true;
+      signalProcess(child.pid, "SIGTERM");
+      forceKillTimer = setTimeout(() => signalProcess(child.pid, "SIGKILL"), terminationGraceMs);
     }, timeoutMs);
 
     child.once("error", (error) => {
       clearTimeout(timer);
+      if (forceKillTimer) clearTimeout(forceKillTimer);
       reject(error);
     });
     child.once("exit", (code, signal) => {
       clearTimeout(timer);
-      if (code === 0) resolve();
+      if (forceKillTimer) clearTimeout(forceKillTimer);
+      if (timedOut) reject(new Error(`Codex repair timed out after ${timeoutMs}ms and exited with ${code ?? signal}`));
+      else if (code === 0) resolve();
       else reject(new Error(`Codex exited with ${code ?? signal}: ${stderr}`));
     });
   });
 }
 
-export function buildRepairPrompt(request: RepairRequest): string {
+async function writableRoots(repositoryRoot: string, allowedPaths: string[]): Promise<string[]> {
+  const canonicalRepositoryRoot = await realpath(repositoryRoot);
+  return Promise.all(allowedPaths.map(async (allowedPath) => {
+    const candidate = path.resolve(canonicalRepositoryRoot, allowedPath);
+    const canonicalCandidate = await realpath(candidate);
+    const relative = path.relative(canonicalRepositoryRoot, canonicalCandidate);
+    if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
+      throw new Error(`Repair path must be a repository child: ${allowedPath}`);
+    }
+    const metadata = await lstat(candidate);
+    if (!metadata.isDirectory() || metadata.isSymbolicLink()) {
+      throw new Error(`Live repair allowedPaths entries must be existing directories: ${allowedPath}`);
+    }
+    return canonicalCandidate;
+  }));
+}
+
+export function buildRepairPrompt(request: RepairRequest, repositoryRoot?: string): string {
   const sourceModules = request.sourceEvidence?.modules?.flatMap((module) => [
     `Source module ${module.name}:`,
     ...module.entryPaths.map((entry) => `- ${path.join(request.sourceEvidence!.localPath, entry)}`)
@@ -68,12 +111,13 @@ export function buildRepairPrompt(request: RepairRequest): string {
 
   return [
     `Repair visual replication scenario ${request.scenarioId}, attempt ${request.attempt}.`,
+    ...(repositoryRoot ? [`The repository root is ${repositoryRoot}.`] : []),
     `Read the frozen contract at ${request.contractPath}.`,
     ...sourceInstructions,
     ...rejectedRepairInstructions,
     ...regionInstructions,
     `Inspect the target screenshot ${request.targetScreenshotPath}, replica screenshot ${request.replicaScreenshotPath}, diff ${request.diffScreenshotPath}, and verdict ${request.verdictPath}.`,
-    `You may edit only these repository paths: ${request.allowedPaths.join(", ")}.`,
+    `You may edit only these repository paths: ${request.allowedPaths.map((entry) => repositoryRoot ? path.resolve(repositoryRoot, entry) : entry).join(", ")}.`,
     `Run these validation commands after editing: ${request.validationCommands.map((command) => command.join(" ")).join("; ")}.`,
     "Do not edit the contract, target evidence, judge, thresholds, schemas, or run artifacts.",
     "Do not add styles or behavior that only apply during screenshot capture or static mode to reduce the score.",
@@ -91,13 +135,18 @@ export class CodexRepairAgent implements RepairAgent {
   ) {}
 
   async repair(request: RepairRequest): Promise<RepairResult> {
-    const prompt = buildRepairPrompt(request);
+    const prompt = buildRepairPrompt(request, this.repositoryRoot);
+    const roots = await writableRoots(this.repositoryRoot, request.allowedPaths);
+    const [primaryRoot, ...additionalRoots] = roots;
+    if (!primaryRoot) throw new Error("Live repair requires at least one writable root");
 
     await runProcess(
       "codex",
       [
         "exec",
         "--sandbox", "workspace-write",
+        "--cd", primaryRoot,
+        ...additionalRoots.flatMap((root) => ["--add-dir", root]),
         "--output-schema", path.resolve(this.schemaPath),
         "--output-last-message", path.resolve(this.outputPath),
         prompt

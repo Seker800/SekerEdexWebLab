@@ -30,13 +30,27 @@ export class PlaywrightCollector implements PageCollector {
     page.on("pageerror", (error) => pageErrors.push(error.message));
 
     try {
-      await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
+      await page.goto(url, { waitUntil: readySelector ? "domcontentloaded" : "networkidle", timeout: 30_000 });
       if (readySelector) await page.locator(readySelector).waitFor({ state: "visible", timeout: 10_000 });
-      await page.screenshot({ path: outputPath, fullPage: true, animations: "disabled", omitBackground: true });
+      await page.screenshot({ path: outputPath, fullPage: false, animations: "disabled", omitBackground: true });
 
       return {
         screenshotPath: outputPath,
-        diagnostics: { consoleErrors, pageErrors, finalUrl: page.url() }
+        diagnostics: {
+          consoleErrors,
+          pageErrors,
+          finalUrl: page.url(),
+          browser: { name: "chromium", version: browser.version() },
+          capture: {
+            viewport,
+            deviceScaleFactor: 1,
+            colorScheme: "light",
+            reducedMotion: "reduce",
+            locale: "en-US",
+            timezoneId: "UTC",
+            fullPage: false
+          }
+        }
       };
     } finally {
       await context.close();

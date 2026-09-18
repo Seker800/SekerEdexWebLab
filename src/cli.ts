@@ -6,6 +6,7 @@ import { PlaywrightCollector } from "./adapters/browser/playwright-collector.js"
 import { CodexRepairAgent } from "./adapters/codex/codex-repair-agent.js";
 import { assertCleanRepository, changedPaths, pathsOutsideAllowed } from "./adapters/codex/git-guard.js";
 import { AllowedPathRepairWorkspace } from "./adapters/codex/repair-workspace.js";
+import { verifySourceEvidence } from "./adapters/codex/source-evidence.js";
 import { runValidationCommands } from "./adapters/process/validation-runner.js";
 import { runWorkflow } from "./orchestrator/run-workflow.js";
 
@@ -33,6 +34,7 @@ async function main(): Promise<void> {
   if (liveRepair) {
     if (contract.allowedPaths.length === 0) throw new Error("Live repair requires at least one allowedPaths entry");
     await assertCleanRepository(repositoryRoot);
+    if (contract.sourceEvidence) await verifySourceEvidence(repositoryRoot, contract.sourceEvidence);
     const codexOutput = path.join(artifactRoot, "codex-last-result.json");
     repairAgent = new CodexRepairAgent(
       repositoryRoot,

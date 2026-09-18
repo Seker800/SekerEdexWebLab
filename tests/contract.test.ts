@@ -31,6 +31,20 @@ describe("scenario contract", () => {
     })).toThrow();
   });
 
+  it("rejects repair paths that overlap controller or evidence files", () => {
+    const base = {
+      scenarioId: "unsafe-repair-path",
+      targetUrl: "https://example.com",
+      replicaUrl: "http://127.0.0.1:3000",
+      viewport: { width: 1280, height: 720 },
+      maxDifferenceRatio: 0.1
+    };
+    for (const allowedPath of [".", "src", "src/judge", "artifacts/runs", "references"]) {
+      expect(() => scenarioContractSchema.parse({ ...base, allowedPaths: [allowedPath] })).toThrow();
+    }
+    expect(scenarioContractSchema.parse({ ...base, allowedPaths: ["apps/clone"] }).allowedPaths).toEqual(["apps/clone"]);
+  });
+
   it("accepts frozen screenshot evidence and requires one target source", () => {
     expect(scenarioContractSchema.parse({
       scenarioId: "frozen-reference",

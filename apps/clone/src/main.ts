@@ -2,14 +2,15 @@ import "./styles.css";
 import { AudioDeck } from "./audio-deck.js";
 import { completeBootImmediately, runBootSequence, type BootElements } from "./boot-sequence.js";
 import { canonicalCpuTraces, canonicalEdexVersion, canonicalGlobeConstellation, canonicalMemoryPointStates, canonicalNetworkConnectionLocations, canonicalNetworkTraces, canonicalSatelliteAnimationAdvanceMs, type MemoryPointState } from "./canonical-runtime.js";
-import { initializeEdexGlobe, loadEdexIcons, renderEdexIcon, type EdexGlobeLayers } from "./edex-assets.js";
+import { initializeEdexGlobe, loadEdexIcons, renderEdexIcon, type EdexGlobeHandle, type EdexGlobeLayers } from "./edex-assets.js";
 import { canonicalFileEntries } from "./filesystem-model.js";
 import { bindPhysicalKeyboardFeedback, bindPointerKeyboardFeedback, bindPointerKeyRepeat, keyboardKeysForEvent } from "./keyboard-feedback.js";
 import { loadKeyboardLayout, resolveKeyboardCommand } from "./keyboard-layout.js";
-import { TerminalSessionDeck, type TerminalFeedback } from "./terminal-session.js";
+import { CommandDeckController, type TerminalFeedback } from "./command-deck-controller.js";
 import { neofetchText } from "./terminal-model.js";
 import { createTelemetrySnapshot, sparklinePoints } from "./telemetry.js";
 import { documentVisibilitySource, RuntimeScheduler } from "./runtime-scheduler.js";
+import { DisposableRegistry } from "./disposable-registry.js";
 
 const arrowIcons: Record<string, string> = {
   "↑": '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-opacity="1" d="m12.00004 7.99999 4.99996 5h-2.99996v4.00001h-4v-4.00001h-3z"/><path stroke-linejoin="round" fill-opacity=".65" d="m4 3h16c1.1046 0 1-.10457 1 1v16c0 1.1046.1046 1-1 1h-16c-1.10457 0-1 .1046-1-1v-16c0-1.10457-.10457-1 1-1zm0 1v16h16v-16z"/></svg>',
@@ -20,6 +21,7 @@ const arrowIcons: Record<string, string> = {
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("App root is missing");
+const lifecycle = new DisposableRegistry();
 const searchParams = new URLSearchParams(window.location.search);
 const staticMode = searchParams.has("static");
 if (staticMode) document.documentElement.dataset.staticMode = "";
@@ -61,7 +63,7 @@ app.innerHTML = `
         <p><b>ASUSTeK COMPUTER</b><b>G551JK</b><b>Notebook</b></p>
       </section>
       <section class="data-block cpu-block" data-boot-module>
-        <header><span>CPU USAGE</span><small>Intel® Core™ i5-4200H</small></header>
+        <header><span>CPU USAGE <i class="telemetry-source" id="telemetry-source">SIMULATED</i></span><small>Intel® Core™ i5-4200H</small></header>
         <div class="cpu-core-row"><div class="cpu-core-label"><b># 1 - 2</b><span id="cpu-a">Avg. 56%</span></div><svg viewBox="0 0 280 64" preserveAspectRatio="none"><polyline id="cpu-line-a-secondary" points="" /><polyline id="cpu-line-a" points="" /></svg></div>
         <div class="cpu-core-row"><div class="cpu-core-label"><b># 3 - 4</b><span id="cpu-b">Avg. 48%</span></div><svg viewBox="0 0 280 64" preserveAspectRatio="none"><polyline id="cpu-line-b-secondary" points="" /><polyline id="cpu-line-b" points="" /></svg></div>
         <div class="quad-metrics"><span>TEMP<b id="temp">62°C</b></span><span>MIN<b>2.94GHz</b></span><span>MAX<b>2.99GHz</b></span><span>TASKS<b id="tasks">257</b></span></div>
@@ -151,8 +153,10 @@ const promptPrefix = document.querySelector<HTMLElement>(".terminal-prompt .term
 const promptDirectory = document.querySelector<HTMLElement>(".terminal-prompt .terminal-powerline > strong")!;
 const terminalTabs = [...document.querySelectorAll<HTMLButtonElement>(".terminal-tabs button")];
 const audioDeck = new AudioDeck();
+lifecycle.add(() => audioDeck.dispose());
 const runtimeScheduler = staticMode ? undefined : new RuntimeScheduler(documentVisibilitySource(document));
-if (runtimeScheduler) window.addEventListener("pagehide", () => runtimeScheduler.dispose(), { once: true });
+if (runtimeScheduler) lifecycle.add(() => runtimeScheduler.dispose());
+lifecycle.listen<PageTransitionEvent>(window, "pagehide", () => lifecycle.dispose(), { once: true });
 const staticGlobeAngle = searchParams.has("globeAngle") ? Number(searchParams.get("globeAngle")) : 6.26;
 const staticGlobeSeed = searchParams.has("globeSeed") ? Number(searchParams.get("globeSeed")) : 0x1f87_2855;
 const staticGlobeLayerMode = searchParams.get("globeLayers") ?? "all";
@@ -162,42 +166,50 @@ const staticGlobeLayers: EdexGlobeLayers = staticMode && staticGlobeLayerMode !=
   connections: staticGlobeLayerMode === "pins" || staticGlobeLayerMode === "connections"
 } : { satellites: true, localEndpoint: true, connections: true };
 const globeContainer = document.querySelector<HTMLElement>("#edex-globe")!;
-let globeInitialization: Promise<boolean> | undefined;
-const initializeRuntimeGlobe = (speed = 1): Promise<boolean> => {
+let globeInitialization: Promise<EdexGlobeHandle | null> | undefined;
+let globeHandle: EdexGlobeHandle | null = null;
+const globeAbortController = new AbortController();
+lifecycle.add(() => {
+  globeAbortController.abort();
+  globeHandle?.dispose();
+});
+const initializeRuntimeGlobe = (speed = 1): Promise<EdexGlobeHandle | null> => {
   globeInitialization ??= initializeEdexGlobe(globeContainer, {
     animate: true,
     connectionLocations: canonicalNetworkConnectionLocations,
     layers: staticGlobeLayers,
     sourceTimingScale: speed,
-    runAnimation: (callback) => { runtimeScheduler?.eachFrame(callback); }
+    runAnimation: (callback) => runtimeScheduler?.eachFrame(callback) ?? (() => undefined),
+    signal: globeAbortController.signal
+  }).then((handle) => {
+    globeHandle = handle;
+    return handle;
   });
   return globeInitialization;
 };
 if (staticMode) {
-  await initializeEdexGlobe(globeContainer, {
+  globeHandle = await initializeEdexGlobe(globeContainer, {
     animate: false,
     fixedCameraAngle: staticGlobeAngle,
     fixedRandomSeed: staticGlobeSeed,
     connectionLocations: canonicalNetworkConnectionLocations,
     layers: staticGlobeLayers,
     constellationLocations: canonicalGlobeConstellation,
-    fixedSatelliteAnimationAdvanceMs: canonicalSatelliteAnimationAdvanceMs
+    fixedSatelliteAnimationAdvanceMs: canonicalSatelliteAnimationAdvanceMs,
+    signal: globeAbortController.signal
   });
 } else {
-  document.addEventListener("edex:module-runtime-start", (event) => {
+  lifecycle.listen<CustomEvent<{ speed?: number }>>(document, "edex:module-runtime-start", (event) => {
     const speed = (event as CustomEvent<{ speed?: number }>).detail.speed ?? 1;
-    void initializeRuntimeGlobe(speed);
+    void initializeRuntimeGlobe(speed).catch((error: unknown) => {
+      if (!(error instanceof DOMException && error.name === "AbortError")) throw error;
+    });
   });
 }
-const terminalDeck = new TerminalSessionDeck();
-let capsLock = false;
-let shift = false;
-let ctrl = false;
-let alt = false;
-let fn = false;
+const commandDeck = new CommandDeckController();
 
 function renderTerminal(): void {
-  output.innerHTML = terminalDeck.current.entries.map((entry) => {
+  output.innerHTML = commandDeck.snapshot().current.entries.map((entry) => {
     const content = renderTerminalText(entry.text).replace(
       "■ ■ ■ ■ ■ ■ ■ ■",
       `<span class="neofetch-swatches" aria-label="terminal color palette">${Array.from({ length: 8 }, () => "<i></i>").join("")}</span>`
@@ -236,29 +248,29 @@ function escapeHtml(value: string): string {
 function setInputValue(value: string, cursor = value.length): void {
   input.value = value;
   input.setSelectionRange(cursor, cursor);
-  terminalDeck.setDraft(value);
+  commandDeck.dispatch({ type: "set-draft", value });
 }
 
 function insertAtCursor(value: string): void {
   const start = input.selectionStart ?? input.value.length;
   const end = input.selectionEnd ?? start;
   input.setRangeText(value, start, end, "end");
-  terminalDeck.setDraft(input.value);
+  commandDeck.dispatch({ type: "set-draft", value: input.value });
 }
 
 function renderFilesystem(): void {
-  const filesystemEntries = terminalDeck.filesystemEntries();
-  filesystemTitle.textContent = terminalDeck.current.filesystemView === "disks"
+  const snapshot = commandDeck.snapshot();
+  const filesystemEntries = snapshot.filesystem.entries;
+  filesystemTitle.textContent = snapshot.current.filesystemView === "disks"
     ? "Showing available block devices"
-    : terminalDeck.current.cwd;
+    : snapshot.current.cwd;
   fileGrid.innerHTML = filesystemEntries.map(({ icon, name, category }) =>
     `<button type="button" data-file-name="${escapeHtml(name)}" data-icon="${icon}" data-category="${category}"><b>${renderEdexIcon(edexIcons, icon)}</b><span>${escapeHtml(name)}</span></button>`
   ).join("");
 }
 
 function renderPrompt(): void {
-  const { cwd } = terminalDeck.current;
-  const { home, root } = terminalDeck.filesystem;
+  const { current: { cwd }, filesystem: { home, root } } = commandDeck.snapshot();
   if (cwd === home || cwd.startsWith(`${home}/`)) {
     const suffix = cwd === home ? "" : `/${cwd.slice(home.length + 1)}`;
     promptPrefix.textContent = "~/.c/";
@@ -270,9 +282,11 @@ function renderPrompt(): void {
 }
 
 function renderSessionChrome(): void {
+  const snapshot = commandDeck.snapshot();
   terminalTabs.forEach((tab, index) => {
-    const active = terminalDeck.current.index === index;
-    tab.querySelector("span")!.textContent = terminalDeck.label(index);
+    const state = snapshot.tabs[index]!;
+    const active = state.active;
+    tab.querySelector("span")!.textContent = state.label;
     tab.classList.toggle("active", active);
     tab.setAttribute("aria-selected", String(active));
     tab.tabIndex = active ? 0 : -1;
@@ -282,19 +296,24 @@ function renderSessionChrome(): void {
 }
 
 function switchSession(index: number): void {
-  terminalDeck.setDraft(input.value);
-  terminalDeck.activate(index);
+  commandDeck.dispatch({ type: "set-draft", value: input.value });
+  commandDeck.dispatch({ type: "activate-session", index });
   renderTerminal();
   renderSessionChrome();
-  setInputValue(terminalDeck.current.draft);
+  setInputValue(commandDeck.snapshot().current.draft);
+  input.focus();
+}
+
+function switchAdjacentSession(direction: -1 | 1): void {
+  commandDeck.dispatch({ type: "activate-adjacent-session", direction });
+  renderTerminal();
+  renderSessionChrome();
+  setInputValue(commandDeck.snapshot().current.draft);
   input.focus();
 }
 
 function clearMomentaryModifiers(): void {
-  shift = false;
-  ctrl = false;
-  alt = false;
-  fn = false;
+  commandDeck.dispatch({ type: "clear-momentary-modifiers" });
   for (const selector of ['[data-key^="SHIFT"]', '[data-key^="CTRL"]', '[data-key="ALT GR"]', '[data-key="FN"]']) {
     document.querySelectorAll(selector).forEach((node) => node.classList.remove("latched"));
   }
@@ -310,20 +329,20 @@ function applyTerminalControl(command: string): boolean {
   else if (command === "\u0004") {
     if (start !== end) input.setRangeText("", start, end, "end");
     else if (start < input.value.length) input.setRangeText("", start, start + 1, "end");
-    terminalDeck.setDraft(input.value);
+    commandDeck.dispatch({ type: "set-draft", value: input.value });
   }
   else if (command === "\u0005") input.setSelectionRange(input.value.length, input.value.length);
   else if (command === "\u0006") input.setSelectionRange(Math.min(input.value.length, end + 1), Math.min(input.value.length, end + 1));
-  else if (command === "\u000c") { terminalDeck.clear(); renderTerminal(); }
-  else if (command === "\u0010") setInputValue(terminalDeck.historyPrevious(input.value));
+  else if (command === "\u000c") { commandDeck.dispatch({ type: "clear-output" }); renderTerminal(); }
+  else if (command === "\u0010") setInputValue(commandDeck.dispatch({ type: "history-previous", draft: input.value }).value ?? input.value);
   else if (command === "\u0015") {
     input.setRangeText("", 0, end, "end");
-    terminalDeck.setDraft(input.value);
+    commandDeck.dispatch({ type: "set-draft", value: input.value });
   }
   else if (command === "\u0017") {
     const wordStart = input.value.slice(0, start).search(/\S+\s*$/);
     if (wordStart >= 0) input.setRangeText("", wordStart, end, "end");
-    terminalDeck.setDraft(input.value);
+    commandDeck.dispatch({ type: "set-draft", value: input.value });
   }
   else if (/[^\u0020-\u007e]/.test(command)) audioDeck.play("denied");
   else return false;
@@ -354,19 +373,19 @@ function playFeedback(feedback: TerminalFeedback): void {
 }
 
 function submitCommand(): void {
-  const feedback = terminalDeck.submit(input.value);
+  const feedback = commandDeck.dispatch({ type: "submit", value: input.value }).feedback ?? "silent";
   input.value = "";
   renderTerminal();
   renderSessionChrome();
   playFeedback(feedback);
 }
 
-form.addEventListener("submit", (event) => {
+lifecycle.listen<SubmitEvent>(form, "submit", (event) => {
   event.preventDefault();
   submitCommand();
 });
 
-input.addEventListener("keydown", (event) => {
+lifecycle.listen<KeyboardEvent>(input, "keydown", (event) => {
   const sourceKey = keyboardKeysForEvent(event).length > 0;
   if (sourceKey) audioDeck.play("stdin");
   const controlCommand = physicalControlCommand(event);
@@ -379,26 +398,26 @@ input.addEventListener("keydown", (event) => {
   } else if ((event.ctrlKey || event.metaKey) && event.key === "Tab") {
     event.preventDefault();
     const direction = event.shiftKey ? -1 : 1;
-    switchSession(terminalDeck.adjacentSessionIndex(direction));
+    switchAdjacentSession(direction);
   } else if (event.key === "ArrowUp") {
     event.preventDefault();
-    setInputValue(terminalDeck.historyPrevious(input.value));
+    setInputValue(commandDeck.dispatch({ type: "history-previous", draft: input.value }).value ?? input.value);
   } else if (event.key === "ArrowDown") {
     event.preventDefault();
-    setInputValue(terminalDeck.historyNext());
+    setInputValue(commandDeck.dispatch({ type: "history-next" }).value ?? input.value);
   } else if (event.key === "Tab" && input.value.length > 0) {
     event.preventDefault();
-    setInputValue(terminalDeck.complete(input.value));
+    setInputValue(commandDeck.dispatch({ type: "complete", value: input.value }).value ?? input.value);
   } else if ((event.ctrlKey || event.metaKey) && /^[1-5]$/.test(event.key)) {
     event.preventDefault();
     switchSession(Number(event.key) - 1);
   }
 });
 
-input.addEventListener("input", () => terminalDeck.setDraft(input.value));
-output.addEventListener("click", () => input.focus());
+lifecycle.listen<InputEvent>(input, "input", () => commandDeck.dispatch({ type: "set-draft", value: input.value }));
+lifecycle.listen<MouseEvent>(output, "click", () => input.focus());
 
-document.addEventListener("keydown", (event) => {
+lifecycle.listen<KeyboardEvent>(document, "keydown", (event) => {
   if (document.documentElement.dataset.bootPhase !== "complete") return;
   if (document.activeElement === input || event.isComposing) return;
   if (event.ctrlKey || event.metaKey || event.altKey || event.key.length !== 1) return;
@@ -410,10 +429,10 @@ document.addEventListener("keydown", (event) => {
   audioDeck.play("stdin");
 }, { capture: true });
 
-document.addEventListener("keydown", (event) => {
+lifecycle.listen<KeyboardEvent>(document, "keydown", (event) => {
   if (event.code !== "CapsLock" || event.repeat) return;
-  capsLock = !capsLock;
-  document.querySelector<HTMLButtonElement>('[data-key="CAPS"]')?.classList.toggle("latched", capsLock);
+  commandDeck.dispatch({ type: "toggle-modifier", modifier: "capsLock" });
+  document.querySelector<HTMLButtonElement>('[data-key="CAPS"]')?.classList.toggle("latched", commandDeck.snapshot().modifiers.capsLock);
 });
 
 function activateOnScreenKey(button: HTMLButtonElement, playKeySound = true): void {
@@ -424,25 +443,26 @@ function activateOnScreenKey(button: HTMLButtonElement, playKeySound = true): vo
     const end = input.selectionEnd ?? start;
     if (start !== end) input.setRangeText("", start, end, "end");
     else if (start > 0) input.setRangeText("", start - 1, start, "end");
-    terminalDeck.setDraft(input.value);
+    commandDeck.dispatch({ type: "set-draft", value: input.value });
   }
   else if (key === "ENTER" || key === "ENTER_LOWER") submitCommand();
   else if (key === "SPACE") insertAtCursor(" ");
-  else if (key === "CAPS") { capsLock = !capsLock; button.classList.toggle("latched", capsLock); }
-  else if (key === "SHIFT" || key === "SHIFT_RIGHT") { shift = !shift; document.querySelectorAll('[data-key^="SHIFT"]').forEach((node) => node.classList.toggle("latched", shift)); }
-  else if (key === "CTRL" || key === "CTRL_RIGHT") { ctrl = !ctrl; document.querySelectorAll('[data-key^="CTRL"]').forEach((node) => node.classList.toggle("latched", ctrl)); }
-  else if (key === "ALT GR") { alt = !alt; button.classList.toggle("latched", alt); }
-  else if (key === "FN") { fn = !fn; button.classList.toggle("latched", fn); }
+  else if (key === "CAPS") { commandDeck.dispatch({ type: "toggle-modifier", modifier: "capsLock" }); button.classList.toggle("latched", commandDeck.snapshot().modifiers.capsLock); }
+  else if (key === "SHIFT" || key === "SHIFT_RIGHT") { commandDeck.dispatch({ type: "toggle-modifier", modifier: "shift" }); document.querySelectorAll('[data-key^="SHIFT"]').forEach((node) => node.classList.toggle("latched", commandDeck.snapshot().modifiers.shift)); }
+  else if (key === "CTRL" || key === "CTRL_RIGHT") { commandDeck.dispatch({ type: "toggle-modifier", modifier: "ctrl" }); document.querySelectorAll('[data-key^="CTRL"]').forEach((node) => node.classList.toggle("latched", commandDeck.snapshot().modifiers.ctrl)); }
+  else if (key === "ALT GR") { commandDeck.dispatch({ type: "toggle-modifier", modifier: "alt" }); button.classList.toggle("latched", commandDeck.snapshot().modifiers.alt); }
+  else if (key === "FN") { commandDeck.dispatch({ type: "toggle-modifier", modifier: "fn" }); button.classList.toggle("latched", commandDeck.snapshot().modifiers.fn); }
   else if (key === "ESC") setInputValue("");
   else if (key === "TAB") {
-    if (ctrl) {
-      const direction = shift ? -1 : 1;
-      switchSession(terminalDeck.adjacentSessionIndex(direction));
+    const modifiers = commandDeck.snapshot().modifiers;
+    if (modifiers.ctrl) {
+      const direction = modifiers.shift ? -1 : 1;
+      switchAdjacentSession(direction);
       clearMomentaryModifiers();
-    } else setInputValue(terminalDeck.complete(input.value));
+    } else setInputValue(commandDeck.dispatch({ type: "complete", value: input.value }).value ?? input.value);
   }
-  else if (key === "↑") setInputValue(terminalDeck.historyPrevious(input.value));
-  else if (key === "↓") setInputValue(terminalDeck.historyNext());
+  else if (key === "↑") setInputValue(commandDeck.dispatch({ type: "history-previous", draft: input.value }).value ?? input.value);
+  else if (key === "↓") setInputValue(commandDeck.dispatch({ type: "history-next" }).value ?? input.value);
   else if (key === "←" || key === "→") {
     const current = input.selectionStart ?? input.value.length;
     const next = key === "←" ? Math.max(0, current - 1) : Math.min(input.value.length, current + 1);
@@ -451,12 +471,13 @@ function activateOnScreenKey(button: HTMLButtonElement, playKeySound = true): vo
   else {
     const layoutKey = keyboardKeys.get(key);
     if (!layoutKey) return;
-    if (ctrl && /^[1-5]$/.test(key)) {
+    const modifiers = commandDeck.snapshot().modifiers;
+    if (modifiers.ctrl && /^[1-5]$/.test(key)) {
       switchSession(Number(key) - 1);
       clearMomentaryModifiers();
       return;
     }
-    const command = resolveKeyboardCommand(layoutKey, { shift, capsLock, ctrl, alt, fn });
+    const command = resolveKeyboardCommand(layoutKey, modifiers);
     if (!applyTerminalControl(command)) insertAtCursor(command);
     clearMomentaryModifiers();
   }
@@ -465,20 +486,20 @@ function activateOnScreenKey(button: HTMLButtonElement, playKeySound = true): vo
 
 const nonRepeatingKeys = new Set(["CAPS", "SHIFT", "SHIFT_RIGHT", "CTRL", "CTRL_RIGHT", "ALT GR", "FN"]);
 document.querySelectorAll<HTMLButtonElement>(".key").forEach((button) => {
-  bindPointerKeyboardFeedback(button);
-  button.addEventListener("click", () => activateOnScreenKey(button));
+  lifecycle.add(bindPointerKeyboardFeedback(button));
+  lifecycle.listen<MouseEvent>(button, "click", () => activateOnScreenKey(button));
   if (!nonRepeatingKeys.has(button.dataset.key!)) {
-    bindPointerKeyRepeat(button, () => activateOnScreenKey(button, false));
+    lifecycle.add(bindPointerKeyRepeat(button, () => activateOnScreenKey(button, false)));
   }
 });
-bindPhysicalKeyboardFeedback(document.querySelector(".keyboard-panel")!);
+lifecycle.add(bindPhysicalKeyboardFeedback(document.querySelector(".keyboard-panel")!));
 
 terminalTabs.forEach((button, index) => {
-  button.addEventListener("click", () => {
+  lifecycle.listen<MouseEvent>(button, "click", () => {
     audioDeck.play("folder");
     switchSession(index);
   });
-  button.addEventListener("keydown", (event) => {
+  lifecycle.listen<KeyboardEvent>(button, "keydown", (event) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
     const destination = event.key === "Home"
@@ -491,10 +512,10 @@ terminalTabs.forEach((button, index) => {
   });
 });
 
-fileGrid.addEventListener("click", (event) => {
-  const button = (event.target as Element).closest<HTMLButtonElement>("button[data-file-name]");
+lifecycle.listen<MouseEvent>(fileGrid, "click", (event) => {
+  const button = (event.target as Element | null)?.closest<HTMLButtonElement>("button[data-file-name]");
   if (!button) return;
-  const result = terminalDeck.activateFilesystemEntry(button.dataset.fileName!);
+  const result = commandDeck.dispatch({ type: "activate-filesystem-entry", name: button.dataset.fileName! }).filesystem!;
   if (result.kind === "insert") {
     const start = input.selectionStart ?? input.value.length;
     const separator = start > 0 && !/\s/.test(input.value[start - 1] ?? "") ? " " : "";
@@ -512,6 +533,7 @@ fileGrid.addEventListener("click", (event) => {
 
 function renderTelemetry(tick: number): void {
   const snapshot = createTelemetrySnapshot(tick);
+  document.querySelector("#telemetry-source")!.textContent = snapshot.source.toUpperCase();
   if (staticMode) {
     document.querySelector("#cpu-line-a")!.setAttribute("points", canonicalCpuTraces.first);
     document.querySelector("#cpu-line-a-secondary")!.setAttribute("points", canonicalCpuTraces.firstSecondary);
@@ -624,18 +646,33 @@ function toggleSound(): void {
   updateSoundLabels();
 }
 
+let bootAbortController: AbortController | undefined;
+lifecycle.add(() => bootAbortController?.abort());
+
 async function startBoot(): Promise<void> {
+  bootAbortController?.abort();
+  const controller = new AbortController();
+  bootAbortController = controller;
   initializeButton.disabled = true;
+  rebootButton.disabled = true;
   const speed = searchParams.has("fastboot") ? 0.04 : 1;
-  await runBootSequence(bootElements, audioDeck, speed);
-  initializeButton.disabled = false;
-  input.focus();
+  try {
+    await runBootSequence(bootElements, audioDeck, speed, controller.signal);
+    input.focus();
+  } catch (error) {
+    if (!(error instanceof DOMException && error.name === "AbortError")) throw error;
+  } finally {
+    if (bootAbortController === controller) {
+      initializeButton.disabled = false;
+      rebootButton.disabled = false;
+    }
+  }
 }
 
-initializeButton.addEventListener("click", () => { void startBoot(); });
-gateSoundToggle.addEventListener("click", toggleSound);
-soundToggle.addEventListener("click", toggleSound);
-rebootButton.addEventListener("click", () => { void startBoot(); });
+lifecycle.listen<MouseEvent>(initializeButton, "click", () => { void startBoot(); });
+lifecycle.listen<MouseEvent>(gateSoundToggle, "click", toggleSound);
+lifecycle.listen<MouseEvent>(soundToggle, "click", toggleSound);
+lifecycle.listen<MouseEvent>(rebootButton, "click", () => { void startBoot(); });
 updateSoundLabels();
 
 if (staticMode) completeBootImmediately(bootElements);

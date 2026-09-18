@@ -4,9 +4,31 @@ import { z } from "zod";
 
 const commandSchema = z.array(z.string().min(1)).min(1);
 const repositoryRelativePathSchema = z.string().min(1).refine(
-  (value) => !path.isAbsolute(value) && !value.split(/[\\/]/).includes(".."),
+  (value) => value !== "." && !path.isAbsolute(value) && !value.split(/[\\/]/).includes(".."),
   { message: "Path must stay inside its declared repository root" }
 );
+
+const protectedRepairPaths = [
+  ".git",
+  ".cache",
+  "artifacts",
+  "references",
+  "schemas",
+  "specs",
+  "src/adapters/codex",
+  "src/config",
+  "src/judge",
+  "src/orchestrator"
+] as const;
+
+function pathsOverlap(left: string, right: string): boolean {
+  const normalize = (value: string): string => path.normalize(value.replaceAll("\\", path.sep)).replace(/[/\\]+$/, "");
+  const normalizedLeft = normalize(left);
+  const normalizedRight = normalize(right);
+  return normalizedLeft === normalizedRight
+    || normalizedLeft.startsWith(`${normalizedRight}${path.sep}`)
+    || normalizedRight.startsWith(`${normalizedLeft}${path.sep}`);
+}
 
 const sourceEvidenceSchema = z.object({
   repositoryUrl: z.string().url(),
@@ -44,13 +66,24 @@ export const scenarioContractSchema = z.object({
   }).strict().optional(),
   comparisonRegions: z.record(z.string().min(1), screenshotRegionSchema).optional(),
   maxAttempts: z.number().int().min(1).max(20).default(1),
-  allowedPaths: z.array(z.string().min(1)).default([]),
+  allowedPaths: z.array(repositoryRelativePathSchema).default([]),
   validationCommands: z.array(commandSchema).default([]),
   sourceEvidence: sourceEvidenceSchema.optional()
-}).strict().refine(
-  (contract) => Boolean(contract.targetUrl) !== Boolean(contract.targetScreenshotPath),
-  { message: "Provide exactly one of targetUrl or targetScreenshotPath" }
-);
+}).strict().superRefine((contract, context) => {
+  if (Boolean(contract.targetUrl) === Boolean(contract.targetScreenshotPath)) {
+    context.addIssue({ code: "custom", message: "Provide exactly one of targetUrl or targetScreenshotPath" });
+  }
+  for (const allowedPath of contract.allowedPaths) {
+    const protectedPath = protectedRepairPaths.find((entry) => pathsOverlap(allowedPath, entry));
+    if (protectedPath) {
+      context.addIssue({
+        code: "custom",
+        path: ["allowedPaths"],
+        message: `Repair path ${allowedPath} overlaps protected path ${protectedPath}`
+      });
+    }
+  }
+});
 
 export type ScenarioContract = z.infer<typeof scenarioContractSchema>;
 

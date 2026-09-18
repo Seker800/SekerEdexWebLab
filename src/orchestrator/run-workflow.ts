@@ -1,4 +1,4 @@
-import { copyFile, mkdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -28,6 +28,27 @@ async function writeJson(filePath: string, value: unknown): Promise<void> {
 
 async function sha256(filePath: string): Promise<string> {
   return createHash("sha256").update(await readFile(filePath)).digest("hex");
+}
+
+async function evidenceManifest(directory: string): Promise<Record<string, string>> {
+  const manifest: Record<string, string> = {};
+  const visit = async (currentDirectory: string): Promise<void> => {
+    const entries = await readdir(currentDirectory, { withFileTypes: true });
+    await Promise.all(entries.map(async (entry) => {
+      const absolutePath = path.join(currentDirectory, entry.name);
+      if (entry.isDirectory()) await visit(absolutePath);
+      else if (entry.isFile()) manifest[path.relative(directory, absolutePath)] = await sha256(absolutePath);
+    }));
+  };
+  await visit(directory);
+  return Object.fromEntries(Object.entries(manifest).sort(([left], [right]) => left.localeCompare(right)));
+}
+
+async function assertEvidenceUnchanged(directory: string, expected: Record<string, string>): Promise<void> {
+  const actual = await evidenceManifest(directory);
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    throw new Error("Immutable run evidence changed during repair");
+  }
 }
 
 export async function runWorkflow(options: WorkflowOptions): Promise<FinalReport> {
@@ -158,11 +179,13 @@ export async function runWorkflow(options: WorkflowOptions): Promise<FinalReport
       };
 
       try {
+        const immutableEvidence = await evidenceManifest(runDirectory);
         await options.repairWorkspace?.checkpoint();
         attemptReport.repair = await options.repairAgent.repair(repairRequest);
-        await writeJson(path.join(attemptDirectory, "repair.json"), attemptReport.repair);
         if (attemptReport.repair.status === "blocked") {
           await options.repairWorkspace?.rollback();
+          await assertEvidenceUnchanged(runDirectory, immutableEvidence);
+          await writeJson(path.join(attemptDirectory, "repair.json"), attemptReport.repair);
           blocker = attemptReport.repair.summary;
           break;
         }
@@ -173,6 +196,8 @@ export async function runWorkflow(options: WorkflowOptions): Promise<FinalReport
         if (await sha256(target.screenshotPath) !== frozenTargetHash) {
           throw new Error("Target evidence changed during repair");
         }
+        await assertEvidenceUnchanged(runDirectory, immutableEvidence);
+        await writeJson(path.join(attemptDirectory, "repair.json"), attemptReport.repair);
 
         const candidateDirectory = path.join(attemptDirectory, "candidate");
         await mkdir(candidateDirectory, { recursive: true });
