@@ -6,7 +6,8 @@ import { initializeEdexGlobe, loadEdexIcons, renderEdexIcon, type EdexGlobeLayer
 import { canonicalFileEntries } from "./filesystem-model.js";
 import { bindPhysicalKeyboardFeedback, bindPointerKeyboardFeedback, keyboardKeysForEvent } from "./keyboard-feedback.js";
 import { loadKeyboardLayout, resolveKeyboardCommand } from "./keyboard-layout.js";
-import { executeCommand, neofetchText, type TerminalEntry } from "./terminal-model.js";
+import { TerminalSessionDeck } from "./terminal-session.js";
+import { neofetchText } from "./terminal-model.js";
 import { createTelemetrySnapshot, sparklinePoints } from "./telemetry.js";
 
 const arrowIcons: Record<string, string> = {
@@ -138,6 +139,11 @@ app.innerHTML = `
 const output = document.querySelector<HTMLDivElement>("#terminal-output")!;
 const input = document.querySelector<HTMLInputElement>("#terminal-input")!;
 const form = document.querySelector<HTMLFormElement>("#terminal-form")!;
+const fileGrid = document.querySelector<HTMLDivElement>(".file-grid")!;
+const filesystemTitle = document.querySelector<HTMLElement>(".filesystem-panel .section-label small")!;
+const promptPrefix = document.querySelector<HTMLElement>(".terminal-prompt .terminal-powerline > span:first-child")!;
+const promptDirectory = document.querySelector<HTMLElement>(".terminal-prompt .terminal-powerline > strong")!;
+const terminalTabs = [...document.querySelectorAll<HTMLButtonElement>(".terminal-tabs button")];
 const audioDeck = new AudioDeck();
 const staticGlobeAngle = searchParams.has("globeAngle") ? Number(searchParams.get("globeAngle")) : 6.26;
 const staticGlobeSeed = searchParams.has("globeSeed") ? Number(searchParams.get("globeSeed")) : 0x1f87_2855;
@@ -174,12 +180,15 @@ if (staticMode) {
     void initializeRuntimeGlobe(speed);
   });
 }
-let entries: TerminalEntry[] = [{ kind: "output", text: neofetchText }];
+const terminalDeck = new TerminalSessionDeck();
 let capsLock = false;
 let shift = false;
+let ctrl = false;
+let alt = false;
+let fn = false;
 
 function renderTerminal(): void {
-  output.innerHTML = entries.map((entry) => {
+  output.innerHTML = terminalDeck.current.entries.map((entry) => {
     const content = renderTerminalText(entry.text).replace(
       "■ ■ ■ ■ ■ ■ ■ ■",
       `<span class="neofetch-swatches" aria-label="terminal color palette">${Array.from({ length: 8 }, () => "<i></i>").join("")}</span>`
@@ -215,12 +224,87 @@ function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character]!);
 }
 
+function setInputValue(value: string, cursor = value.length): void {
+  input.value = value;
+  input.setSelectionRange(cursor, cursor);
+  terminalDeck.setDraft(value);
+}
+
+function insertAtCursor(value: string): void {
+  const start = input.selectionStart ?? input.value.length;
+  const end = input.selectionEnd ?? start;
+  input.setRangeText(value, start, end, "end");
+  terminalDeck.setDraft(input.value);
+}
+
+function renderFilesystem(): void {
+  const filesystemEntries = terminalDeck.filesystemEntries();
+  filesystemTitle.textContent = terminalDeck.current.filesystemView === "disks"
+    ? "Showing available block devices"
+    : terminalDeck.current.cwd;
+  fileGrid.innerHTML = filesystemEntries.map(({ icon, name, category }) =>
+    `<button type="button" data-file-name="${escapeHtml(name)}" data-icon="${icon}" data-category="${category}"><b>${renderEdexIcon(edexIcons, icon)}</b><span>${escapeHtml(name)}</span></button>`
+  ).join("");
+}
+
+function renderPrompt(): void {
+  const { cwd } = terminalDeck.current;
+  const { home, root } = terminalDeck.filesystem;
+  if (cwd === home || cwd.startsWith(`${home}/`)) {
+    const suffix = cwd === home ? "" : `/${cwd.slice(home.length + 1)}`;
+    promptPrefix.textContent = "~/.c/";
+    promptDirectory.textContent = `eDEX-UI${suffix}`;
+    return;
+  }
+  promptPrefix.textContent = "~/";
+  promptDirectory.textContent = cwd === root ? "" : cwd.slice(root.length + 1);
+}
+
+function renderSessionChrome(): void {
+  terminalTabs.forEach((tab, index) => {
+    const active = terminalDeck.current.index === index;
+    tab.querySelector("span")!.textContent = terminalDeck.label(index);
+    tab.classList.toggle("active", active);
+    tab.setAttribute("aria-selected", String(active));
+  });
+  renderPrompt();
+  renderFilesystem();
+}
+
+function switchSession(index: number): void {
+  terminalDeck.setDraft(input.value);
+  terminalDeck.activate(index);
+  renderTerminal();
+  renderSessionChrome();
+  setInputValue(terminalDeck.current.draft);
+  input.focus();
+}
+
+function clearMomentaryModifiers(): void {
+  shift = false;
+  ctrl = false;
+  alt = false;
+  fn = false;
+  for (const selector of ['[data-key^="SHIFT"]', '[data-key^="CTRL"]', '[data-key="ALT GR"]', '[data-key="FN"]']) {
+    document.querySelectorAll(selector).forEach((node) => node.classList.remove("latched"));
+  }
+}
+
+function applyTerminalControl(command: string): boolean {
+  if (command === "\u0001") input.setSelectionRange(0, 0);
+  else if (command === "\u0005") input.setSelectionRange(input.value.length, input.value.length);
+  else if (command === "\u0003" || command === "\u001b") setInputValue("");
+  else if (command === "\u000c") { terminalDeck.clear(); renderTerminal(); }
+  else return false;
+  return true;
+}
+
 function submitCommand(): void {
   const hadCommand = input.value.trim().length > 0;
-  const result = executeCommand(input.value);
-  entries = result.clear ? [] : [...entries, ...result.entries];
+  terminalDeck.submit(input.value);
   input.value = "";
   renderTerminal();
+  renderSessionChrome();
   if (hadCommand) audioDeck.play("stdout");
 }
 
@@ -232,7 +316,30 @@ form.addEventListener("submit", (event) => {
 input.addEventListener("keydown", (event) => {
   const sourceKey = keyboardKeysForEvent(event).length > 0;
   if (sourceKey) audioDeck.play("stdin");
+  if ((event.ctrlKey || event.metaKey) && event.key === "Tab") {
+    event.preventDefault();
+    const direction = event.shiftKey ? -1 : 1;
+    switchSession((terminalDeck.current.index + direction + terminalTabs.length) % terminalTabs.length);
+  } else if (event.key === "ArrowUp") {
+    event.preventDefault();
+    setInputValue(terminalDeck.historyPrevious(input.value));
+  } else if (event.key === "ArrowDown") {
+    event.preventDefault();
+    setInputValue(terminalDeck.historyNext());
+  } else if (event.key === "Tab") {
+    event.preventDefault();
+    setInputValue(terminalDeck.complete(input.value));
+  } else if ((event.ctrlKey || event.metaKey) && event.key.toLocaleLowerCase() === "l") {
+    event.preventDefault();
+    terminalDeck.clear();
+    renderTerminal();
+  } else if ((event.ctrlKey || event.metaKey) && /^[1-5]$/.test(event.key)) {
+    event.preventDefault();
+    switchSession(Number(event.key) - 1);
+  }
 });
+
+input.addEventListener("input", () => terminalDeck.setDraft(input.value));
 
 document.addEventListener("keydown", (event) => {
   if (event.code !== "CapsLock" || event.repeat) return;
@@ -249,33 +356,74 @@ document.querySelectorAll<HTMLButtonElement>(".key").forEach((button) => {
   button.addEventListener("click", () => {
     const key = button.dataset.key!;
     audioDeck.play(key === "ENTER" || key === "ENTER_LOWER" ? "granted" : "stdin");
-    if (key === "BACK") input.value = input.value.slice(0, -1);
+    if (key === "BACK") {
+      const start = input.selectionStart ?? input.value.length;
+      const end = input.selectionEnd ?? start;
+      if (start !== end) input.setRangeText("", start, end, "end");
+      else if (start > 0) input.setRangeText("", start - 1, start, "end");
+      terminalDeck.setDraft(input.value);
+    }
     else if (key === "ENTER" || key === "ENTER_LOWER") submitCommand();
-    else if (key === "SPACE") input.value += " ";
+    else if (key === "SPACE") insertAtCursor(" ");
     else if (key === "CAPS") { capsLock = !capsLock; button.classList.toggle("latched", capsLock); }
     else if (key === "SHIFT" || key === "SHIFT_RIGHT") { shift = !shift; document.querySelectorAll('[data-key^="SHIFT"]').forEach((node) => node.classList.toggle("latched", shift)); }
-    else if (["ESC", "TAB", "CTRL", "CTRL_RIGHT", "FN", "ALT GR", "←", "↓", "↑", "→"].includes(key)) return;
+    else if (key === "CTRL" || key === "CTRL_RIGHT") { ctrl = !ctrl; document.querySelectorAll('[data-key^="CTRL"]').forEach((node) => node.classList.toggle("latched", ctrl)); }
+    else if (key === "ALT GR") { alt = !alt; button.classList.toggle("latched", alt); }
+    else if (key === "FN") { fn = !fn; button.classList.toggle("latched", fn); }
+    else if (key === "ESC") setInputValue("");
+    else if (key === "TAB") {
+      if (ctrl) {
+        const direction = shift ? -1 : 1;
+        switchSession((terminalDeck.current.index + direction + terminalTabs.length) % terminalTabs.length);
+        clearMomentaryModifiers();
+      } else setInputValue(terminalDeck.complete(input.value));
+    }
+    else if (key === "↑") setInputValue(terminalDeck.historyPrevious(input.value));
+    else if (key === "↓") setInputValue(terminalDeck.historyNext());
+    else if (key === "←" || key === "→") {
+      const current = input.selectionStart ?? input.value.length;
+      const next = key === "←" ? Math.max(0, current - 1) : Math.min(input.value.length, current + 1);
+      input.setSelectionRange(next, next);
+    }
     else {
       const layoutKey = keyboardKeys.get(key);
       if (!layoutKey) return;
-      input.value += resolveKeyboardCommand(layoutKey, { shift, capsLock });
-      if (shift) { shift = false; document.querySelectorAll('[data-key^="SHIFT"]').forEach((node) => node.classList.remove("latched")); }
+      if (ctrl && /^[1-5]$/.test(key)) {
+        switchSession(Number(key) - 1);
+        clearMomentaryModifiers();
+        return;
+      }
+      const command = resolveKeyboardCommand(layoutKey, { shift, capsLock, ctrl, alt, fn });
+      if (!applyTerminalControl(command)) insertAtCursor(command);
+      clearMomentaryModifiers();
     }
     input.focus();
   });
 });
 bindPhysicalKeyboardFeedback(document.querySelector(".keyboard-panel")!);
 
-document.querySelectorAll<HTMLButtonElement>(".terminal-tabs button").forEach((button) => {
+terminalTabs.forEach((button, index) => {
   button.addEventListener("click", () => {
     audioDeck.play("folder");
-    document.querySelectorAll(".terminal-tabs button").forEach((tab) => tab.classList.remove("active"));
-    button.classList.add("active");
+    switchSession(index);
   });
 });
 
-document.querySelectorAll<HTMLButtonElement>(".file-grid button").forEach((button) => {
-  button.addEventListener("click", () => audioDeck.play("folder"));
+fileGrid.addEventListener("click", (event) => {
+  const button = (event.target as Element).closest<HTMLButtonElement>("button[data-file-name]");
+  if (!button) return;
+  audioDeck.play("folder");
+  const result = terminalDeck.activateFilesystemEntry(button.dataset.fileName!);
+  if (result.kind === "insert") {
+    const start = input.selectionStart ?? input.value.length;
+    const separator = start > 0 && !/\s/.test(input.value[start - 1] ?? "") ? " " : "";
+    insertAtCursor(`${separator}${result.value}`);
+  }
+  if (result.kind === "navigated" || result.kind === "show-disks") {
+    renderTerminal();
+    renderSessionChrome();
+  }
+  input.focus();
 });
 
 function renderTelemetry(tick: number): void {
@@ -352,6 +500,7 @@ const memoryPointStates: MemoryPointState[] = staticMode
 memoryGrid.innerHTML = memoryPointStates.map((state) => `<i class="${state}"></i>`).join("");
 
 renderTerminal();
+renderSessionChrome();
 renderTelemetry(0);
 renderClock();
 

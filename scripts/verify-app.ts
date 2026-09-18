@@ -251,11 +251,53 @@ try {
   for (const key of ["H", "E", "L", "P"]) await page.locator(`[data-key="${key}"]`).click();
   await page.locator('[data-key="ENTER"]').click();
   await page.getByText("AVAILABLE COMMANDS", { exact: false }).waitFor();
+  await terminalInput.fill("st");
+  await page.locator('[data-key="TAB"]').click();
+  if (await terminalInput.inputValue() !== "status") throw new Error("On-screen Tab did not complete a terminal command");
+  await terminalInput.fill("echo primary-session");
+  await terminalInput.press("Enter");
   const secondTerminalTab = page.locator(".terminal-tabs button").nth(1);
   await secondTerminalTab.click();
   if (!await secondTerminalTab.evaluate((node) => node.classList.contains("active"))) {
     throw new Error("Terminal tab did not activate");
   }
+  if (await secondTerminalTab.textContent() !== "#2 - SHELL") throw new Error("Empty terminal tab did not become a session");
+  if (await page.locator("#terminal-output").textContent().then((content) => content?.includes("primary-session"))) {
+    throw new Error("Terminal output leaked into a newly created session");
+  }
+  await terminalInput.fill("echo secondary-session");
+  await terminalInput.press("Enter");
+  await terminalInput.press("ArrowUp");
+  if (await terminalInput.inputValue() !== "echo secondary-session") throw new Error("Terminal history did not restore the active session command");
+  await page.locator('.file-grid button[data-file-name="themes"]').click();
+  if (!await page.locator(".section-label small").textContent().then((value) => value?.endsWith("/themes"))) {
+    throw new Error("Filesystem navigation did not update the active terminal directory");
+  }
+  await page.locator('.file-grid button[data-file-name="tron.json"]').click();
+  if (await terminalInput.inputValue() !== "echo secondary-session 'tron.json'") {
+    throw new Error("Filesystem file selection did not insert a quoted path at the cursor");
+  }
+  await page.locator('.file-grid button[data-file-name="Go up"]').click();
+  await page.locator('.file-grid button[data-file-name="Show disks"]').click();
+  if (await page.locator('.file-grid button[data-file-name="Home sandbox"]').count() !== 1) {
+    throw new Error("Filesystem disk view did not expose the browser sandbox");
+  }
+  await page.locator('.file-grid button[data-file-name="Home sandbox"]').click();
+  if (await page.locator(".section-label small").textContent() !== "/home/squared") {
+    throw new Error("Filesystem disk selection did not return to the sandbox root");
+  }
+  await page.locator(".terminal-tabs button").first().click();
+  const mainSessionText = await page.locator("#terminal-output").textContent();
+  if (!mainSessionText?.includes("primary-session") || mainSessionText.includes("secondary-session")) {
+    throw new Error("Terminal sessions did not preserve independent output");
+  }
+  await page.locator('[data-key="CTRL"]').click();
+  await page.locator('[data-key="2"]').click();
+  if (!await secondTerminalTab.evaluate((node) => node.classList.contains("active"))) {
+    throw new Error("On-screen Ctrl+number did not switch terminal sessions");
+  }
+  await page.locator('[data-key="CTRL"]').click();
+  await page.locator('[data-key="1"]').click();
 
   await page.reload({ waitUntil: "networkidle" });
   await page.locator("[data-ready]").waitFor();
@@ -315,7 +357,16 @@ try {
     requiredRegions: regions,
     bootChecks: { requiredPhases, observedPhases: bootEvidence.phases, titleStateBounds },
     audioChecks: { requiredSounds, observedSounds: [...new Set(bootEvidence.sounds)], soundCounts, cueVolumes: expectedBootVolumes, assets: audioAssets.length, muteToggle: true },
-    interactionChecks: ["startup gesture", "boot replay and skip", "physical terminal command", "on-screen keyboard command", "terminal tab activation"],
+    interactionChecks: [
+      "startup gesture",
+      "boot replay and skip",
+      "physical terminal command",
+      "on-screen keyboard command",
+      "terminal history and completion",
+      "independent terminal sessions",
+      "on-screen terminal shortcuts",
+      "filesystem navigation, disk view and insertion"
+    ],
     responsiveChecks: ["1934x1094 canonical", "1280x800 without overflow"],
     sourceDrivenChecks: sourceDrivenState,
     screenshots: ["boot-gate.png", "boot-log.png", "boot-title-outline.png", "boot-title-filled.png", "boot-title-framed.png", "boot-title-glitch.png", "boot-reveal.png", "boot-greeting.png", "boot-greeting-fading.png", "boot-terminal-ready.png", "command-deck.png", "command-deck-1280x800.png"],
