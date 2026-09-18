@@ -1,4 +1,4 @@
-import type { BrowserFileEntry } from "./browser-filesystem.js";
+import { createSandboxFilesystem, type BrowserFileEntry, type BrowserFilePreview, type BrowserFilesystem } from "./browser-filesystem.js";
 import { TerminalSessionDeck, type FilesystemActivation, type TerminalFeedback } from "./terminal-session.js";
 import type { TerminalEntry } from "./terminal-model.js";
 
@@ -14,6 +14,7 @@ export type CommandDeckIntent =
   | { type: "activate-session"; index: number }
   | { type: "activate-adjacent-session"; direction: -1 | 1 }
   | { type: "activate-filesystem-entry"; name: string }
+  | { type: "close-content" }
   | { type: "toggle-modifier"; modifier: DeckModifier }
   | { type: "clear-momentary-modifiers" };
 
@@ -28,6 +29,7 @@ export interface CommandDeckSnapshot {
   readonly filesystem: { readonly root: string; readonly home: string; readonly entries: readonly Readonly<BrowserFileEntry>[] };
   readonly tabs: readonly { readonly label: string; readonly active: boolean }[];
   readonly modifiers: Readonly<Record<DeckModifier, boolean>>;
+  readonly content: Readonly<BrowserFileEntry> | null;
 }
 
 export interface CommandDeckResult {
@@ -37,8 +39,16 @@ export interface CommandDeckResult {
   readonly filesystem?: FilesystemActivation;
 }
 
+function freezeFileEntry(entry: BrowserFileEntry): Readonly<BrowserFileEntry> {
+  const preview: Readonly<BrowserFilePreview> | undefined = entry.preview?.kind === "document"
+    ? Object.freeze({ ...entry.preview, ...(entry.preview.tags && { tags: Object.freeze([...entry.preview.tags]) }) })
+    : entry.preview ? Object.freeze({ ...entry.preview }) : undefined;
+  return Object.freeze({ ...entry, ...(preview && { preview }) });
+}
+
 export class CommandDeckController {
-  private readonly terminal = new TerminalSessionDeck();
+  private readonly terminal: TerminalSessionDeck;
+  private openContent: BrowserFileEntry | null = null;
   private readonly modifiers: Record<DeckModifier, boolean> = {
     capsLock: false,
     shift: false,
@@ -46,6 +56,10 @@ export class CommandDeckController {
     alt: false,
     fn: false
   };
+
+  constructor(filesystem: BrowserFilesystem = createSandboxFilesystem()) {
+    this.terminal = new TerminalSessionDeck(filesystem);
+  }
 
   dispatch(intent: CommandDeckIntent): CommandDeckResult {
     switch (intent.type) {
@@ -64,20 +78,27 @@ export class CommandDeckController {
       case "complete":
         return { value: this.terminal.complete(intent.value) };
       case "activate-session":
+        this.openContent = null;
         this.terminal.activate(intent.index);
         return { sessionIndex: intent.index };
       case "activate-adjacent-session": {
+        this.openContent = null;
         const sessionIndex = this.terminal.adjacentSessionIndex(intent.direction);
         this.terminal.activate(sessionIndex);
         return { sessionIndex };
       }
       case "activate-filesystem-entry": {
         const filesystem = this.terminal.activateFilesystemEntry(intent.name);
+        if (filesystem.kind === "document") this.openContent = filesystem.entry;
+        else if (filesystem.kind === "navigated" || filesystem.kind === "show-disks") this.openContent = null;
         return {
           filesystem,
           ...("feedback" in filesystem ? { feedback: filesystem.feedback } : {})
         };
       }
+      case "close-content":
+        this.openContent = null;
+        return {};
       case "toggle-modifier":
         this.modifiers[intent.modifier] = !this.modifiers[intent.modifier];
         return {};
@@ -103,13 +124,14 @@ export class CommandDeckController {
       filesystem: Object.freeze({
         root: this.terminal.filesystem.root,
         home: this.terminal.filesystem.home,
-        entries: Object.freeze(this.terminal.filesystemEntries().map((entry) => Object.freeze({ ...entry })))
+        entries: Object.freeze(this.terminal.filesystemEntries().map(freezeFileEntry))
       }),
       tabs: Object.freeze(Array.from({ length: 5 }, (_, index) => Object.freeze({
         label: this.terminal.label(index),
         active: current.index === index
       }))),
-      modifiers: Object.freeze({ ...this.modifiers })
+      modifiers: Object.freeze({ ...this.modifiers }),
+      content: this.openContent ? freezeFileEntry(this.openContent) : null
     });
   }
 }

@@ -11,6 +11,9 @@ import { neofetchText } from "./terminal-model.js";
 import { createTelemetrySnapshot, sparklinePoints } from "./telemetry.js";
 import { documentVisibilitySource, RuntimeScheduler } from "./runtime-scheduler.js";
 import { DisposableRegistry } from "./disposable-registry.js";
+import { createSandboxFilesystem } from "./browser-filesystem.js";
+import { renderSafeMarkdown } from "./blog-content.js";
+import { ImageViewer } from "./image-viewer.js";
 
 const arrowIcons: Record<string, string> = {
   "↑": '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-opacity="1" d="m12.00004 7.99999 4.99996 5h-2.99996v4.00001h-4v-4.00001h-3z"/><path stroke-linejoin="round" fill-opacity=".65" d="m4 3h16c1.1046 0 1-.10457 1 1v16c0 1.1046.1046 1-1 1h-16c-1.10457 0-1 .1046-1-1v-16c0-1.10457-.10457-1 1-1zm0 1v16h16v-16z"/></svg>',
@@ -90,6 +93,13 @@ app.innerHTML = `
       <nav class="terminal-tabs" role="tablist" aria-label="Terminal sessions">
         <button class="active" type="button" role="tab" aria-controls="terminal-output"><span>MAIN SHELL</span></button><button type="button" role="tab" aria-controls="terminal-output"><span>EMPTY</span></button><button type="button" role="tab" aria-controls="terminal-output"><span>EMPTY</span></button><button type="button" role="tab" aria-controls="terminal-output"><span>EMPTY</span></button><button type="button" role="tab" aria-controls="terminal-output"><span>EMPTY</span></button>
       </nav>
+      <article class="content-reader" id="content-reader" hidden aria-labelledby="content-reader-title">
+        <header>
+          <div><small id="content-reader-meta"></small><h1 id="content-reader-title"></h1><p id="content-reader-summary"></p><div id="content-reader-tags"></div></div>
+          <button type="button" id="content-reader-close" aria-label="Close article">RETURN TO SHELL</button>
+        </header>
+        <div class="content-reader__body" id="content-reader-body"></div>
+      </article>
       <div class="terminal-status"><span>Welcome to eDEX-UI v${canonicalEdexVersion} - Electron v4.1.4</span></div>
       <span class="terminal-times"><span id="terminal-time">SESSION // READY</span><span id="terminal-time-secondary"></span></span>
       <div class="terminal-output" id="terminal-output" role="log" aria-live="polite"></div>
@@ -152,6 +162,15 @@ const filesystemTitle = document.querySelector<HTMLElement>(".filesystem-panel .
 const promptPrefix = document.querySelector<HTMLElement>(".terminal-prompt .terminal-powerline > span:first-child")!;
 const promptDirectory = document.querySelector<HTMLElement>(".terminal-prompt .terminal-powerline > strong")!;
 const terminalTabs = [...document.querySelectorAll<HTMLButtonElement>(".terminal-tabs button")];
+const commandDeckElement = document.querySelector<HTMLElement>("#command-deck")!;
+const terminalPanel = document.querySelector<HTMLElement>(".terminal-panel")!;
+const contentReader = document.querySelector<HTMLElement>("#content-reader")!;
+const contentReaderTitle = document.querySelector<HTMLElement>("#content-reader-title")!;
+const contentReaderMeta = document.querySelector<HTMLElement>("#content-reader-meta")!;
+const contentReaderSummary = document.querySelector<HTMLElement>("#content-reader-summary")!;
+const contentReaderTags = document.querySelector<HTMLElement>("#content-reader-tags")!;
+const contentReaderBody = document.querySelector<HTMLElement>("#content-reader-body")!;
+const contentReaderClose = document.querySelector<HTMLButtonElement>("#content-reader-close")!;
 const audioDeck = new AudioDeck();
 lifecycle.add(() => audioDeck.dispose());
 const runtimeScheduler = staticMode ? undefined : new RuntimeScheduler(documentVisibilitySource(document));
@@ -206,7 +225,9 @@ if (staticMode) {
     });
   });
 }
-const commandDeck = new CommandDeckController();
+const commandDeck = new CommandDeckController(createSandboxFilesystem({ includeBlogContent: !staticMode }));
+const imageViewer = new ImageViewer(commandDeckElement, () => audioDeck.play("denied"));
+lifecycle.add(() => imageViewer.dispose());
 
 function renderTerminal(): void {
   output.innerHTML = commandDeck.snapshot().current.entries.map((entry) => {
@@ -286,13 +307,36 @@ function renderSessionChrome(): void {
   terminalTabs.forEach((tab, index) => {
     const state = snapshot.tabs[index]!;
     const active = state.active;
-    tab.querySelector("span")!.textContent = state.label;
+    tab.querySelector("span")!.textContent = active && snapshot.content?.preview?.kind === "document" ? "ARTICLE" : state.label;
     tab.classList.toggle("active", active);
     tab.setAttribute("aria-selected", String(active));
     tab.tabIndex = active ? 0 : -1;
   });
   renderPrompt();
   renderFilesystem();
+  renderContent();
+}
+
+function renderContent(): void {
+  const entry = commandDeck.snapshot().content;
+  const preview = entry?.preview;
+  if (!entry || preview?.kind !== "document") {
+    contentReader.hidden = true;
+    terminalPanel.classList.remove("content-open");
+    return;
+  }
+  contentReaderTitle.textContent = preview.title;
+  contentReaderMeta.textContent = [preview.publishedAt, entry.path].filter(Boolean).join(" // ");
+  contentReaderSummary.textContent = preview.summary;
+  contentReaderTags.replaceChildren(...(preview.tags ?? []).map((tag) => {
+    const element = document.createElement("span");
+    element.textContent = tag;
+    return element;
+  }));
+  contentReaderBody.innerHTML = renderSafeMarkdown(preview.markdown.replace(/^#\s+.+\n+/, ""));
+  contentReader.hidden = false;
+  terminalPanel.classList.add("content-open");
+  contentReaderBody.scrollTop = 0;
 }
 
 function switchSession(index: number): void {
@@ -416,6 +460,11 @@ lifecycle.listen<KeyboardEvent>(input, "keydown", (event) => {
 
 lifecycle.listen<InputEvent>(input, "input", () => commandDeck.dispatch({ type: "set-draft", value: input.value }));
 lifecycle.listen<MouseEvent>(output, "click", () => input.focus());
+lifecycle.listen<MouseEvent>(contentReaderClose, "click", () => {
+  commandDeck.dispatch({ type: "close-content" });
+  renderSessionChrome();
+  input.focus();
+});
 
 lifecycle.listen<KeyboardEvent>(document, "keydown", (event) => {
   if (document.documentElement.dataset.bootPhase !== "complete") return;
@@ -526,9 +575,17 @@ lifecycle.listen<MouseEvent>(fileGrid, "click", (event) => {
     renderSessionChrome();
   }
   if (result.kind === "theme" || result.kind === "keyboard") renderTerminal();
+  if (result.kind === "document") {
+    renderSessionChrome();
+    contentReaderClose.focus();
+  }
+  if (result.kind === "image") {
+    const images = commandDeck.snapshot().filesystem.entries.filter((entry) => entry.preview?.kind === "image");
+    imageViewer.open(images, result.entry.path);
+  }
   if (result.kind === "insert") audioDeck.play("folder");
   else playFeedback(result.feedback);
-  input.focus();
+  if (!["document", "image"].includes(result.kind)) input.focus();
 });
 
 function renderTelemetry(tick: number): void {

@@ -114,7 +114,7 @@ Future collectors and judges implement stable ports:
 
 ## Product implementation
 
-`apps/clone` is the first product built through this workflow. `CommandDeckController` receives typed intents from physical keyboard, on-screen keyboard, pointer and filesystem adapters and exposes immutable snapshots to the DOM presentation layer. Its UI modules own terminal commands, telemetry adapters, the startup state machine, the sound deck and the upstream asset adapter. A shared disposable registry owns listeners and renderer lifecycles; the scheduler owns continuing sampling and frame callbacks.
+`apps/clone` is the first product built through this workflow. `CommandDeckController` receives typed intents from physical keyboard, on-screen keyboard, pointer and filesystem adapters and exposes immutable snapshots to the DOM presentation layer. It also owns the active document selection; the Markdown reader and disposable image viewer consume typed file previews without introducing a second navigation state. Its UI modules own terminal commands, telemetry adapters, the startup state machine, the sound deck and the upstream asset adapter. A shared disposable registry owns listeners and renderer lifecycles; the scheduler owns continuing sampling and frame callbacks.
 
 The startup state machine emits observable `edex:boot-phase` events. The sound deck emits `edex:sound` events before playback. These events let browser verification prove that the experiential sequence occurred without coupling the verifier to timing implementation details.
 

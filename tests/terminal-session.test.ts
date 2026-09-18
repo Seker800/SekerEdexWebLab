@@ -33,6 +33,15 @@ describe("browser filesystem", () => {
     expect(filesystem.read(`${filesystem.root}/Documents/readme.txt`)).toBe("eDEX browser workspace");
     expect(filesystem.complete(filesystem.home, "themes/tron.j")).toEqual(["themes/tron.json"]);
   });
+
+  it("exposes blog documents and images only in the runtime content tree", () => {
+    const filesystem = createSandboxFilesystem();
+    expect(filesystem.list(filesystem.home).map((entry) => entry.name)).toContain("Blog");
+    expect(filesystem.list(`${filesystem.home}/Blog`).map((entry) => entry.name)).toEqual(["Show disks", "Go up", "posts", "projects", "images", "about.md"]);
+    expect(filesystem.entry(`${filesystem.home}/Blog/posts`, "welcome.md")?.preview).toMatchObject({ kind: "document", title: "Welcome to the command deck" });
+    expect(filesystem.entry(`${filesystem.home}/Blog/images`, "command-deck.svg")?.preview).toMatchObject({ kind: "image", mediaType: "image/svg+xml" });
+    expect(createSandboxFilesystem({ includeBlogContent: false }).list(filesystem.home).map((entry) => entry.name)).not.toContain("Blog");
+  });
 });
 
 describe("terminal session deck", () => {
@@ -117,6 +126,20 @@ describe("terminal session deck", () => {
     expect(deck.current.cwd).toBe(deck.filesystem.home);
     expect(deck.activateFilesystemEntry("keyboards")).toEqual({ kind: "navigated", feedback: "success" });
     expect(deck.activateFilesystemEntry("en-US.json")).toEqual({ kind: "keyboard", layout: "en-US", feedback: "success" });
+  });
+
+  it("returns typed blog preview actions instead of terminal insertion", () => {
+    const deck = new TerminalSessionDeck();
+    deck.activateFilesystemEntry("Blog");
+    deck.activateFilesystemEntry("posts");
+    const document = deck.activateFilesystemEntry("welcome.md");
+    expect(document.kind).toBe("document");
+    if (document.kind === "document") expect(document.entry.preview).toMatchObject({ kind: "document" });
+    deck.activateFilesystemEntry("Go up");
+    deck.activateFilesystemEntry("images");
+    const image = deck.activateFilesystemEntry("content-flow.svg");
+    expect(image.kind).toBe("image");
+    if (image.kind === "image") expect(image.entry.preview).toMatchObject({ kind: "image" });
   });
 
   it("exposes a reversible sandbox disk view", () => {

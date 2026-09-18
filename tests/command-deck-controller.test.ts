@@ -34,6 +34,17 @@ describe("command deck controller", () => {
     expect(result.filesystem).toEqual({ kind: "navigated", feedback: "success" });
     expect(controller.snapshot().current.cwd).toMatch(/\/themes$/);
   });
+
+  it("owns the selected article and clears it on navigation", () => {
+    const controller = new CommandDeckController();
+    controller.dispatch({ type: "activate-filesystem-entry", name: "Blog" });
+    controller.dispatch({ type: "activate-filesystem-entry", name: "posts" });
+    controller.dispatch({ type: "activate-filesystem-entry", name: "welcome.md" });
+    expect(controller.snapshot().content?.preview).toMatchObject({ kind: "document", title: "Welcome to the command deck" });
+    expect(Object.isFrozen(controller.snapshot().content?.preview)).toBe(true);
+    controller.dispatch({ type: "close-content" });
+    expect(controller.snapshot().content).toBeNull();
+  });
 });
 
 describe("disposable registry", () => {

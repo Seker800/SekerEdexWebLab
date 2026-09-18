@@ -19,6 +19,8 @@ export interface TerminalSessionState {
 
 export type FilesystemActivation =
   | { kind: "insert"; value: string }
+  | { kind: "document"; entry: BrowserFileEntry; feedback: TerminalFeedback }
+  | { kind: "image"; entry: BrowserFileEntry; feedback: TerminalFeedback }
   | { kind: "navigated"; feedback: TerminalFeedback }
   | { kind: "show-disks"; feedback: TerminalFeedback }
   | { kind: "theme"; theme: string; accepted: boolean; feedback: TerminalFeedback }
@@ -225,6 +227,8 @@ export class TerminalSessionDeck {
       this.changeDirectory(entry.name);
       return { kind: "navigated", feedback: "success" };
     }
+    if (entry.preview?.kind === "document") return { kind: "document", entry, feedback: "info" };
+    if (entry.preview?.kind === "image") return { kind: "image", entry, feedback: "info" };
     if (this.current.cwd === `${this.filesystem.home}/themes` && entry.name.endsWith(".json")) {
       const theme = entry.name.slice(0, -5);
       const accepted = theme === "tron";

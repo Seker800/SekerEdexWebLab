@@ -541,6 +541,41 @@ try {
     throw new Error(`Runtime indicators did not advance at independent cadences: ${JSON.stringify({ motionBefore, motionAfter })}`);
   }
   if (motionBefore.transientKeys !== 0 || motionAfter.transientKeys !== 0) throw new Error("Idle keyboard retained high-frequency transient feedback");
+  await motionPage.locator('.file-grid button[data-file-name="Blog"]').click();
+  await motionPage.locator('.file-grid button[data-file-name="posts"]').click();
+  await motionPage.locator('.file-grid button[data-file-name="welcome.md"]').click();
+  if (!await motionPage.locator("#content-reader").isVisible()) throw new Error("Markdown file did not open the central article reader");
+  if (await motionPage.locator("#content-reader-title").textContent() !== "Welcome to the command deck") throw new Error("Article reader did not render typed document metadata");
+  if (!await motionPage.locator("#content-reader-body").textContent().then((value) => value?.includes("Select a folder"))) throw new Error("Article reader did not render Markdown content");
+  await motionPage.screenshot({ path: path.join(artifactDirectory, "blog-reader.png"), animations: "disabled", omitBackground: true });
+  await motionPage.locator("#content-reader-close").click();
+  if (await motionPage.locator("#content-reader").isVisible()) throw new Error("Article reader did not return to the terminal");
+  await motionPage.locator('.file-grid button[data-file-name="Go up"]').click();
+  await motionPage.locator('.file-grid button[data-file-name="images"]').click();
+  await motionPage.locator('.file-grid button[data-file-name="command-deck.svg"]').click();
+  if (!await motionPage.locator(".image-viewer").isVisible()) throw new Error("Image file did not open the media viewer");
+  if (await motionPage.locator(".image-viewer__counter").textContent() !== "1 / 2 · image/svg+xml") throw new Error("Image viewer did not expose media sequence metadata");
+  await motionPage.locator('[data-viewer-action="zoom-in"]').click();
+  if (await motionPage.locator(".image-viewer__zoom").textContent() !== "125%") throw new Error("Image viewer zoom control did not update");
+  await motionPage.locator('[data-viewer-action="next"]').click();
+  if (await motionPage.locator("#image-viewer-title").textContent() !== "content-flow.svg") throw new Error("Image viewer did not navigate to the next image");
+  await motionPage.locator('.image-viewer__stage img[src$="content-flow.svg"]').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0 ? undefined : new Promise<void>((resolve, reject) => {
+    image.addEventListener("load", () => resolve(), { once: true });
+    image.addEventListener("error", () => reject(new Error("Image viewer asset failed to load")), { once: true });
+  }));
+  const viewerHeader = motionPage.locator(".image-viewer__header");
+  const viewerHeaderBounds = await viewerHeader.boundingBox();
+  if (!viewerHeaderBounds) throw new Error("Image viewer header could not be measured for dragging");
+  const viewerTranslateBefore = await motionPage.locator(".image-viewer__dialog").evaluate((node) => getComputedStyle(node).translate);
+  await motionPage.mouse.move(viewerHeaderBounds.x + 80, viewerHeaderBounds.y + viewerHeaderBounds.height / 2);
+  await motionPage.mouse.down();
+  await motionPage.mouse.move(viewerHeaderBounds.x + 120, viewerHeaderBounds.y + viewerHeaderBounds.height / 2 + 20);
+  await motionPage.mouse.up();
+  const viewerTranslateAfter = await motionPage.locator(".image-viewer__dialog").evaluate((node) => getComputedStyle(node).translate);
+  if (viewerTranslateAfter === viewerTranslateBefore) throw new Error("Image viewer title bar did not drag the modal");
+  await motionPage.screenshot({ path: path.join(artifactDirectory, "image-viewer.png"), animations: "disabled", omitBackground: true });
+  await motionPage.keyboard.press("Escape");
+  if (await motionPage.locator(".image-viewer").isVisible()) throw new Error("Image viewer did not close with Escape");
   await motionContext.close();
   const metrics = await compareScreenshots(
     path.resolve("references/edex-ui-v2.2.8/screenshot_default.png"),
@@ -593,6 +628,8 @@ try {
       "keyboard navigable terminal tablist",
       "on-screen terminal shortcuts",
       "filesystem navigation, disk view and insertion",
+      "blog folder navigation and central Markdown reading",
+      "image viewer zoom, sequence navigation and keyboard dismissal",
       "theme and keyboard file special actions",
       "outcome-specific sound feedback",
       "persistently visible sound control",
@@ -603,7 +640,7 @@ try {
     responsiveChecks: ["1934x1094 frozen Electron container", "1920x1080 logical canvas", "1440x900 with 1440x810 centered stage", "1280x800 with 1280x720 centered stage", "390x844 terminal mode", "reduced-motion static feedback"],
     performanceCheck: frameSample,
     sourceDrivenChecks: sourceDrivenState,
-    screenshots: ["boot-gate.png", "boot-log.png", "boot-title-outline.png", "boot-title-filled.png", "boot-title-framed.png", "boot-title-glitch.png", "boot-reveal.png", "boot-greeting.png", "boot-greeting-fading.png", "boot-terminal-ready.png", "command-deck.png", "command-deck-1920x1080.png", "command-deck-1440x900.png", "command-deck-1280x800.png", "command-deck-mobile.png"],
+    screenshots: ["boot-gate.png", "boot-log.png", "boot-title-outline.png", "boot-title-filled.png", "boot-title-framed.png", "boot-title-glitch.png", "boot-reveal.png", "boot-greeting.png", "boot-greeting-fading.png", "boot-terminal-ready.png", "blog-reader.png", "image-viewer.png", "command-deck.png", "command-deck-1920x1080.png", "command-deck-1440x900.png", "command-deck-1280x800.png", "command-deck-mobile.png"],
     consoleErrors,
     pageErrors,
     upstreamVisualMetrics: metrics,
