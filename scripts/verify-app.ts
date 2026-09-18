@@ -252,10 +252,16 @@ try {
   await page.getByText("INPUT MATRIX READY", { exact: false }).waitFor();
   await terminalInput.fill("");
   const physicalHKey = page.locator('[data-key="H"]');
-  await terminalInput.focus();
+  await page.locator("#terminal-output").click({ position: { x: 40, y: 40 } });
+  if (await page.evaluate(() => document.activeElement?.id === "terminal-input")) {
+    throw new Error("Terminal output click did not exercise global physical keyboard capture");
+  }
   await page.keyboard.down("h");
   if (!await physicalHKey.evaluate((node) => node.classList.contains("pressed"))) {
     throw new Error("Physical keyboard input did not light the matching on-screen key");
+  }
+  if (await terminalInput.inputValue() !== "h") {
+    throw new Error("Physical keyboard input was not routed to the terminal after focus left the input");
   }
   await page.keyboard.up("h");
   if (!await physicalHKey.evaluate((node) => node.classList.contains("blink"))) {
@@ -265,10 +271,14 @@ try {
   if (await physicalHKey.evaluate((node) => node.classList.contains("pressed") || node.classList.contains("blink"))) {
     throw new Error("Physical keyboard feedback did not settle after the source release interval");
   }
+  await page.keyboard.type("elp");
+  if (await terminalInput.inputValue() !== "help") throw new Error("Physical keyboard text did not remain in the terminal input");
+  await terminalInput.press("Enter");
+  await page.getByText("AVAILABLE COMMANDS", { exact: false }).last().waitFor();
   await terminalInput.fill("");
   for (const key of ["H", "E", "L", "P"]) await page.locator(`[data-key="${key}"]`).click();
   await page.locator('[data-key="ENTER"]').click();
-  await page.getByText("AVAILABLE COMMANDS", { exact: false }).waitFor();
+  await page.getByText("AVAILABLE COMMANDS", { exact: false }).last().waitFor();
   await terminalInput.fill("st");
   await page.locator('[data-key="TAB"]').click();
   if (await terminalInput.inputValue() !== "status") throw new Error("On-screen Tab did not complete a terminal command");

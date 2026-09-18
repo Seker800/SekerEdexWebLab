@@ -355,6 +355,18 @@ input.addEventListener("keydown", (event) => {
 input.addEventListener("input", () => terminalDeck.setDraft(input.value));
 
 document.addEventListener("keydown", (event) => {
+  if (document.documentElement.dataset.bootPhase !== "complete") return;
+  if (document.activeElement === input || event.isComposing) return;
+  if (event.ctrlKey || event.metaKey || event.altKey || event.key.length !== 1) return;
+  const activeElement = document.activeElement;
+  if (activeElement instanceof HTMLTextAreaElement || activeElement instanceof HTMLSelectElement) return;
+  if (activeElement instanceof HTMLInputElement || (activeElement instanceof HTMLElement && activeElement.isContentEditable)) return;
+  if (activeElement instanceof HTMLButtonElement && event.key === " ") return;
+  input.focus();
+  audioDeck.play("stdin");
+}, { capture: true });
+
+document.addEventListener("keydown", (event) => {
   if (event.code !== "CapsLock" || event.repeat) return;
   capsLock = !capsLock;
   document.querySelector<HTMLButtonElement>('[data-key="CAPS"]')?.classList.toggle("latched", capsLock);

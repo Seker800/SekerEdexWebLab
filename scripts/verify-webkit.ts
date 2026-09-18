@@ -51,6 +51,11 @@ try {
   assertBounds("WebKit 1920×1080 stage", fullHdBounds, { x: 0, y: 0, width: 1920, height: 1080 });
 
   const terminalInput = page.locator("#terminal-input");
+  await page.locator("#terminal-output").click({ position: { x: 40, y: 40 } });
+  await page.keyboard.type("help");
+  if (await terminalInput.inputValue() !== "help") throw new Error("WebKit did not route global physical typing to the terminal input");
+  await terminalInput.press("Enter");
+  await page.getByText("AVAILABLE COMMANDS", { exact: false }).waitFor();
   await terminalInput.fill("theme tron");
   await terminalInput.press("Enter");
   await page.getByText("THEME tron ACTIVE", { exact: false }).waitFor();
@@ -79,7 +84,7 @@ try {
   const report = {
     status: consoleErrors.length === 0 && pageErrors.length === 0 ? "passed" : "failed",
     browser: `WebKit ${browser.version()}`,
-    checks: ["required desktop regions", "1920x1080 logical canvas", "1440x900 letterbox", "typed terminal and filesystem feedback", "390x844 mobile terminal"],
+    checks: ["required desktop regions", "1920x1080 logical canvas", "global physical terminal typing", "1440x900 letterbox", "typed terminal and filesystem feedback", "390x844 mobile terminal"],
     consoleErrors,
     pageErrors
   };
