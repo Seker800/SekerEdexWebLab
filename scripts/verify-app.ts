@@ -105,6 +105,20 @@ try {
   await page.locator('html[data-boot-phase="complete"]').waitFor({ timeout: 25_000 });
   await page.locator('#edex-globe[data-globe-ready="true"]').waitFor({ timeout: 5_000 });
   await page.locator('#edex-globe[data-globe-pins-ready="true"]').waitFor({ timeout: 5_000 });
+  const frameSample = await page.evaluate(`new Promise(resolve => {
+    const frames = 30;
+    let observed = 0;
+    const startedAt = performance.now();
+    const sample = () => {
+      observed += 1;
+      if (observed >= frames) {
+        const elapsedMs = performance.now() - startedAt;
+        resolve({ frames, elapsedMs, fps: frames * 1000 / elapsedMs });
+      } else requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  })`) as { frames: number; elapsedMs: number; fps: number };
+  if (frameSample.fps < 30) throw new Error(`Runtime frame sample fell below 30 FPS: ${frameSample.fps.toFixed(1)}`);
 
   // The fading greeting is a 500 ms source state and can finish while the
   // preceding full-page artifact is being encoded. It was observed live
@@ -258,6 +272,21 @@ try {
   await terminalInput.fill("st");
   await page.locator('[data-key="TAB"]').click();
   if (await terminalInput.inputValue() !== "status") throw new Error("On-screen Tab did not complete a terminal command");
+  await terminalInput.fill("theme");
+  await terminalInput.press("Enter");
+  await page.getByText("ACTIVE THEME  tron", { exact: false }).waitFor();
+  if (await page.locator("html").getAttribute("data-last-sound") !== "info") throw new Error("Theme inspection did not emit informational feedback");
+  await terminalInput.fill("theme blade");
+  await terminalInput.press("Enter");
+  await page.getByText("locked to the canonical tron theme", { exact: false }).waitFor();
+  if (await page.locator("html").getAttribute("data-last-sound") !== "denied") throw new Error("Rejected theme did not emit denied feedback");
+  await terminalInput.fill("definitely-not-a-command");
+  await terminalInput.press("Enter");
+  if (await page.locator("html").getAttribute("data-last-sound") !== "error") throw new Error("Invalid command did not emit error feedback");
+  await terminalInput.fill("");
+  await terminalInput.press("Tab");
+  if (await page.evaluate(() => document.activeElement?.id === "terminal-input")) throw new Error("Empty terminal input trapped keyboard focus");
+  await terminalInput.focus();
   await terminalInput.fill("echo primary-session");
   await terminalInput.press("Enter");
   const secondTerminalTab = page.locator(".terminal-tabs button").nth(1);
@@ -278,9 +307,14 @@ try {
     throw new Error("Filesystem navigation did not update the active terminal directory");
   }
   await page.locator('.file-grid button[data-file-name="tron.json"]').click();
-  if (await terminalInput.inputValue() !== "echo secondary-session 'tron.json'") {
-    throw new Error("Filesystem file selection did not insert a quoted path at the cursor");
-  }
+  if (!await page.locator("#terminal-output").textContent().then((value) => value?.includes("THEME tron ACTIVE"))) throw new Error("Canonical theme file did not invoke its upstream special action");
+  if (await terminalInput.inputValue() !== "echo secondary-session") throw new Error("Theme file was inserted as a generic terminal path");
+  await page.locator('.file-grid button[data-file-name="tron-disrupted.json"]').click();
+  if (await page.locator("html").getAttribute("data-last-sound") !== "denied") throw new Error("Noncanonical theme file did not emit denied feedback");
+  await page.locator('.file-grid button[data-file-name="Go up"]').click();
+  await page.locator('.file-grid button[data-file-name="keyboards"]').click();
+  await page.locator('.file-grid button[data-file-name="en-US.json"]').click();
+  if (!await page.locator("#terminal-output").textContent().then((value) => value?.includes("KEYBOARD en-US ACTIVE"))) throw new Error("Keyboard layout file did not invoke its upstream special action");
   await page.locator('.file-grid button[data-file-name="Go up"]').click();
   await page.locator('.file-grid button[data-file-name="Show disks"]').click();
   if (await page.locator('.file-grid button[data-file-name="Home sandbox"]').count() !== 1) {
@@ -316,6 +350,8 @@ try {
 
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.reload({ waitUntil: "networkidle" });
+  await page.locator("[data-ready]").waitFor();
+  await page.locator("#boot-overlay").waitFor({ state: "hidden" });
   for (const selector of regions) {
     if (!await page.locator(selector).isVisible()) throw new Error(`Required region is not visible at 1280x800: ${selector}`);
   }
@@ -325,6 +361,95 @@ try {
   }));
   if (overflow.horizontal || overflow.vertical) throw new Error(`Responsive viewport overflowed: ${JSON.stringify(overflow)}`);
   await page.screenshot({ path: path.join(artifactDirectory, "command-deck-1280x800.png"), animations: "disabled", omitBackground: true });
+  const compactStageBounds = await page.locator(".canvas-stage").boundingBox();
+  if (!compactStageBounds) throw new Error("Could not measure the 1280x800 canvas stage");
+  assertBounds("1280x800 canvas stage", compactStageBounds, { x: 0, y: 40, width: 1280, height: 720 }, 1);
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.locator("[data-ready]").waitFor();
+  await page.locator("#boot-overlay").waitFor({ state: "hidden" });
+  const fullHdStageBounds = await page.locator(".canvas-stage").boundingBox();
+  if (!fullHdStageBounds) throw new Error("Could not measure the 1920x1080 canvas stage");
+  assertBounds("1920x1080 canvas stage", fullHdStageBounds, { x: 0, y: 0, width: 1920, height: 1080 }, 1);
+  await page.screenshot({ path: path.join(artifactDirectory, "command-deck-1920x1080.png"), animations: "disabled", omitBackground: true });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.locator("[data-ready]").waitFor();
+  await page.locator("#boot-overlay").waitFor({ state: "hidden" });
+  const letterboxStageBounds = await page.locator(".canvas-stage").boundingBox();
+  if (!letterboxStageBounds) throw new Error("Could not measure the 1440x900 canvas stage");
+  assertBounds("1440x900 canvas stage", letterboxStageBounds, { x: 0, y: 45, width: 1440, height: 810 }, 1);
+  await page.screenshot({ path: path.join(artifactDirectory, "command-deck-1440x900.png"), animations: "disabled", omitBackground: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.locator("[data-ready]").waitFor();
+  await page.locator("#boot-overlay").waitFor({ state: "hidden" });
+  if (!await page.locator(".terminal-panel").isVisible()) throw new Error("Mobile terminal mode did not retain the terminal");
+  for (const selector of [".system-panel", ".network-panel", ".filesystem-panel", ".keyboard-panel"]) {
+    if (await page.locator(selector).isVisible()) throw new Error(`Mobile terminal mode retained desktop-only region: ${selector}`);
+  }
+  const mobileState = await page.evaluate(() => ({
+    horizontalOverflow: document.documentElement.scrollWidth > innerWidth,
+    verticalOverflow: document.documentElement.scrollHeight > innerHeight,
+    cursorAnimation: getComputedStyle(document.querySelector(".cursor")!).animationName
+  }));
+  if (mobileState.horizontalOverflow || mobileState.verticalOverflow) throw new Error(`Mobile terminal mode overflowed: ${JSON.stringify(mobileState)}`);
+  if (mobileState.cursorAnimation !== "none") throw new Error(`Reduced motion left cursor animation active: ${mobileState.cursorAnimation}`);
+  await page.screenshot({ path: path.join(artifactDirectory, "command-deck-mobile.png"), animations: "disabled", omitBackground: true });
+  await page.setViewportSize({ width: 1934, height: 1094 });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.locator("[data-ready]").waitFor();
+  await page.locator("#boot-overlay").waitFor({ state: "hidden" });
+  const touchContext = await browser.newContext({
+    viewport: { width: 1934, height: 1094 },
+    colorScheme: "dark",
+    reducedMotion: "reduce",
+    hasTouch: true,
+    isMobile: true,
+    deviceScaleFactor: 1
+  });
+  const touchPage = await touchContext.newPage();
+  touchPage.on("console", (message) => { if (message.type() === "error") consoleErrors.push(`touch: ${message.text()}`); });
+  touchPage.on("pageerror", (error) => pageErrors.push(`touch: ${error.message}`));
+  await touchPage.goto("http://127.0.0.1:4174/?static=1", { waitUntil: "networkidle" });
+  await touchPage.locator("[data-ready]").waitFor();
+  for (const key of ["H", "E", "L", "P"]) await touchPage.locator(`[data-key="${key}"]`).tap();
+  await touchPage.locator('[data-key="ENTER"]').tap();
+  await touchPage.getByText("AVAILABLE COMMANDS", { exact: false }).waitFor();
+  await touchContext.close();
+  const motionContext = await browser.newContext({
+    viewport: { width: 1920, height: 1080 },
+    colorScheme: "dark",
+    reducedMotion: "no-preference",
+    deviceScaleFactor: 1
+  });
+  const motionPage = await motionContext.newPage();
+  motionPage.on("console", (message) => { if (message.type() === "error") consoleErrors.push(`motion: ${message.text()}`); });
+  motionPage.on("pageerror", (error) => pageErrors.push(`motion: ${error.message}`));
+  await motionPage.goto("http://127.0.0.1:4174/?fastboot=1", { waitUntil: "networkidle" });
+  await motionPage.getByRole("button", { name: "Initialize system" }).click();
+  await motionPage.locator('html[data-boot-phase="complete"]').waitFor({ timeout: 10_000 });
+  const motionBefore = await motionPage.evaluate(() => ({
+    clock: document.querySelector("#deck-clock")?.textContent,
+    telemetryTick: Number(document.documentElement.dataset.telemetryTick ?? 0),
+    cursorAnimation: getComputedStyle(document.querySelector(".cursor")!).animationName,
+    cursorDuration: getComputedStyle(document.querySelector(".cursor")!).animationDuration,
+    transientKeys: document.querySelectorAll(".key.pressed, .key.blink").length
+  }));
+  await motionPage.waitForTimeout(1_600);
+  const motionAfter = await motionPage.evaluate(() => ({
+    clock: document.querySelector("#deck-clock")?.textContent,
+    telemetryTick: Number(document.documentElement.dataset.telemetryTick ?? 0),
+    transientKeys: document.querySelectorAll(".key.pressed, .key.blink").length
+  }));
+  if (motionBefore.cursorAnimation !== "cursor-blink" || motionBefore.cursorDuration !== "1s") {
+    throw new Error(`Normal-motion cursor cadence is incorrect: ${JSON.stringify(motionBefore)}`);
+  }
+  if (motionAfter.telemetryTick <= motionBefore.telemetryTick || motionAfter.clock === motionBefore.clock) {
+    throw new Error(`Runtime indicators did not advance at independent cadences: ${JSON.stringify({ motionBefore, motionAfter })}`);
+  }
+  if (motionBefore.transientKeys !== 0 || motionAfter.transientKeys !== 0) throw new Error("Idle keyboard retained high-frequency transient feedback");
+  await motionContext.close();
   const metrics = await compareScreenshots(
     path.resolve("references/edex-ui-v2.2.8/screenshot_default.png"),
     path.join(artifactDirectory, "command-deck.png"),
@@ -369,11 +494,17 @@ try {
       "terminal history and completion",
       "independent terminal sessions",
       "on-screen terminal shortcuts",
-      "filesystem navigation, disk view and insertion"
+      "filesystem navigation, disk view and insertion",
+      "theme and keyboard file special actions",
+      "outcome-specific sound feedback",
+      "keyboard focus escape",
+      "touch keyboard command",
+      "normal-motion idle cadence"
     ],
-    responsiveChecks: ["1934x1094 canonical", "1280x800 without overflow"],
+    responsiveChecks: ["1934x1094 frozen Electron container", "1920x1080 logical canvas", "1440x900 with 1440x810 centered stage", "1280x800 with 1280x720 centered stage", "390x844 terminal mode", "reduced-motion static feedback"],
+    performanceCheck: frameSample,
     sourceDrivenChecks: sourceDrivenState,
-    screenshots: ["boot-gate.png", "boot-log.png", "boot-title-outline.png", "boot-title-filled.png", "boot-title-framed.png", "boot-title-glitch.png", "boot-reveal.png", "boot-greeting.png", "boot-greeting-fading.png", "boot-terminal-ready.png", "command-deck.png", "command-deck-1280x800.png"],
+    screenshots: ["boot-gate.png", "boot-log.png", "boot-title-outline.png", "boot-title-filled.png", "boot-title-framed.png", "boot-title-glitch.png", "boot-reveal.png", "boot-greeting.png", "boot-greeting-fading.png", "boot-terminal-ready.png", "command-deck.png", "command-deck-1920x1080.png", "command-deck-1440x900.png", "command-deck-1280x800.png", "command-deck-mobile.png"],
     consoleErrors,
     pageErrors,
     upstreamVisualMetrics: metrics,

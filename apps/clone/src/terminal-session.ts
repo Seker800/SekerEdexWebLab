@@ -2,7 +2,9 @@ import { createSandboxFilesystem, type BrowserFileEntry, type BrowserFilesystem 
 import { executeCommand, neofetchText, type TerminalEntry } from "./terminal-model.js";
 
 const sessionCount = 5;
-const localCommands = ["cat", "cd", "clear", "date", "echo", "files", "help", "history", "ls", "neofetch", "pwd", "status"] as const;
+const localCommands = ["cat", "cd", "clear", "date", "echo", "files", "help", "history", "ls", "neofetch", "pwd", "status", "theme"] as const;
+
+export type TerminalFeedback = "silent" | "success" | "info" | "error" | "denied";
 
 export interface TerminalSessionState {
   readonly index: number;
@@ -17,9 +19,11 @@ export interface TerminalSessionState {
 
 export type FilesystemActivation =
   | { kind: "insert"; value: string }
-  | { kind: "navigated" }
-  | { kind: "show-disks" }
-  | { kind: "missing" };
+  | { kind: "navigated"; feedback: TerminalFeedback }
+  | { kind: "show-disks"; feedback: TerminalFeedback }
+  | { kind: "theme"; theme: string; accepted: boolean; feedback: TerminalFeedback }
+  | { kind: "keyboard"; layout: string; feedback: TerminalFeedback }
+  | { kind: "missing"; feedback: TerminalFeedback };
 
 function shellWords(value: string): string[] {
   const words: string[] = [];
@@ -98,27 +102,50 @@ export class TerminalSessionDeck {
     this.current.entries = [];
   }
 
-  submit(rawCommand: string): void {
+  submit(rawCommand: string): TerminalFeedback {
     const command = rawCommand.trim();
     this.current.draft = "";
-    if (command === "") return;
+    if (command === "") return "silent";
     this.current.history.push(command);
     this.resetHistoryCursor();
 
     const [name = "", ...args] = shellWords(command);
     if (name === "clear") {
       this.clear();
-      return;
+      return "success";
     }
 
     if (["cd", "pwd", "ls", "history", "cat"].includes(name)) {
-      this.runFilesystemCommand(command, name, args);
-      return;
+      return this.runFilesystemCommand(command, name, args);
+    }
+
+    if (name === "theme") {
+      this.current.entries.push(promptEntry(this.current, command, this.filesystem));
+      const requestedTheme = args[0];
+      if (requestedTheme === undefined || requestedTheme === "list") {
+        this.current.entries.push(outputEntry("ACTIVE THEME  tron\nAVAILABLE     tron"));
+        return "info";
+      }
+      if (requestedTheme !== "tron") {
+        this.current.entries.push(outputEntry(`theme: '${requestedTheme}' is unavailable; this replica is locked to the canonical tron theme`));
+        return "denied";
+      }
+      this.current.entries.push(outputEntry("THEME tron ACTIVE"));
+      return "success";
+    }
+
+    if (name === "help") {
+      this.current.entries.push(
+        promptEntry(this.current, command, this.filesystem),
+        outputEntry("AVAILABLE COMMANDS\nhelp  ls  cd  pwd  cat  clear  theme\nhistory  echo  date  status  files  neofetch")
+      );
+      return "info";
     }
 
     const result = executeCommand(command);
     const entries = result.entries.map((entry) => entry.kind === "command" ? promptEntry(this.current, command, this.filesystem) : entry);
     this.current.entries = result.clear ? [] : [...this.current.entries, ...entries];
+    return localCommands.includes(name as typeof localCommands[number]) ? "success" : "error";
   }
 
   historyPrevious(draft: string): string {
@@ -170,23 +197,36 @@ export class TerminalSessionDeck {
 
   activateFilesystemEntry(name: string): FilesystemActivation {
     if (this.current.filesystemView === "disks") {
-      if (name !== "Home sandbox") return { kind: "missing" };
+      if (name !== "Home sandbox") return { kind: "missing", feedback: "error" };
       this.changeDirectory(this.filesystem.root);
-      return { kind: "navigated" };
+      return { kind: "navigated", feedback: "success" };
     }
     const entry = this.filesystem.entry(this.current.cwd, name);
-    if (!entry) return { kind: "missing" };
+    if (!entry) return { kind: "missing", feedback: "error" };
     if (entry.name === "Show disks") {
       this.current.filesystemView = "disks";
-      return { kind: "show-disks" };
+      return { kind: "show-disks", feedback: "info" };
     }
     if (entry.name === "Go up") {
       this.changeDirectory("..");
-      return { kind: "navigated" };
+      return { kind: "navigated", feedback: "success" };
     }
     if (entry.category === "directory") {
       this.changeDirectory(entry.name);
-      return { kind: "navigated" };
+      return { kind: "navigated", feedback: "success" };
+    }
+    if (this.current.cwd === `${this.filesystem.home}/themes` && entry.name.endsWith(".json")) {
+      const theme = entry.name.slice(0, -5);
+      const accepted = theme === "tron";
+      this.current.entries.push(outputEntry(accepted
+        ? "THEME tron ACTIVE"
+        : `theme: '${theme}' is unavailable; this replica is locked to the canonical tron theme`));
+      return { kind: "theme", theme, accepted, feedback: accepted ? "success" : "denied" };
+    }
+    if (this.current.cwd === `${this.filesystem.home}/keyboards` && entry.name.endsWith(".json")) {
+      const layout = entry.name.slice(0, -5);
+      this.current.entries.push(outputEntry(`KEYBOARD ${layout} ACTIVE`));
+      return { kind: "keyboard", layout, feedback: "success" };
     }
     return { kind: "insert", value: quoteShellToken(entry.name) };
   }
@@ -209,20 +249,19 @@ export class TerminalSessionDeck {
     this.current.historyDraft = "";
   }
 
-  private runFilesystemCommand(command: string, name: string, args: string[]): void {
+  private runFilesystemCommand(command: string, name: string, args: string[]): TerminalFeedback {
     const session = this.current;
     session.entries.push(promptEntry(session, command, this.filesystem));
     if (name === "pwd") {
       session.entries.push(outputEntry(session.cwd));
-      return;
+      return "info";
     }
     if (name === "history") {
       session.entries.push(outputEntry(session.history.map((entry, index) => `${index + 1}  ${entry}`).join("\n")));
-      return;
+      return "info";
     }
     if (name === "cd") {
-      this.changeDirectory(args[0] ?? this.filesystem.root, false);
-      return;
+      return this.changeDirectory(args[0] ?? this.filesystem.root, false) ? "success" : "error";
     }
 
     const requestedPath = args[0] ?? ".";
@@ -230,20 +269,21 @@ export class TerminalSessionDeck {
     if (name === "ls") {
       if (!this.filesystem.isDirectory(path)) {
         session.entries.push(outputEntry(`ls: cannot access '${requestedPath}': no such directory`));
-        return;
+        return "error";
       }
       session.entries.push(outputEntry(this.filesystem.list(path)
         .filter((entry) => entry.category !== "navigation")
         .map((entry) => `${entry.name}${entry.category === "directory" ? "/" : ""}`)
         .join("  ")));
-      return;
+      return "info";
     }
 
     const content = this.filesystem.read(path);
     session.entries.push(outputEntry(content ?? `cat: ${requestedPath}: no readable file`));
+    return content === undefined ? "error" : "info";
   }
 
-  private changeDirectory(requestedPath: string, recordCommand = true): void {
+  private changeDirectory(requestedPath: string, recordCommand = true): boolean {
     const session = this.current;
     if (recordCommand) {
       const command = `cd ${quoteShellToken(requestedPath)}`;
@@ -254,9 +294,10 @@ export class TerminalSessionDeck {
     const destination = this.filesystem.resolve(session.cwd, requestedPath);
     if (!this.filesystem.isDirectory(destination)) {
       session.entries.push(outputEntry(`cd: ${requestedPath}: no such directory`));
-      return;
+      return false;
     }
     session.cwd = destination;
     session.filesystemView = "directory";
+    return true;
   }
 }

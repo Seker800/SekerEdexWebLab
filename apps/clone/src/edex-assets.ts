@@ -57,6 +57,7 @@ export interface EdexGlobeOptions {
   constellationLocations?: ReadonlyArray<EdexSatelliteLocation>;
   sourceTimingScale?: number;
   fixedSatelliteAnimationAdvanceMs?: number;
+  runAnimation?: (callback: () => void) => void;
 }
 
 const allGlobeLayers: EdexGlobeLayers = {
@@ -83,7 +84,8 @@ export async function initializeEdexGlobe(
     layers = allGlobeLayers,
     constellationLocations,
     sourceTimingScale = 1,
-    fixedSatelliteAnimationAdvanceMs = 0
+    fixedSatelliteAnimationAdvanceMs = 0,
+    runAnimation
   } = options;
   const Globe = window.ENCOM?.Globe;
   if (!Globe) return false;
@@ -179,11 +181,14 @@ export async function initializeEdexGlobe(
     globe.tick();
   }
   if (animate) {
-    const frame = (): void => {
-      globe.tick();
+    if (runAnimation) runAnimation(() => globe.tick());
+    else {
+      const frame = (): void => {
+        globe.tick();
+        window.requestAnimationFrame(frame);
+      };
       window.requestAnimationFrame(frame);
-    };
-    window.requestAnimationFrame(frame);
+    }
   }
   container.dataset.globeReady = "true";
   return true;

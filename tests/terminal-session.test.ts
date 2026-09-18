@@ -75,25 +75,35 @@ describe("terminal session deck", () => {
     expect(deck.current.entries).toEqual([]);
   });
 
-  it("maps filesystem actions onto the active terminal without executing files", () => {
+  it("maps reference filesystem actions onto typed browser behavior", () => {
     const deck = new TerminalSessionDeck();
 
-    expect(deck.activateFilesystemEntry("themes")).toEqual({ kind: "navigated" });
+    expect(deck.activateFilesystemEntry("themes")).toEqual({ kind: "navigated", feedback: "success" });
     expect(deck.current.cwd).toMatch(/\/themes$/);
     expect(deck.activateFilesystemEntry("tron.json")).toEqual({
-      kind: "insert",
-      value: "'tron.json'"
+      kind: "theme",
+      theme: "tron",
+      accepted: true,
+      feedback: "success"
     });
-    expect(deck.activateFilesystemEntry("Go up")).toEqual({ kind: "navigated" });
+    expect(deck.activateFilesystemEntry("tron-disrupted.json")).toEqual({
+      kind: "theme",
+      theme: "tron-disrupted",
+      accepted: false,
+      feedback: "denied"
+    });
+    expect(deck.activateFilesystemEntry("Go up")).toEqual({ kind: "navigated", feedback: "success" });
     expect(deck.current.cwd).toBe(deck.filesystem.home);
+    expect(deck.activateFilesystemEntry("keyboards")).toEqual({ kind: "navigated", feedback: "success" });
+    expect(deck.activateFilesystemEntry("en-US.json")).toEqual({ kind: "keyboard", layout: "en-US", feedback: "success" });
   });
 
   it("exposes a reversible sandbox disk view", () => {
     const deck = new TerminalSessionDeck();
 
-    expect(deck.activateFilesystemEntry("Show disks")).toEqual({ kind: "show-disks" });
+    expect(deck.activateFilesystemEntry("Show disks")).toEqual({ kind: "show-disks", feedback: "info" });
     expect(deck.filesystemEntries().map((entry) => entry.name)).toEqual(["Home sandbox"]);
-    expect(deck.activateFilesystemEntry("Home sandbox")).toEqual({ kind: "navigated" });
+    expect(deck.activateFilesystemEntry("Home sandbox")).toEqual({ kind: "navigated", feedback: "success" });
     expect(deck.current.cwd).toBe(deck.filesystem.root);
     expect(deck.filesystemEntries().map((entry) => entry.name)).toContain(".config");
   });
@@ -150,8 +160,24 @@ describe("terminal session deck", () => {
   it("returns missing filesystem actions in both directory and disk views", () => {
     const deck = new TerminalSessionDeck();
 
-    expect(deck.activateFilesystemEntry("missing")).toEqual({ kind: "missing" });
-    expect(deck.activateFilesystemEntry("Show disks")).toEqual({ kind: "show-disks" });
-    expect(deck.activateFilesystemEntry("missing")).toEqual({ kind: "missing" });
+    expect(deck.activateFilesystemEntry("missing")).toEqual({ kind: "missing", feedback: "error" });
+    expect(deck.activateFilesystemEntry("Show disks")).toEqual({ kind: "show-disks", feedback: "info" });
+    expect(deck.activateFilesystemEntry("missing")).toEqual({ kind: "missing", feedback: "error" });
+  });
+
+  it("reports command outcomes and keeps the canonical theme boundary explicit", () => {
+    const deck = new TerminalSessionDeck();
+
+    expect(deck.submit("theme")).toBe("info");
+    expect(deck.current.entries.at(-1)?.text).toContain("ACTIVE THEME  tron");
+    expect(deck.submit("theme tron")).toBe("success");
+    expect(deck.submit("theme blade")).toBe("denied");
+    expect(deck.current.entries.at(-1)?.text).toContain("locked to the canonical tron theme");
+    expect(deck.submit("help")).toBe("info");
+    expect(deck.current.entries.at(-1)?.text).toContain("clear  theme");
+    expect(deck.complete("the")).toBe("theme");
+    expect(deck.submit("not-a-command")).toBe("error");
+    expect(deck.submit("clear")).toBe("success");
+    expect(deck.submit("  ")).toBe("silent");
   });
 });

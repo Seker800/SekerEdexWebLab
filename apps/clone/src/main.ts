@@ -6,9 +6,10 @@ import { initializeEdexGlobe, loadEdexIcons, renderEdexIcon, type EdexGlobeLayer
 import { canonicalFileEntries } from "./filesystem-model.js";
 import { bindPhysicalKeyboardFeedback, bindPointerKeyboardFeedback, keyboardKeysForEvent } from "./keyboard-feedback.js";
 import { loadKeyboardLayout, resolveKeyboardCommand } from "./keyboard-layout.js";
-import { TerminalSessionDeck } from "./terminal-session.js";
+import { TerminalSessionDeck, type TerminalFeedback } from "./terminal-session.js";
 import { neofetchText } from "./terminal-model.js";
 import { createTelemetrySnapshot, sparklinePoints } from "./telemetry.js";
+import { documentVisibilitySource, RuntimeScheduler } from "./runtime-scheduler.js";
 
 const arrowIcons: Record<string, string> = {
   "↑": '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-opacity="1" d="m12.00004 7.99999 4.99996 5h-2.99996v4.00001h-4v-4.00001h-3z"/><path stroke-linejoin="round" fill-opacity=".65" d="m4 3h16c1.1046 0 1-.10457 1 1v16c0 1.1046.1046 1-1 1h-16c-1.10457 0-1 .1046-1-1v-16c0-1.10457-.10457-1 1-1zm0 1v16h16v-16z"/></svg>',
@@ -39,6 +40,7 @@ app.innerHTML = `
     <div class="boot-title" id="boot-title"><h1 data-text="eDEX-UI">eDEX-UI</h1></div>
     <button class="boot-skip" id="boot-skip" type="button" hidden>Skip intro</button>
   </section>
+  <div class="canvas-stage">
   <main class="command-deck" id="command-deck" data-boot-phase="gate">
     <div class="global-line global-line--left"><span>PANEL</span><span>SYSTEM</span></div>
     <div class="global-line global-line--center"><span>TERMINAL</span><span class="deck-controls"><button type="button" id="reboot-system">REBOOT</button><button type="button" id="sound-toggle">SOUND ON</button></span><span>MAIN SHELL</span></div>
@@ -135,6 +137,7 @@ app.innerHTML = `
       }).join("")}</div>`).join("")}
     </section>
   </main>
+  </div>
 `;
 
 const output = document.querySelector<HTMLDivElement>("#terminal-output")!;
@@ -146,6 +149,8 @@ const promptPrefix = document.querySelector<HTMLElement>(".terminal-prompt .term
 const promptDirectory = document.querySelector<HTMLElement>(".terminal-prompt .terminal-powerline > strong")!;
 const terminalTabs = [...document.querySelectorAll<HTMLButtonElement>(".terminal-tabs button")];
 const audioDeck = new AudioDeck();
+const runtimeScheduler = staticMode ? undefined : new RuntimeScheduler(documentVisibilitySource(document));
+if (runtimeScheduler) window.addEventListener("pagehide", () => runtimeScheduler.dispose(), { once: true });
 const staticGlobeAngle = searchParams.has("globeAngle") ? Number(searchParams.get("globeAngle")) : 6.26;
 const staticGlobeSeed = searchParams.has("globeSeed") ? Number(searchParams.get("globeSeed")) : 0x1f87_2855;
 const staticGlobeLayerMode = searchParams.get("globeLayers") ?? "all";
@@ -161,7 +166,8 @@ const initializeRuntimeGlobe = (speed = 1): Promise<boolean> => {
     animate: true,
     connectionLocations: canonicalNetworkConnectionLocations,
     layers: staticGlobeLayers,
-    sourceTimingScale: speed
+    sourceTimingScale: speed,
+    runAnimation: (callback) => { runtimeScheduler?.eachFrame(callback); }
   });
   return globeInitialization;
 };
@@ -300,13 +306,19 @@ function applyTerminalControl(command: string): boolean {
   return true;
 }
 
+function playFeedback(feedback: TerminalFeedback): void {
+  if (feedback === "success") audioDeck.play("granted");
+  else if (feedback === "info") audioDeck.play("info");
+  else if (feedback === "error") audioDeck.play("error");
+  else if (feedback === "denied") audioDeck.play("denied");
+}
+
 function submitCommand(): void {
-  const hadCommand = input.value.trim().length > 0;
-  terminalDeck.submit(input.value);
+  const feedback = terminalDeck.submit(input.value);
   input.value = "";
   renderTerminal();
   renderSessionChrome();
-  if (hadCommand) audioDeck.play("stdout");
+  playFeedback(feedback);
 }
 
 form.addEventListener("submit", (event) => {
@@ -327,7 +339,7 @@ input.addEventListener("keydown", (event) => {
   } else if (event.key === "ArrowDown") {
     event.preventDefault();
     setInputValue(terminalDeck.historyNext());
-  } else if (event.key === "Tab") {
+  } else if (event.key === "Tab" && input.value.length > 0) {
     event.preventDefault();
     setInputValue(terminalDeck.complete(input.value));
   } else if ((event.ctrlKey || event.metaKey) && event.key.toLocaleLowerCase() === "l") {
@@ -348,15 +360,11 @@ document.addEventListener("keydown", (event) => {
   document.querySelector<HTMLButtonElement>('[data-key="CAPS"]')?.classList.toggle("latched", capsLock);
 });
 
-document.addEventListener("keyup", (event) => {
-  if (event.code === "Enter") audioDeck.play("granted");
-});
-
 document.querySelectorAll<HTMLButtonElement>(".key").forEach((button) => {
   bindPointerKeyboardFeedback(button);
   button.addEventListener("click", () => {
     const key = button.dataset.key!;
-    audioDeck.play(key === "ENTER" || key === "ENTER_LOWER" ? "granted" : "stdin");
+    audioDeck.play("stdin");
     if (key === "BACK") {
       const start = input.selectionStart ?? input.value.length;
       const end = input.selectionEnd ?? start;
@@ -413,7 +421,6 @@ terminalTabs.forEach((button, index) => {
 fileGrid.addEventListener("click", (event) => {
   const button = (event.target as Element).closest<HTMLButtonElement>("button[data-file-name]");
   if (!button) return;
-  audioDeck.play("folder");
   const result = terminalDeck.activateFilesystemEntry(button.dataset.fileName!);
   if (result.kind === "insert") {
     const start = input.selectionStart ?? input.value.length;
@@ -424,6 +431,9 @@ fileGrid.addEventListener("click", (event) => {
     renderTerminal();
     renderSessionChrome();
   }
+  if (result.kind === "theme" || result.kind === "keyboard") renderTerminal();
+  if (result.kind === "insert") audioDeck.play("folder");
+  else playFeedback(result.feedback);
   input.focus();
 });
 
@@ -507,8 +517,12 @@ renderClock();
 
 if (!staticMode) {
   let tick = 0;
-  window.setInterval(() => { tick += 1; renderTelemetry(tick); }, 1400);
-  window.setInterval(renderClock, 1000);
+  runtimeScheduler!.every(1400, () => {
+    tick += 1;
+    document.documentElement.dataset.telemetryTick = String(tick);
+    renderTelemetry(tick);
+  });
+  runtimeScheduler!.every(1000, renderClock);
 }
 
 const bootElements: BootElements = {

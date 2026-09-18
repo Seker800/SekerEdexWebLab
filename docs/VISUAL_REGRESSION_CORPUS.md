@@ -35,6 +35,7 @@ This file records source-plausible changes that deterministic capture disproved.
 | Offset the xterm output entry block by `-.1px` independently from its shell, tabs and right anchors | output formal 11,400; perceptual 26,679 | output formal 11,400; perceptual 26,657 | Accepted by separate horizontal and vertical searches; the vertical optimum remained zero and the formal metric was unchanged |
 | Align the terminal footer's right-anchored xterm cell block by `1px 1px` | terminal perceptual 31,781; whole perceptual 98,496 / 4.655% | terminal perceptual 31,678; whole perceptual 98,439 / 4.653% | Accepted by transactional recapture and regional attribution; the apparent network increase was isolated ENCOM variance |
 | Jointly refine the terminal foreground to `164,208,212` and ANSI-blue slot to `116,135,136` | terminal perceptual 31,678; whole perceptual 98,428 / 4.652% | terminal perceptual 31,376; whole perceptual 98,099 / 4.637% | Accepted by the source-driven autonomous transaction; canonical UI tokens and every non-terminal static region remained unchanged |
+| Move desktop layout units into a centered 16:9 size container and preserve the frozen Electron container's transparent outer composition | formal 2.153%; perceptual 4.621% | formal 2.153%; perceptual 4.621% | Accepted because 1920×1080, 1440×900 and 1280×800 now pass exact stage geometry while the frozen visual evidence remains pixel-stable |
 
 ## Rejected changes
 
@@ -63,6 +64,7 @@ This file records source-plausible changes that deterministic capture disproved.
 | Apply a logo-only fractional translation or `0.01px`–`0.15px` stroke to the neofetch ASCII mark | terminal formal 14,185; perceptual 31,806 | best perceptual candidate 14,179 / 31,804; `0.08px` candidate 14,123 / 31,807 | The two-pixel best result is below capture variance, while stronger strokes trade perceptual fidelity for the formal score; no candidate was retained |
 | Replace the CPU chart transform with the perceptual-only optimum `.994 × .986` at `1.25px` | chart formal 1,410; perceptual 2,785 | chart formal 1,482; perceptual 2,550 | Direct three-way inspection did not justify the 72-pixel formal regression; retain the current dual-purpose transform until a combination improves both metrics or has clearer visual evidence |
 | Add a second `scaleX(.9995)` correction to the terminal entry after its `-.1px` offset | output formal 11,400; perceptual 26,657 | output formal 11,605; perceptual 26,647 | Ten visible pixels do not justify a 205-pixel formal regression or an extra nested content scale; retain only the independently supported offset |
+| Make the fixed-canvas application's outer letterbox opaque in the 1934×1094 frozen Electron capture | formal 2.153%; perceptual 4.621% | formal 3.779%; perceptual 6.611% | The opaque app background destroyed the source PNG's transparent shadow evidence; keep black product letterboxing but restore transparent composition for the exact frozen evidence container |
 
 ## Use
 
