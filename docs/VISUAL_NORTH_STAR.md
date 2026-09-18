@@ -1,5 +1,7 @@
 # Visual North Star: eDEX-UI 2.2 `tron`
 
+This visual north star governs the frozen reference application and the optional blog command-deck entrance. Blog content routes reuse the palette, typography hierarchy and device language without inheriting the fixed canvas, dense telemetry, full keyboard or pixel-comparison requirement. Article readability, responsive flow and semantic structure take precedence on content routes.
+
 ## Canonical reference
 
 The primary style reference is [GitSquared/eDEX-UI](https://github.com/GitSquared/edex-ui), using the screenshot described by the project as:

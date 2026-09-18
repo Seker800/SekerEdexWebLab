@@ -2,13 +2,14 @@
 
 ## 结论
 
-项目采用静态优先的混合渲染路线：
+项目采用静态优先的双应用路线：冻结的 `apps/clone` 负责参考复刻和证据，博客应用负责内容、
+路由与发布。两者只通过显式 token、素材清单和类型化导航契约共享能力。
 
 | 层 | 选择 | 用途 |
 | --- | --- | --- |
-| 站点 | Astro，静态输出 | 路由、构建期 HTML、SEO 和直接访问 |
-| 交互界面 | React + TypeScript strict | 全屏工作台、面板状态和输入反馈 |
-| 终端 | xterm.js + Fit + WebGL addon | ANSI、字符网格、光标、选择、尺寸适配和终端质感 |
+| 博客站点 | Astro，静态输出 | 内容集合、路由、构建期 HTML、SEO 和直接访问 |
+| 参考应用 | Vite + TypeScript strict | 冻结的全屏工作台、视觉证据和交互回归 |
+| 博客命令入口 | 语义 DOM + TypeScript | 白名单导航、搜索、焦点与可访问反馈 |
 | 地球 | Three.js 直接封装 | 点阵地球、标记、连线和受控动画循环 |
 | 实时图表 | 原生 Canvas 2D | CPU、内存和网络曲线的精确线宽、网格与采样节奏 |
 | 主体视觉 | 语义 DOM + CSS Grid + CSS 自定义属性 | 固定 16:9 三栏、底部区域、切角、线框和刻度 |
@@ -21,13 +22,15 @@
 
 ## 为什么这样组合
 
-### Astro 负责站点，React 负责设备
+### Astro 负责博客，参考应用保持独立
 
-站点需要静态部署、稳定入口和可索引的基础元数据；Cyberdeck 又需要长期运行的复杂客户端
-状态。Astro 在构建期生成页面，一个 `CyberdeckApp` React 岛承载桌面交互。
+站点需要静态部署、稳定入口和可索引的完整内容；Cyberdeck 又有固定画布、持续动画和历史视觉
+门禁。Astro 在构建期生成博客页面，可选的交互岛只承载命令面板、搜索和入口反馈。冻结的
+`apps/clone` 继续使用自身 Vite 入口，不被嵌入文章正文，也不向博客泄漏全局样式。
 
-不选择纯 React SPA，因为它会让静态内容、直接访问和 SEO 额外依赖预渲染补丁。不选择
-Next.js，因为当前没有账号、数据库、服务端动作或按请求渲染需求。
+不选择纯 SPA，因为它会让静态内容、直接访问和 SEO 依赖额外预渲染补丁。不选择 Next.js，
+因为 V1 没有账号、数据库、服务端动作或按请求渲染需求。没有出现复杂共享客户端状态前，博客
+也不引入站点级 React 状态树。
 
 ### DOM、Canvas 与 WebGL 各做擅长的部分
 
@@ -40,24 +43,24 @@ Next.js，因为当前没有账号、数据库、服务端动作或按请求渲�
 内部只按该逻辑画布布局，外层 `ViewportScaler` 负责等比缩放和居中留边。首版不引入
 Tailwind、组件库或通用图表库，以免抽象层妨碍逐像素调校。
 
-### 终端保留 xterm.js，shell 重新定义
+### 参考终端与博客命令入口分离
 
-上游本身使用 xterm.js。新版实现继续使用 xterm.js，以保留 ANSI、光标、选择、字符宽度和
-WebGL 渲染能力，但不连接 PTY、WebSocket 或服务器 shell。`BrowserShell` 只接受白名单命令，
-读取只读虚拟文件系统，并产生类型化 intent：
+`apps/clone` 保留已经验证的安全命令会话，不连接 PTY、WebSocket 或服务器 shell。博客不需要
+ANSI、字符网格或 `curses`，因此命令入口使用语义化输入框、结果列表和状态区域。两者都只接受
+白名单命令，并产生类型化导航 intent：
 
 ```text
 keyboard / pointer
         ↓
 InputCommand
         ↓
-BrowserShell ──→ TerminalOutput
-        └──────→ NavigationIntent ──→ SessionEngine
+BlogCommandParser ──→ AccessibleFeedback
+             └──────→ NavigationIntent ──→ ContentRegistry
 ```
 
-`help`、`ls`、`cd`、`clear` 与 `theme` 是应用命令，不执行用户输入的 JavaScript、
-系统命令或远程代码。WebGL 上下文丢失时，终端销毁 WebGL addon 并回退到 xterm.js 的 DOM
-渲染器。
+博客命令固定为 `help`、`home`、`posts`、`search`、`open`、`tags`、`projects`、`about` 与
+`clear`，不执行用户输入的 JavaScript、系统命令或远程代码。普通链接、命令和文件隐喻必须
+通过同一个 `ContentRegistry` 解析 URL。
 
 ### 地球与图表不经过 React 帧循环
 
@@ -77,26 +80,23 @@ DOM；声音开关和音量是持久会话偏好。
 
 ## 状态与模块边界
 
-核心状态不依赖 React：
+博客核心状态不依赖 UI 框架：
 
 ```text
-src/
-  pages/                 Astro 路由与静态入口
-  cyberdeck/
-    core/                命令、事件、状态机、虚拟文件系统
-    adapters/            键盘、指针、可见性、浏览器指标
-    renderers/           xterm、Three.js、Canvas、Web Audio
-    features/            shell、terminal、telemetry、keyboard
-    styles/              token、16:9 基准几何、画布缩放和减少动态效果
-  tests/
-    unit/
-    e2e/
-    visual/
+apps/
+  clone/                 冻结参考应用与视觉门禁
+  blog/
+    src/content/         Markdown/MDX 与内容 schema
+    src/pages/           Astro 静态路由
+    src/domain/          内容 registry、搜索和导航 intent
+    src/components/      语义内容组件与可选交互岛
+    src/styles/          博客 token、排版与响应式规则
+tests/                   共享纯逻辑与复刻工具测试
 ```
 
-`SessionEngine` 接收 discriminated union 命令，运行纯转换并发布不可变快照与领域事件。
-React 通过窄订阅接口读取所需切片；高频渲染器直接订阅专用数据源。首版不引入通用全局状态
-库和无类型事件总线，只有出现无法由现有契约表达的真实需求时才重新评估。
+`ContentRegistry` 在构建期提供文章、标签、项目和搜索数据。`NavigationController` 接收
+discriminated union intent 并输出站内 URL 或可访问反馈。交互岛只读取必要切片；V1 不引入
+通用全局状态库和无类型事件总线。
 
 ## 遥测真实性
 
@@ -115,7 +115,7 @@ React 通过窄订阅接口读取所需切片；高频渲染器直接订阅专�
 
 ## 验证门禁
 
-首个脚手架必须提供一个 `pnpm ci:check`，依次覆盖：
+博客脚手架必须提供可执行的统一门禁，依次覆盖：
 
 1. 格式检查。
 2. ESLint 与 Astro/TypeScript 严格检查。
@@ -132,15 +132,13 @@ React 通过窄订阅接口读取所需切片；高频渲染器直接订阅专�
 上游参考图下载到被 Git 忽略的缓存目录，并核对文档记录的 SHA-256。项目提交自己的测试基线
 与差异报告，不提交上游截图副本。
 
-## 首个垂直切片顺序
+## Blog V1 垂直切片顺序
 
-1. 建立 Astro + React + TypeScript strict、pnpm lockfile 和验证门禁。
-2. 用 DOM/CSS 完成固定 1920×1080 静态几何骨架、`ViewportScaler` 与 `tron` token。
-3. 接入 xterm.js，显示固定 `neofetch` 状态并完成尺寸校准。
-4. 接入 Canvas 曲线和统一调度器。
-5. 接入 Three.js 点阵地球及生命周期回收。
-6. 建立启动状态机、实体键盘与屏幕键盘同步。
-7. 加入 Web Audio 和声音控制。
-8. 建立视觉差异流程并关闭必选验收项。
+1. 建立 Astro 静态应用、内容 schema、文章路由和验证门禁。
+2. 完成首页、文章、标签、项目、关于、404、RSS 与站点地图。
+3. 建立构建期搜索索引、命令面板和统一导航 intent。
+4. 提取 `tron` token，把指挥舱作为可选入口接入内容 registry。
+5. 用真实站点/会话数据替换入口中的模拟遥测。
+6. 关闭 SEO、无障碍、响应式、性能和跨浏览器门禁。
 
-每一步都保持可运行、可截图、可回退；不得在同一轮同时建设多主题或服务端 shell。
+每一步都保持可运行、可直接访问和可回退；不得在同一轮引入账号、评论、CMS 或服务端 shell。

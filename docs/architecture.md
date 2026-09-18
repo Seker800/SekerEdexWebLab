@@ -2,11 +2,24 @@
 
 ## North star
 
-SekerEdexWebLab 是一个浏览器中的实时个人终端。它应让访问者感觉自己进入了一台正在运行的
-Cyberdeck：中央终端、文件系统、遥测面板、活动日志、声音与屏幕键盘共享同一会话状态。
+SekerEdexWebLab 的长期产品是一个具有 eDEX 指挥舱入口的个人技术博客。访问者首先获得具有
+辨识度的 Cyberdeck 氛围，随后可以直接发现、阅读、搜索和分享文章与项目。中央终端、文件面板
+和普通导航共享同一内容索引；它们是内容入口，不模拟一台完整桌面电脑。
 
-当前 North Star 是先验证高保真体验，再将其扩展为长期可维护的个人站。技术路线已经在
-`adr/0003-web-technology-route.md` 中锁定，框架不能代替视觉和交互验收。
+Phase 0 已完成高保真体验验证。博客演进边界由 `adr/0005-blog-product-boundary.md` 锁定：
+`apps/clone` 继续承担冻结参考和视觉证据，文章路由建立独立的静态内容边界。技术路线已经在
+`adr/0003-web-technology-route.md` 中锁定，框架不能代替视觉、内容和交互验收。
+
+## Blog product boundary
+
+- 指挥舱负责品牌入口、导航反馈和氛围；文章页面负责阅读、SEO 和分享。
+- 终端只执行白名单博客命令，不连接 PTY 或远程 shell。
+- 文件面板展示文章、标签和项目，不访问访客磁盘。
+- 遥测只展示真实站点、构建或会话数据，不模拟主机状态。
+- 屏幕键盘、地球和密集动态图表不常驻文章页面。
+- 文章页面不受固定 1920×1080 画布约束，并必须在无 JavaScript 时可用。
+
+实现范围和阶段见 `specs/blog-v1/01-spec.md` 与 `specs/blog-v1/02-task-contract.md`。
 
 ## Locked reference profile
 
