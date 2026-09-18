@@ -57,6 +57,19 @@ describe("terminal session deck", () => {
     expect(deck.current.entries.some((entry) => entry.text.includes("/themes"))).toBe(false);
   });
 
+  it("cycles keyboard shortcuts through existing sessions without creating empty tabs", () => {
+    const deck = new TerminalSessionDeck();
+
+    expect(deck.adjacentSessionIndex(1)).toBe(0);
+    expect(deck.label(1)).toBe("EMPTY");
+    deck.activate(2);
+    expect(deck.adjacentSessionIndex(1)).toBe(0);
+    expect(deck.adjacentSessionIndex(-1)).toBe(0);
+    deck.activate(0);
+    expect(deck.adjacentSessionIndex(1)).toBe(2);
+    expect(deck.adjacentSessionIndex(-1)).toBe(2);
+  });
+
   it("supports shell-like directory commands, history and deterministic completion", () => {
     const deck = new TerminalSessionDeck();
 
@@ -73,6 +86,14 @@ describe("terminal session deck", () => {
 
     deck.clear();
     expect(deck.current.entries).toEqual([]);
+  });
+
+  it("quotes completed filesystem paths that contain spaces", () => {
+    const deck = new TerminalSessionDeck();
+
+    expect(deck.complete("cd Loc")).toBe("cd 'Local Storage/'");
+    expect(deck.submit(deck.complete("cd Loc"))).toBe("success");
+    expect(deck.current.cwd).toMatch(/\/Local Storage$/);
   });
 
   it("maps reference filesystem actions onto typed browser behavior", () => {

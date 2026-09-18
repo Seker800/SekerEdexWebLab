@@ -115,3 +115,32 @@ export function bindPointerKeyboardFeedback(button: HTMLElement): () => void {
     button.removeEventListener("pointerleave", onPointerEnd);
   };
 }
+
+export function bindPointerKeyRepeat(button: HTMLElement, repeat: () => void, delayMs = 400, intervalMs = 70): () => void {
+  let delay: number | undefined;
+  let interval: number | undefined;
+  const stop = (): void => {
+    if (delay !== undefined) window.clearTimeout(delay);
+    if (interval !== undefined) window.clearInterval(interval);
+    delay = undefined;
+    interval = undefined;
+  };
+  const start = (): void => {
+    stop();
+    delay = window.setTimeout(() => {
+      repeat();
+      interval = window.setInterval(repeat, intervalMs);
+    }, delayMs);
+  };
+  button.addEventListener("pointerdown", start);
+  button.addEventListener("pointerup", stop);
+  button.addEventListener("pointercancel", stop);
+  button.addEventListener("pointerleave", stop);
+  return () => {
+    stop();
+    button.removeEventListener("pointerdown", start);
+    button.removeEventListener("pointerup", stop);
+    button.removeEventListener("pointercancel", stop);
+    button.removeEventListener("pointerleave", stop);
+  };
+}

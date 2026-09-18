@@ -245,6 +245,9 @@ try {
   if (sourceDrivenState.globeCanvas !== 1) throw new Error(`Expected one upstream ENCOM globe canvas; observed ${sourceDrivenState.globeCanvas}`);
   if (sourceDrivenState.leftBootModules !== 6) throw new Error(`Expected six upstream left boot modules; observed ${sourceDrivenState.leftBootModules}`);
   if (sourceDrivenState.rightBootModules !== 3) throw new Error(`Expected three upstream right boot modules; observed ${sourceDrivenState.rightBootModules}`);
+  if (Number.parseFloat(await page.locator(".deck-controls").evaluate((node) => getComputedStyle(node).opacity)) <= 0) {
+    throw new Error("Runtime sound and reboot controls are not persistently visible");
+  }
 
   const terminalInput = page.locator("#terminal-input");
   await terminalInput.fill("status");
@@ -252,9 +255,9 @@ try {
   await page.getByText("INPUT MATRIX READY", { exact: false }).waitFor();
   await terminalInput.fill("");
   const physicalHKey = page.locator('[data-key="H"]');
-  await page.locator("#terminal-output").click({ position: { x: 40, y: 40 } });
+  await page.locator(".terminal-tabs button").nth(1).focus();
   if (await page.evaluate(() => document.activeElement?.id === "terminal-input")) {
-    throw new Error("Terminal output click did not exercise global physical keyboard capture");
+    throw new Error("Deck control focus did not exercise global physical keyboard capture");
   }
   await page.keyboard.down("h");
   if (!await physicalHKey.evaluate((node) => node.classList.contains("pressed"))) {
@@ -275,13 +278,62 @@ try {
   if (await terminalInput.inputValue() !== "help") throw new Error("Physical keyboard text did not remain in the terminal input");
   await terminalInput.press("Enter");
   await page.getByText("AVAILABLE COMMANDS", { exact: false }).last().waitFor();
+  await page.locator("#terminal-output").click({ position: { x: 40, y: 40 } });
+  if (!await page.evaluate(() => document.activeElement?.id === "terminal-input")) {
+    throw new Error("Clicking the terminal output did not restore terminal focus");
+  }
+  await terminalInput.fill("cancel-physical");
+  await terminalInput.press("Control+c");
+  if (await terminalInput.inputValue() !== "") throw new Error("Physical Ctrl+C did not clear the active terminal draft");
+  await terminalInput.fill("cancel-escape");
+  await terminalInput.press("Escape");
+  if (await terminalInput.inputValue() !== "") throw new Error("Physical Escape did not clear the active terminal draft");
   await terminalInput.fill("");
   for (const key of ["H", "E", "L", "P"]) await page.locator(`[data-key="${key}"]`).click();
   await page.locator('[data-key="ENTER"]').click();
   await page.getByText("AVAILABLE COMMANDS", { exact: false }).last().waitFor();
+  await page.locator('[data-key="CTRL"]').click();
+  await page.locator('[data-key="TAB"]').click();
+  if (await page.locator(".terminal-tabs button").nth(1).textContent() !== "EMPTY") {
+    throw new Error("On-screen Ctrl+Tab created an empty terminal session instead of cycling existing sessions");
+  }
+  await terminalInput.fill("cancel-screen-keyboard");
+  await page.locator('[data-key="CTRL"]').click();
+  await page.locator('[data-key="C"]').click();
+  if (await terminalInput.inputValue() !== "") throw new Error("On-screen Ctrl+C did not clear the active terminal draft");
+  await terminalInput.fill("repeat");
+  const backspaceKey = page.locator('[data-key="BACK"]');
+  const backspaceBounds = await backspaceKey.boundingBox();
+  if (!backspaceBounds) throw new Error("Could not measure the on-screen Backspace key");
+  await page.mouse.move(backspaceBounds.x + backspaceBounds.width / 2, backspaceBounds.y + backspaceBounds.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(650);
+  await page.mouse.up();
+  if ((await terminalInput.inputValue()).length >= 4) throw new Error("Holding on-screen Backspace did not repeat at the upstream cadence");
+  await terminalInput.fill("");
   await terminalInput.fill("st");
   await page.locator('[data-key="TAB"]').click();
   if (await terminalInput.inputValue() !== "status") throw new Error("On-screen Tab did not complete a terminal command");
+  await terminalInput.fill("cd Loc");
+  await terminalInput.press("Tab");
+  if (await terminalInput.inputValue() !== "cd 'Local Storage/'") throw new Error("Terminal completion did not quote a path containing spaces");
+  await terminalInput.press("Enter");
+  if (!await page.locator(".section-label small").textContent().then((value) => value?.endsWith("/Local Storage"))) {
+    throw new Error("Quoted path completion did not produce an executable directory command");
+  }
+  await terminalInput.fill("cd ..");
+  await terminalInput.press("Enter");
+  await terminalInput.fill("x".repeat(180));
+  const longDraftBounds = await page.evaluate(() => ({
+    cursorRight: document.querySelector<HTMLElement>(".cursor")!.getBoundingClientRect().right,
+    latencyLeft: document.querySelector<HTMLElement>("#latency")!.getBoundingClientRect().left,
+    inputLeft: document.querySelector<HTMLInputElement>("#terminal-input")!.getBoundingClientRect().left,
+    panelLeft: document.querySelector<HTMLElement>(".terminal-panel")!.getBoundingClientRect().left
+  }));
+  if (longDraftBounds.cursorRight > longDraftBounds.latencyLeft || longDraftBounds.inputLeft < longDraftBounds.panelLeft) {
+    throw new Error(`Long terminal draft escaped its input region: ${JSON.stringify(longDraftBounds)}`);
+  }
+  await terminalInput.fill("");
   await terminalInput.fill("theme");
   await terminalInput.press("Enter");
   await page.getByText("ACTIVE THEME  tron", { exact: false }).waitFor();
@@ -338,6 +390,11 @@ try {
   const mainSessionText = await page.locator("#terminal-output").textContent();
   if (!mainSessionText?.includes("primary-session") || mainSessionText.includes("secondary-session")) {
     throw new Error("Terminal sessions did not preserve independent output");
+  }
+  await secondTerminalTab.focus();
+  await secondTerminalTab.press("ArrowLeft");
+  if (!await page.locator(".terminal-tabs button").first().evaluate((node) => node.classList.contains("active"))) {
+    throw new Error("Terminal tablist did not support keyboard arrow navigation");
   }
   await page.locator('[data-key="CTRL"]').click();
   await page.locator('[data-key="2"]').click();
@@ -525,13 +582,20 @@ try {
       "startup gesture",
       "boot replay and skip",
       "physical terminal command",
+      "global terminal focus recovery",
+      "physical and on-screen line editing controls",
       "on-screen keyboard command",
+      "held on-screen key repeat",
       "terminal history and completion",
+      "quoted filesystem completion",
+      "bounded long terminal draft",
       "independent terminal sessions",
+      "keyboard navigable terminal tablist",
       "on-screen terminal shortcuts",
       "filesystem navigation, disk view and insertion",
       "theme and keyboard file special actions",
       "outcome-specific sound feedback",
+      "persistently visible sound control",
       "keyboard focus escape",
       "touch keyboard command",
       "normal-motion idle cadence"

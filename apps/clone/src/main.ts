@@ -4,7 +4,7 @@ import { completeBootImmediately, runBootSequence, type BootElements } from "./b
 import { canonicalCpuTraces, canonicalEdexVersion, canonicalGlobeConstellation, canonicalMemoryPointStates, canonicalNetworkConnectionLocations, canonicalNetworkTraces, canonicalSatelliteAnimationAdvanceMs, type MemoryPointState } from "./canonical-runtime.js";
 import { initializeEdexGlobe, loadEdexIcons, renderEdexIcon, type EdexGlobeLayers } from "./edex-assets.js";
 import { canonicalFileEntries } from "./filesystem-model.js";
-import { bindPhysicalKeyboardFeedback, bindPointerKeyboardFeedback, keyboardKeysForEvent } from "./keyboard-feedback.js";
+import { bindPhysicalKeyboardFeedback, bindPointerKeyboardFeedback, bindPointerKeyRepeat, keyboardKeysForEvent } from "./keyboard-feedback.js";
 import { loadKeyboardLayout, resolveKeyboardCommand } from "./keyboard-layout.js";
 import { TerminalSessionDeck, type TerminalFeedback } from "./terminal-session.js";
 import { neofetchText } from "./terminal-model.js";
@@ -85,16 +85,18 @@ app.innerHTML = `
 
     <section class="panel terminal-panel" aria-label="Main terminal">
       <h1 class="terminal-greeting">Welcome back, <em>squared</em></h1>
-      <nav class="terminal-tabs" aria-label="Terminal sessions">
-        <button class="active" type="button"><span>MAIN SHELL</span></button><button type="button"><span>EMPTY</span></button><button type="button"><span>EMPTY</span></button><button type="button"><span>EMPTY</span></button><button type="button"><span>EMPTY</span></button>
+      <nav class="terminal-tabs" role="tablist" aria-label="Terminal sessions">
+        <button class="active" type="button" role="tab" aria-controls="terminal-output"><span>MAIN SHELL</span></button><button type="button" role="tab" aria-controls="terminal-output"><span>EMPTY</span></button><button type="button" role="tab" aria-controls="terminal-output"><span>EMPTY</span></button><button type="button" role="tab" aria-controls="terminal-output"><span>EMPTY</span></button><button type="button" role="tab" aria-controls="terminal-output"><span>EMPTY</span></button>
       </nav>
       <div class="terminal-status"><span>Welcome to eDEX-UI v${canonicalEdexVersion} - Electron v4.1.4</span></div>
       <span class="terminal-times"><span id="terminal-time">SESSION // READY</span><span id="terminal-time-secondary"></span></span>
       <div class="terminal-output" id="terminal-output" role="log" aria-live="polite"></div>
       <form class="terminal-prompt" id="terminal-form">
         <label class="terminal-powerline" for="terminal-input"><span>~/.c/</span><strong>eDEX-UI</strong><span class="terminal-powerline__chevron"> ❯</span></label>
-        <input id="terminal-input" autocomplete="off" spellcheck="false" aria-label="Terminal command" />
-        <span class="cursor" aria-hidden="true"></span>
+        <span class="terminal-editor">
+          <input id="terminal-input" autocomplete="off" spellcheck="false" aria-label="Terminal command" />
+          <span class="cursor" aria-hidden="true"></span>
+        </span>
       </form>
       <div class="terminal-footer"><span>TYPE <b>HELP</b> FOR COMMANDS</span><span id="latency">381ms</span><span id="terminal-footer-time">lun. 29 avril 2019 20:27:29 CEST</span></div>
     </section>
@@ -273,6 +275,7 @@ function renderSessionChrome(): void {
     tab.querySelector("span")!.textContent = terminalDeck.label(index);
     tab.classList.toggle("active", active);
     tab.setAttribute("aria-selected", String(active));
+    tab.tabIndex = active ? 0 : -1;
   });
   renderPrompt();
   renderFilesystem();
@@ -298,12 +301,49 @@ function clearMomentaryModifiers(): void {
 }
 
 function applyTerminalControl(command: string): boolean {
-  if (command === "\u0001") input.setSelectionRange(0, 0);
-  else if (command === "\u0005") input.setSelectionRange(input.value.length, input.value.length);
+  const start = input.selectionStart ?? input.value.length;
+  const end = input.selectionEnd ?? start;
+  if (command === "\r") submitCommand();
+  else if (command === "\u0001") input.setSelectionRange(0, 0);
+  else if (command === "\u0002") input.setSelectionRange(Math.max(0, start - 1), Math.max(0, start - 1));
   else if (command === "\u0003" || command === "\u001b") setInputValue("");
+  else if (command === "\u0004") {
+    if (start !== end) input.setRangeText("", start, end, "end");
+    else if (start < input.value.length) input.setRangeText("", start, start + 1, "end");
+    terminalDeck.setDraft(input.value);
+  }
+  else if (command === "\u0005") input.setSelectionRange(input.value.length, input.value.length);
+  else if (command === "\u0006") input.setSelectionRange(Math.min(input.value.length, end + 1), Math.min(input.value.length, end + 1));
   else if (command === "\u000c") { terminalDeck.clear(); renderTerminal(); }
+  else if (command === "\u0010") setInputValue(terminalDeck.historyPrevious(input.value));
+  else if (command === "\u0015") {
+    input.setRangeText("", 0, end, "end");
+    terminalDeck.setDraft(input.value);
+  }
+  else if (command === "\u0017") {
+    const wordStart = input.value.slice(0, start).search(/\S+\s*$/);
+    if (wordStart >= 0) input.setRangeText("", wordStart, end, "end");
+    terminalDeck.setDraft(input.value);
+  }
+  else if (/[^\u0020-\u007e]/.test(command)) audioDeck.play("denied");
   else return false;
   return true;
+}
+
+function physicalControlCommand(event: KeyboardEvent): string | undefined {
+  if (!event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return undefined;
+  return ({
+    a: "\u0001",
+    b: "\u0002",
+    c: "\u0003",
+    d: "\u0004",
+    e: "\u0005",
+    f: "\u0006",
+    l: "\u000c",
+    p: "\u0010",
+    u: "\u0015",
+    w: "\u0017"
+  } as Readonly<Record<string, string>>)[event.key.toLocaleLowerCase()];
 }
 
 function playFeedback(feedback: TerminalFeedback): void {
@@ -329,10 +369,17 @@ form.addEventListener("submit", (event) => {
 input.addEventListener("keydown", (event) => {
   const sourceKey = keyboardKeysForEvent(event).length > 0;
   if (sourceKey) audioDeck.play("stdin");
-  if ((event.ctrlKey || event.metaKey) && event.key === "Tab") {
+  const controlCommand = physicalControlCommand(event);
+  if (event.key === "Escape") {
+    event.preventDefault();
+    applyTerminalControl("\u001b");
+  } else if (controlCommand !== undefined) {
+    event.preventDefault();
+    applyTerminalControl(controlCommand);
+  } else if ((event.ctrlKey || event.metaKey) && event.key === "Tab") {
     event.preventDefault();
     const direction = event.shiftKey ? -1 : 1;
-    switchSession((terminalDeck.current.index + direction + terminalTabs.length) % terminalTabs.length);
+    switchSession(terminalDeck.adjacentSessionIndex(direction));
   } else if (event.key === "ArrowUp") {
     event.preventDefault();
     setInputValue(terminalDeck.historyPrevious(input.value));
@@ -342,10 +389,6 @@ input.addEventListener("keydown", (event) => {
   } else if (event.key === "Tab" && input.value.length > 0) {
     event.preventDefault();
     setInputValue(terminalDeck.complete(input.value));
-  } else if ((event.ctrlKey || event.metaKey) && event.key.toLocaleLowerCase() === "l") {
-    event.preventDefault();
-    terminalDeck.clear();
-    renderTerminal();
   } else if ((event.ctrlKey || event.metaKey) && /^[1-5]$/.test(event.key)) {
     event.preventDefault();
     switchSession(Number(event.key) - 1);
@@ -353,6 +396,7 @@ input.addEventListener("keydown", (event) => {
 });
 
 input.addEventListener("input", () => terminalDeck.setDraft(input.value));
+output.addEventListener("click", () => input.focus());
 
 document.addEventListener("keydown", (event) => {
   if (document.documentElement.dataset.bootPhase !== "complete") return;
@@ -372,54 +416,60 @@ document.addEventListener("keydown", (event) => {
   document.querySelector<HTMLButtonElement>('[data-key="CAPS"]')?.classList.toggle("latched", capsLock);
 });
 
+function activateOnScreenKey(button: HTMLButtonElement, playKeySound = true): void {
+  const key = button.dataset.key!;
+  if (playKeySound) audioDeck.play("stdin");
+  if (key === "BACK") {
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? start;
+    if (start !== end) input.setRangeText("", start, end, "end");
+    else if (start > 0) input.setRangeText("", start - 1, start, "end");
+    terminalDeck.setDraft(input.value);
+  }
+  else if (key === "ENTER" || key === "ENTER_LOWER") submitCommand();
+  else if (key === "SPACE") insertAtCursor(" ");
+  else if (key === "CAPS") { capsLock = !capsLock; button.classList.toggle("latched", capsLock); }
+  else if (key === "SHIFT" || key === "SHIFT_RIGHT") { shift = !shift; document.querySelectorAll('[data-key^="SHIFT"]').forEach((node) => node.classList.toggle("latched", shift)); }
+  else if (key === "CTRL" || key === "CTRL_RIGHT") { ctrl = !ctrl; document.querySelectorAll('[data-key^="CTRL"]').forEach((node) => node.classList.toggle("latched", ctrl)); }
+  else if (key === "ALT GR") { alt = !alt; button.classList.toggle("latched", alt); }
+  else if (key === "FN") { fn = !fn; button.classList.toggle("latched", fn); }
+  else if (key === "ESC") setInputValue("");
+  else if (key === "TAB") {
+    if (ctrl) {
+      const direction = shift ? -1 : 1;
+      switchSession(terminalDeck.adjacentSessionIndex(direction));
+      clearMomentaryModifiers();
+    } else setInputValue(terminalDeck.complete(input.value));
+  }
+  else if (key === "↑") setInputValue(terminalDeck.historyPrevious(input.value));
+  else if (key === "↓") setInputValue(terminalDeck.historyNext());
+  else if (key === "←" || key === "→") {
+    const current = input.selectionStart ?? input.value.length;
+    const next = key === "←" ? Math.max(0, current - 1) : Math.min(input.value.length, current + 1);
+    input.setSelectionRange(next, next);
+  }
+  else {
+    const layoutKey = keyboardKeys.get(key);
+    if (!layoutKey) return;
+    if (ctrl && /^[1-5]$/.test(key)) {
+      switchSession(Number(key) - 1);
+      clearMomentaryModifiers();
+      return;
+    }
+    const command = resolveKeyboardCommand(layoutKey, { shift, capsLock, ctrl, alt, fn });
+    if (!applyTerminalControl(command)) insertAtCursor(command);
+    clearMomentaryModifiers();
+  }
+  input.focus();
+}
+
+const nonRepeatingKeys = new Set(["CAPS", "SHIFT", "SHIFT_RIGHT", "CTRL", "CTRL_RIGHT", "ALT GR", "FN"]);
 document.querySelectorAll<HTMLButtonElement>(".key").forEach((button) => {
   bindPointerKeyboardFeedback(button);
-  button.addEventListener("click", () => {
-    const key = button.dataset.key!;
-    audioDeck.play("stdin");
-    if (key === "BACK") {
-      const start = input.selectionStart ?? input.value.length;
-      const end = input.selectionEnd ?? start;
-      if (start !== end) input.setRangeText("", start, end, "end");
-      else if (start > 0) input.setRangeText("", start - 1, start, "end");
-      terminalDeck.setDraft(input.value);
-    }
-    else if (key === "ENTER" || key === "ENTER_LOWER") submitCommand();
-    else if (key === "SPACE") insertAtCursor(" ");
-    else if (key === "CAPS") { capsLock = !capsLock; button.classList.toggle("latched", capsLock); }
-    else if (key === "SHIFT" || key === "SHIFT_RIGHT") { shift = !shift; document.querySelectorAll('[data-key^="SHIFT"]').forEach((node) => node.classList.toggle("latched", shift)); }
-    else if (key === "CTRL" || key === "CTRL_RIGHT") { ctrl = !ctrl; document.querySelectorAll('[data-key^="CTRL"]').forEach((node) => node.classList.toggle("latched", ctrl)); }
-    else if (key === "ALT GR") { alt = !alt; button.classList.toggle("latched", alt); }
-    else if (key === "FN") { fn = !fn; button.classList.toggle("latched", fn); }
-    else if (key === "ESC") setInputValue("");
-    else if (key === "TAB") {
-      if (ctrl) {
-        const direction = shift ? -1 : 1;
-        switchSession((terminalDeck.current.index + direction + terminalTabs.length) % terminalTabs.length);
-        clearMomentaryModifiers();
-      } else setInputValue(terminalDeck.complete(input.value));
-    }
-    else if (key === "↑") setInputValue(terminalDeck.historyPrevious(input.value));
-    else if (key === "↓") setInputValue(terminalDeck.historyNext());
-    else if (key === "←" || key === "→") {
-      const current = input.selectionStart ?? input.value.length;
-      const next = key === "←" ? Math.max(0, current - 1) : Math.min(input.value.length, current + 1);
-      input.setSelectionRange(next, next);
-    }
-    else {
-      const layoutKey = keyboardKeys.get(key);
-      if (!layoutKey) return;
-      if (ctrl && /^[1-5]$/.test(key)) {
-        switchSession(Number(key) - 1);
-        clearMomentaryModifiers();
-        return;
-      }
-      const command = resolveKeyboardCommand(layoutKey, { shift, capsLock, ctrl, alt, fn });
-      if (!applyTerminalControl(command)) insertAtCursor(command);
-      clearMomentaryModifiers();
-    }
-    input.focus();
-  });
+  button.addEventListener("click", () => activateOnScreenKey(button));
+  if (!nonRepeatingKeys.has(button.dataset.key!)) {
+    bindPointerKeyRepeat(button, () => activateOnScreenKey(button, false));
+  }
 });
 bindPhysicalKeyboardFeedback(document.querySelector(".keyboard-panel")!);
 
@@ -427,6 +477,17 @@ terminalTabs.forEach((button, index) => {
   button.addEventListener("click", () => {
     audioDeck.play("folder");
     switchSession(index);
+  });
+  button.addEventListener("keydown", (event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const destination = event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? terminalTabs.length - 1
+        : (index + (event.key === "ArrowLeft" ? -1 : 1) + terminalTabs.length) % terminalTabs.length;
+    audioDeck.play("folder");
+    switchSession(destination);
   });
 });
 

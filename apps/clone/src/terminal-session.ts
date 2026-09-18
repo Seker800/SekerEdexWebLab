@@ -68,6 +68,10 @@ function quoteShellToken(value: string): string {
   return `'${value.replaceAll("'", `'\\''`)}'`;
 }
 
+function completionToken(value: string): string {
+  return /\s/.test(value) ? quoteShellToken(value) : value;
+}
+
 export class TerminalSessionDeck {
   readonly filesystem: BrowserFilesystem;
   readonly sessions: Array<TerminalSessionState | undefined> = Array.from({ length: sessionCount });
@@ -92,6 +96,12 @@ export class TerminalSessionDeck {
   label(index: number): string {
     if (index === 0) return "MAIN SHELL";
     return this.sessions[index] ? `#${index + 1} - SHELL` : "EMPTY";
+  }
+
+  adjacentSessionIndex(direction: -1 | 1): number {
+    const activeSessions = this.sessions.flatMap((session, index) => session ? [index] : []);
+    const activePosition = activeSessions.indexOf(this.activeIndex);
+    return activeSessions[(activePosition + direction + activeSessions.length) % activeSessions.length] ?? this.activeIndex;
   }
 
   setDraft(value: string): void {
@@ -180,7 +190,7 @@ export class TerminalSessionDeck {
     if (matches.length === 0) return value;
     const completion = matches.length === 1 ? matches[0]! : longestCommonPrefix(matches);
     const prefix = trailingWhitespace ? value : value.slice(0, value.length - partial.length);
-    return `${prefix}${completion}`;
+    return `${prefix}${completionToken(completion)}`;
   }
 
   filesystemEntries(): BrowserFileEntry[] {
