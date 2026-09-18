@@ -1,36 +1,47 @@
-# 贡献指南
+# Contributing
 
-## 开始之前
+Thank you for helping improve SekerEdexWebLab.
 
-1. 阅读 `AGENTS.md`、`docs/architecture.md` 和 `docs/visual-parity.md`。
-2. 较大的体验变化先说明用户可见行为、性能影响和视觉验收方式。
-3. 不提交私有照片、未授权作品、真实凭据、浏览器数据或来源不明素材。
-4. 引入第三方实现前更新 `THIRD_PARTY_NOTICES.md` 或相应研究记录。
-5. `.reference-assets/` 仅供本地视觉校准，禁止强制添加其中的字体或把它们复制到公开资源目录。
+## Before making a change
 
-## 开发要求
+1. Read `NORTH_STAR.md`, `ARCHITECTURE.md`, and `docs/VISUAL_NORTH_STAR.md`.
+2. Keep the upstream source, frozen screenshot, acceptance thresholds, and generated run evidence unchanged.
+3. Fix shared causes in shared modules. Avoid page-specific exceptions and unbounded retry behavior.
+4. Preserve the upstream attribution in `README.md`, `NOTICE.md`, the browser startup gate, and `apps/clone/UPSTREAM_ASSETS.md`.
+5. Do not commit private photos, credentials, browser data, unauthorized works, or material of unclear origin.
+6. Keep `.reference-assets/` local-only; never force-add its fonts or copy them into public assets.
 
-- 维持输入、状态、渲染、声音和内容之间的单向边界。
-- 行为变化包含必要测试；视觉变化包含目标视口证据。
-- 不把模拟遥测伪装成真实设备信息。
-- 不以复制整段旧代码代替对当前浏览器边界的设计。
+## Development
 
-工具链确定后，Pull Request 前的完整命令将在 `docs/maintainer-guide.md` 中维护。
+```bash
+npm install
+npm run install:browsers
+npm run upstream:sync
+npm run app:dev
+```
 
-## Commit 与 Pull Request
+The implementation lives in `apps/clone`. The observation, comparison, judging, and repair boundaries live under `src` and must remain separate. Maintain one-way boundaries between input, state, rendering, sound, and content. Never present simulated telemetry as real device data.
 
-使用中文提交类型：`新增`、`修复`、`重构`、`清理`、`测试`、`文档`。
+## Validation
 
-所有贡献使用 DCO：
+Run the complete project gates before opening a pull request:
 
-```sh
+```bash
+npm run check
+npm test
+npm run demo
+npm run app:verify
+npm run replicate:verify
+```
+
+Changes to copied assets must also pass `npm run assets:verify`. Do not update hashes merely to make an unexplained asset change pass; document the source and reason first.
+
+## Commits and pull requests
+
+Use the Chinese commit types `新增`, `修复`, `重构`, `清理`, `测试`, or `文档`, and sign commits for the Developer Certificate of Origin:
+
+```bash
 git commit -s
 ```
 
-Pull Request 说明应包含：
-
-- 用户可见变化。
-- 验证命令与视觉证据。
-- 性能、可访问性和移动端影响。
-- 第三方来源与许可证变化。
-- 已知限制和回滚方式。
+Describe the user-visible change, source evidence, commands run, visual evidence, performance/accessibility/mobile impact, third-party licensing changes, known limitations, and rollback strategy. By contributing, you agree that your contribution is distributed under GPLv3 with the rest of the project.

@@ -1,133 +1,138 @@
+<div align="center">
+
 # SekerEdexWebLab
 
-An evidence driven loop for observing a target web page, comparing a replica, and optionally asking Codex for a bounded repair.
+**A browser-native, source-driven port of the eDEX-UI command deck.**
 
-这是一个非官方、开源的 eDEX-UI Web 复刻实验。当前阶段以 eDEX-UI 2.2 默认
-`tron` 主题、`neofetch` 场景和 QWERTY 屏幕键盘为唯一视觉基准，先完成可运行的高保真
-控制台，再把文章、摄影和设计作品接入同一个工作台。
+[English](README.md) · [简体中文](README.zh-CN.md)
 
-## Visual target
+[![CI](https://github.com/Seker800/SekerEdexWebLab/actions/workflows/ci.yml/badge.svg)](https://github.com/Seker800/SekerEdexWebLab/actions/workflows/ci.yml)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-8ab4b6.svg)](LICENSE)
+[![Project status: Phase 0](https://img.shields.io/badge/status-Phase%200-8ab4b6.svg)](#project-status)
 
-The planned replica experience follows the visual language of [eDEX-UI 2.2](https://github.com/GitSquared/edex-ui) with its default `tron` theme, the `neofetch` terminal scene, and the QWERTY on-screen keyboard. See `docs/VISUAL_NORTH_STAR.md` for the palette, layout, typography, motion, component grammar, and visual acceptance rules.
+</div>
 
-The replica is built first from the exact eDEX-UI source associated with the target screenshot. Git history proves the frozen image is `media/screenshot_default.png` from commit `66ba190`, immediately after the v2.2.0 tag; its SHA-256 matches byte for byte. The later v2.2.8 source remains a secondary reference for fixes and unchanged assets. Renderer DOM, CSS, fonts, icons, globe, boot log, sounds and timing are ported before browser adapters replace Electron and host APIs. The module-by-module lookup table is in `docs/SOURCE_PORT_MAP.md`.
+> [!IMPORTANT]
+> SekerEdexWebLab is an unofficial browser port derived from GitSquared's
+> [eDEX-UI](https://github.com/GitSquared/edex-ui). It is not maintained or endorsed by GitSquared or
+> the upstream contributors.
 
-## What works now
+![The upstream eDEX-UI 2.2 tron interface used as the project's frozen visual reference](references/edex-ui-v2.2.8/screenshot_default.png)
 
-- schema validated scenario contracts;
-- deterministic Chromium capture;
-- immutable target capture per run;
-- pixel comparison and diff images;
-- console and page error gates;
-- finite retry state machine;
-- source-aware repair contracts that send a pinned upstream checkout and module entry points to Codex before screenshot evidence;
-- opt in `codex exec` repair with structured output;
-- clean Git and allowed path guards for live repair;
-- controller executed validation commands after every repair;
-- SHA-256 protection for the frozen contract and target screenshot;
-- durable JSON reports and screenshots.
+<p align="center"><sub>Frozen upstream visual reference — eDEX-UI 2.2, <code>tron</code>, <code>neofetch</code>, QWERTY. The browser port is measured against this image; this is not a screenshot of the port.</sub></p>
 
-## Setup
+## About
+
+SekerEdexWebLab brings the original eDEX-UI 2.2 interface to the browser while preserving its
+full-screen command-deck experience: a central terminal, live panels, filesystem, globe, sound, and
+on-screen keyboard sharing one session.
+
+This repository contains both the browser application and the evidence-driven toolchain used to
+reproduce it. The toolchain pins the upstream source, captures deterministic browser states, measures
+regional visual differences, verifies interaction and audio behavior, and can run bounded Codex repair
+attempts without weakening the acceptance gates.
+
+## Highlights
+
+- Source-driven port based on the exact eDEX-UI screenshot-era code.
+- Deterministic Chromium capture with immutable target evidence.
+- Startup, sound, terminal, keyboard, tab, mouse, and touch interaction checks.
+- Regional pixel and perceptual comparison with durable reports and diff images.
+- Finite repair state machine with clean-worktree and allowed-path guards.
+- Fixed 1920×1080 desktop canvas with proportional scaling and a mobile fallback.
+- Upstream provenance, copied-asset hashes, and license inventory checked in CI.
+
+## Quick start
+
+Requires Node.js 22 and npm.
 
 ```bash
+git clone https://github.com/Seker800/SekerEdexWebLab.git
+cd SekerEdexWebLab
 npm install
 npm run install:browsers
 npm run upstream:sync
-npm run check
-npm test
-npm run demo
-npm run app:verify
-npm run app:hotspots
-npm run assets:verify
+npm run app:dev
+```
+
+Open the printed local URL, keep sound enabled, and select **Initialize system**. Use **REBOOT** to
+replay the startup sequence and **SOUND ON/OFF** to control audio.
+
+## Verification
+
+Run the complete local gate:
+
+```bash
 npm run verify
 ```
 
-The demo starts a local target and replica, captures both with Chromium, and writes a passing report under `artifacts/runs/`.
+It verifies upstream asset integrity, type checking, unit tests, the production build, startup and
+interaction behavior, regional visual comparison, and the deterministic replication workflow.
 
-The product MVP lives in `apps/clone`. Start it with `npm run app:dev`, open the printed URL, leave sound enabled and click **Initialize system**. The startup streams the original boot log, plays the upstream eDEX sound cues at the source mixing levels, displays the title sequence, expands the empty terminal, shows the `Welcome back` greeting, unfolds the keyboard rows, initializes the terminal and filesystem, then reveals the source module sequence. Use **REBOOT** to replay it and **SOUND ON/OFF** to control audio.
+Useful focused commands:
 
-`npm run upstream:sync` checks out the exact screenshot commit into `.cache/upstream/edex-ui-visual-66ba190`, checks out v2.2.8 into `.cache/upstream/edex-ui-v2.2.8`, verifies both revisions and verifies the target screenshot hash against the upstream media file. Run it once on a new machine and whenever the cache is removed. Visual repair reads the exact screenshot source before consulting the later implementation reference.
+| Command | Purpose |
+| --- | --- |
+| `npm run app:verify` | Verify startup, audio, interactions, layouts, and browser errors |
+| `npm run app:hotspots` | Rank the most visible 64×64 difference regions |
+| `npm run assets:verify` | Verify copied upstream assets and their SHA-256 manifest |
+| `npm run replicate:verify` | Run the frozen visual replication state machine |
+| `npm run replicate:repair` | Run up to three guarded, source-first repair attempts |
 
-Run `npm run app:verify` to exercise startup phases, boot sound order and source volumes, audio asset loading, the six left and three right boot modules, replay and skip controls, sound mute, terminal input, the on-screen keyboard, terminal tabs, required layout regions, responsive behavior and browser error gates. It also captures every important startup state and records a directional pixel comparison against the frozen eDEX-UI 2.2 screenshot.
+Reports and screenshots are written under `artifacts/` and are intentionally excluded from releases.
 
-After `app:verify`, run `npm run app:hotspots` to write `artifacts/app-verification/visible-hotspots.json`. This diagnostic composites both screenshots over black before ranking 64×64 cells, so transparent-black pixels in the upstream PNG do not displace visible component differences. It never changes target evidence, thresholds or the formal verdict.
+## How it fits together
 
-Run `npm run assets:verify` to verify the SHA-256 manifest for the original audio, fonts, boot log, ENCOM globe, grid data and filesystem icon bundle.
-
-Run `npm run verify` for the complete local gate: upstream asset integrity, type checking, unit tests, production build, boot and interaction checks, regional visual comparison, and the bounded replication workflow.
-
-Run the full deterministic replication state machine with:
-
-```bash
-npm run replicate:verify
+```text
+Pinned upstream source + frozen screenshot
+                    │
+                    ▼
+      Browser application in apps/clone
+                    │
+             deterministic capture
+                    │
+                    ▼
+    comparison ──► verdict ──► durable report
+                       │
+                       └──► bounded repair (opt in)
 ```
 
-This starts the app, freezes the source screenshot into a run, captures the implementation at 1934×1094, applies the 7% regression threshold and browser error gates, and writes a complete report under `artifacts/runs/`.
+Browser observation, comparison, verdicts, and source modification remain separate process boundaries.
+Codex may propose a repair, but only executable gates decide whether a scenario passes.
 
-## Run the source-first automatic repair loop
+Read [NORTH_STAR.md](NORTH_STAR.md), [ARCHITECTURE.md](ARCHITECTURE.md), and
+[the visual north star](docs/VISUAL_NORTH_STAR.md) before extending the system. The module-by-module
+upstream lookup table lives in [docs/SOURCE_PORT_MAP.md](docs/SOURCE_PORT_MAP.md).
 
-The eDEX contract includes the pinned upstream repository, exact commit, local checkout, source port guide and renderer entry points. Initialize the source and create a clean Git baseline, then run:
+## Source and provenance
 
-```bash
-npm run upstream:sync
-npm run replicate:repair
-```
+The original application was created by [GitSquared](https://github.com/GitSquared) and released under
+GPLv3. The canonical interface source for this port is commit
+[`66ba190`](https://github.com/GitSquared/edex-ui/commit/66ba190ee5369523195c4012d0a798fbe4d43391),
+immediately after the `v2.2.0` tag. The later
+[`v2.2.8`](https://github.com/GitSquared/edex-ui/releases/tag/v2.2.8) release is only a secondary
+implementation and asset reference.
 
-`replicate:repair` owns the Vite server, captures the current replica, compares it with the frozen reference, and asks Codex for up to three bounded repairs against its stricter 4% improvement target. Each repair prompt requires Codex to inspect the exact screenshot-era implementation first. Before each repair, the controller snapshots `apps/clone`; it then runs type checking, unit tests and the production build, captures the candidate, and keeps the change only when browser diagnostics are clean, dimensions still match, and the measured visual difference strictly decreases. Rejected candidates are restored automatically. Accepted source changes remain in the working tree for review. Run `npm run verify` after the loop for the slower startup, audio, interaction and 7% regression gate.
+See [NOTICE.md](NOTICE.md) for authorship and third-party credits, and
+[apps/clone/UPSTREAM_ASSETS.md](apps/clone/UPSTREAM_ASSETS.md) for the file-level copied-asset inventory.
 
-## Run a scenario
+## Project status
 
-Create a contract based on `examples/demo.contract.json`, start the replica application, then run:
+Version 0.1 is a Phase 0 feasibility build. It verifies the startup and sound sequence, core
+interactions, desktop and mobile viewports, completed deck appearance, and browser error gates. The
+terminal and telemetry currently use safe browser simulations.
 
-```bash
-npm run run -- --config ./my-scenario.contract.json
-```
+Authenticated sessions, route crawling, network contract comparison, real host telemetry, and the
+personal content system remain future extension points. This project does not claim to be a full CMS or
+a drop-in replacement for the original desktop application.
 
-The command returns:
+## Contributing
 
-- exit code `0` for `passed`;
-- exit code `1` for deterministic verification failure;
-- exit code `2` for a blocked run or invalid setup.
+Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before changing the source;
+the project requires provenance checks and deterministic visual gates in addition to ordinary tests.
 
-## Enable bounded Codex repair
+## License
 
-Live repair requires a clean Git working tree and at least one `allowedPaths` entry:
-
-```bash
-npm run run -- --config ./my-scenario.contract.json --repair
-```
-
-The adapter runs `codex exec` without shell interpolation, requests output that conforms to `schemas/codex-repair-result.schema.json`, and checks the resulting Git paths before another verification attempt.
-
-## Scenario contract
-
-```json
-{
-  "scenarioId": "landing-page",
-  "targetUrl": "https://target.example/page",
-  "replicaUrl": "http://127.0.0.1:3000/page",
-  "viewport": { "width": 1440, "height": 900 },
-  "readySelector": "main",
-  "maxDifferenceRatio": 0.015,
-  "maxAttempts": 4,
-  "allowedPaths": ["apps/clone/src"],
-  "sourceEvidence": {
-    "repositoryUrl": "https://github.com/example/reference-app.git",
-    "revision": "0123456789abcdef",
-    "localPath": ".cache/upstream/reference-app",
-    "guidePath": "docs/SOURCE_PORT_MAP.md",
-    "entryPaths": ["src/app.ts", "src/app.css"]
-  },
-  "validationCommands": [["npm", "run", "check"], ["npm", "test"]]
-}
-```
-
-Read `NORTH_STAR.md` and `ARCHITECTURE.md` before extending the system.
-
-原有产品与维护文档继续保留在 `docs/architecture.md`、`docs/visual-parity.md`、
-`docs/technical-route.md` 和 `docs/maintainer-guide.md`。第三方源码和素材的固定版本、文件级
-来源与许可证记录在 `THIRD_PARTY_NOTICES.md` 及资产清单中。
-
-## Current boundary
-
-Version 0.1 verifies the startup and sound sequence, core interactions, two responsive viewports, completed deck appearance and browser errors. The terminal and telemetry are safe browser simulations. Authenticated sessions, route crawling, network contract comparison and real host telemetry remain extension points.
+SekerEdexWebLab is distributed under the [GNU General Public License v3.0](LICENSE), matching the
+original eDEX-UI project. Copyright in upstream code and assets remains with the respective authors, and
+third-party materials retain the notices documented in [NOTICE.md](NOTICE.md).

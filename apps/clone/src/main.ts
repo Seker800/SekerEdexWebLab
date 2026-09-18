@@ -29,6 +29,7 @@ app.innerHTML = `
   <section class="boot-overlay" id="boot-overlay" data-phase="gate" aria-label="System startup">
     <div class="boot-gate">
       <p class="boot-gate__eyebrow">eDEX-UI v${canonicalEdexVersion}</p>
+      <p class="boot-gate__source">Unofficial browser port · original by <a href="https://github.com/GitSquared/edex-ui" target="_blank" rel="noreferrer">GitSquared</a></p>
       <div class="boot-gate__actions">
         <button type="button" id="initialize-system">Initialize system</button>
         <button type="button" id="gate-sound-toggle">Sound: on</button>

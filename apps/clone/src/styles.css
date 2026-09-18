@@ -130,6 +130,8 @@ button { text-transform: uppercase; }
 .boot-gate { position: absolute; inset: 0; display: none; place-content: center; justify-items: center; text-align: center; padding: 4vh; }
 .boot-overlay[data-phase="gate"] .boot-gate { display: grid; }
 .boot-gate__eyebrow { color: var(--dim); font: 600 1.2vh var(--font-mono); letter-spacing: .18em; }
+.boot-gate__source { margin: 1.2vh 0 0; color: var(--dim); font: 400 1.05vh var(--font-mono); letter-spacing: .06em; text-transform: none; }
+.boot-gate__source a { color: var(--signal); text-underline-offset: .25em; }
 .boot-gate__actions { display: flex; gap: 1px; margin-top: 3vh; background: var(--border); border: 1px solid var(--border); }
 .boot-gate__actions button { min-width: 14vw; padding: 1.15vh 1.5vw; border: 0; background: #000; font: 600 1.15vh var(--font-mono); letter-spacing: .1em; }
 .boot-gate__actions button:first-child { color: #000; background: var(--signal); }

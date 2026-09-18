@@ -65,6 +65,10 @@ try {
   if (await page.locator(".boot-gate__eyebrow").textContent() !== "eDEX-UI v2.2.0") {
     throw new Error("Boot gate version does not match the exact screenshot-era source");
   }
+  const upstreamLink = page.locator('.boot-gate__source a[href="https://github.com/GitSquared/edex-ui"]');
+  if (await upstreamLink.textContent() !== "GitSquared" || await upstreamLink.getAttribute("rel") !== "noreferrer") {
+    throw new Error("Boot gate does not expose the original eDEX-UI source attribution");
+  }
   if (await page.locator("#edex-globe canvas").count() !== 0) {
     throw new Error("Globe runtime started before the source module initialization stage");
   }

@@ -1,7 +1,16 @@
 {
   "name": "seker-edex-web-lab",
   "version": "0.1.0",
+  "description": "Unofficial browser port of eDEX-UI with deterministic visual replication tooling.",
   "private": true,
+  "license": "GPL-3.0-only",
+  "author": "SekerW",
+  "keywords": [
+    "edex-ui",
+    "browser-port",
+    "terminal",
+    "visual-regression"
+  ],
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.build.json && npm run app:build",
