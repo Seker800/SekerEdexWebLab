@@ -337,6 +337,31 @@ try {
   await page.locator('[data-key="CTRL"]').click();
   await page.locator('[data-key="1"]').click();
 
+  for (let index = 0; index < 24; index += 1) {
+    await terminalInput.fill(`echo overflow-${String(index).padStart(2, "0")}`);
+    await terminalInput.press("Enter");
+  }
+  const terminalFlowBounds = await page.evaluate(() => {
+    const output = document.querySelector<HTMLElement>("#terminal-output")!;
+    const prompt = document.querySelector<HTMLElement>(".terminal-prompt")!;
+    const entries = output.querySelectorAll<HTMLElement>(".terminal-entry");
+    const lastEntry = entries.item(entries.length - 1);
+    return {
+      outputBottom: output.getBoundingClientRect().bottom,
+      promptTop: prompt.getBoundingClientRect().top,
+      lastEntryBottom: lastEntry.getBoundingClientRect().bottom,
+      overflowed: output.scrollHeight > output.clientHeight
+    };
+  });
+  if (!terminalFlowBounds.overflowed) throw new Error("Terminal overflow regression did not exercise a scrolling output buffer");
+  if (terminalFlowBounds.outputBottom > terminalFlowBounds.promptTop) {
+    throw new Error(`Terminal output viewport overlaps the prompt: ${JSON.stringify(terminalFlowBounds)}`);
+  }
+  if (terminalFlowBounds.lastEntryBottom > terminalFlowBounds.promptTop) {
+    throw new Error(`Terminal output text overlaps the prompt: ${JSON.stringify(terminalFlowBounds)}`);
+  }
+  await page.screenshot({ path: path.join(artifactDirectory, "terminal-overflow.png"), animations: "disabled", omitBackground: true });
+
   await page.reload({ waitUntil: "networkidle" });
   await page.locator("[data-ready]").waitFor();
   const canonicalBounds: Record<string, ScreenshotRegion> = {};
