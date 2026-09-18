@@ -50,6 +50,7 @@ Phase 0 只实现一个参考配置：eDEX-UI 2.2、默认 `tron` 主题、QWERT
 | shell | 固定全屏布局、面板生命周期、焦点与降级模式 |
 | terminal | 命令输入、历史、补全、输出和可访问输入路径 |
 | virtual-fs | 提供可导航的浏览器安全只读目录 |
+| content | 从仓库 Markdown 生成经过校验的类型化内容清单 |
 | telemetry | 提供真实浏览器指标、会话指标和明确标注的模拟设备指标 |
 | keyboard | 显示布局、实体按键同步、触摸输入和组合键状态 |
 | audio | 用户手势解锁、音效播放与音量控制 |
@@ -59,6 +60,11 @@ Phase 0 只实现一个参考配置：eDEX-UI 2.2、默认 `tron` 主题、QWERT
 当前浏览器实现通过 `CommandDeckController` 落实上述状态边界：所有输入路径发送类型化 intent，
 控制器返回不可变快照，DOM 层只负责渲染和焦点。页面级 `DisposableRegistry` 统一释放事件监听、
 音频、启动任务、Globe 渲染器与调度器，避免重启、隐藏页面或热重载后遗留写入者。
+
+博客正文位于仓库级 `content/blog/**/*.md`。Vite 在构建时通过 `import.meta.glob` 收集原始文件，
+内容注册表校验 frontmatter 并生成类型化清单；浏览器虚拟文件系统只接收该清单并投影为目录、
+文件和预览，不拥有文章正文或内容发现逻辑。文章阅读模式通过独立的终端运行时容器切换
+`inert` 与 `aria-hidden`，图片弹窗通过共享的模态焦点边界隔离背景、循环焦点并恢复原状态。
 
 ## Invariants
 

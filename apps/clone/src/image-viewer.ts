@@ -1,4 +1,5 @@
 import type { BrowserFileEntry, BrowserImagePreview } from "./browser-filesystem.js";
+import { ModalFocusBoundary } from "./modal-focus-boundary.js";
 
 export class ImageViewer {
   private readonly overlay: HTMLDivElement;
@@ -8,10 +9,10 @@ export class ImageViewer {
   private readonly caption: HTMLElement;
   private readonly counter: HTMLElement;
   private readonly zoomLabel: HTMLElement;
+  private readonly focusBoundary: ModalFocusBoundary;
   private items: BrowserFileEntry[] = [];
   private index = 0;
   private zoom = 1;
-  private previousFocus: HTMLElement | null = null;
   private dragOrigin: { pointerX: number; pointerY: number; x: number; y: number } | null = null;
   private x = 0;
   private y = 0;
@@ -42,6 +43,11 @@ export class ImageViewer {
     this.caption = this.overlay.querySelector(".image-viewer__caption")!;
     this.counter = this.overlay.querySelector(".image-viewer__counter")!;
     this.zoomLabel = this.overlay.querySelector(".image-viewer__zoom")!;
+    this.dialog.tabIndex = -1;
+    this.focusBoundary = new ModalFocusBoundary(
+      this.dialog,
+      Array.from(host.children).filter((element): element is HTMLElement => element instanceof HTMLElement && element !== this.overlay)
+    );
 
     this.overlay.addEventListener("click", (event) => {
       if (event.target === this.overlay) this.close();
@@ -63,34 +69,42 @@ export class ImageViewer {
     });
     header.addEventListener("pointermove", (event) => {
       if (!this.dragOrigin) return;
-      this.x = this.dragOrigin.x + event.clientX - this.dragOrigin.pointerX;
-      this.y = this.dragOrigin.y + event.clientY - this.dragOrigin.pointerY;
+      const overlayBounds = this.overlay.getBoundingClientRect();
+      const scaleX = this.overlay.clientWidth / overlayBounds.width;
+      const scaleY = this.overlay.clientHeight / overlayBounds.height;
+      this.x = this.dragOrigin.x + (event.clientX - this.dragOrigin.pointerX) * scaleX;
+      this.y = this.dragOrigin.y + (event.clientY - this.dragOrigin.pointerY) * scaleY;
       this.position();
     });
-    header.addEventListener("pointerup", () => { this.dragOrigin = null; });
+    const finishDrag = (): void => { this.dragOrigin = null; };
+    header.addEventListener("pointerup", finishDrag);
+    header.addEventListener("pointercancel", finishDrag);
+    header.addEventListener("lostpointercapture", finishDrag);
+    window.addEventListener("resize", this.handleResize);
   }
 
   open(items: readonly BrowserFileEntry[], selectedPath: string): void {
     this.items = items.filter((entry) => entry.preview?.kind === "image");
     if (this.items.length === 0) return;
     this.index = Math.max(0, this.items.findIndex((entry) => entry.path === selectedPath));
-    this.previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.x = 0;
     this.y = 0;
     this.overlay.hidden = false;
     this.render();
-    this.overlay.querySelector<HTMLButtonElement>('[data-viewer-action="close"]')!.focus();
+    this.focusBoundary.activate(this.overlay.querySelector<HTMLButtonElement>('[data-viewer-action="close"]')!);
   }
 
   close(): void {
     if (this.overlay.hidden) return;
     this.overlay.hidden = true;
-    this.previousFocus?.focus();
+    this.focusBoundary.deactivate();
     this.onClose?.();
   }
 
   dispose(): void {
     document.removeEventListener("keydown", this.handleKeydown, { capture: true });
+    window.removeEventListener("resize", this.handleResize);
+    this.focusBoundary.dispose();
     this.overlay.remove();
   }
 
@@ -106,8 +120,14 @@ export class ImageViewer {
   }
 
   private position(): void {
+    const maxX = Math.max(0, (this.overlay.clientWidth - this.dialog.offsetWidth) / 2);
+    const maxY = Math.max(0, (this.overlay.clientHeight - this.dialog.offsetHeight) / 2);
+    this.x = Math.min(maxX, Math.max(-maxX, this.x));
+    this.y = Math.min(maxY, Math.max(-maxY, this.y));
     this.dialog.style.translate = `${this.x}px ${this.y}px`;
   }
+
+  private readonly handleResize = (): void => this.position();
 
   private render(): void {
     const entry = this.items[this.index]!;

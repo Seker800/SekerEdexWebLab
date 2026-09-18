@@ -14,6 +14,7 @@ import { DisposableRegistry } from "./disposable-registry.js";
 import { createSandboxFilesystem } from "./browser-filesystem.js";
 import { renderSafeMarkdown } from "./blog-content.js";
 import { ImageViewer } from "./image-viewer.js";
+import { blogDocuments } from "./blog-content-registry.js";
 
 const arrowIcons: Record<string, string> = {
   "↑": '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-opacity="1" d="m12.00004 7.99999 4.99996 5h-2.99996v4.00001h-4v-4.00001h-3z"/><path stroke-linejoin="round" fill-opacity=".65" d="m4 3h16c1.1046 0 1-.10457 1 1v16c0 1.1046.1046 1-1 1h-16c-1.10457 0-1 .1046-1-1v-16c0-1.10457-.10457-1 1-1zm0 1v16h16v-16z"/></svg>',
@@ -98,19 +99,21 @@ app.innerHTML = `
           <div><small id="content-reader-meta"></small><h1 id="content-reader-title"></h1><p id="content-reader-summary"></p><div id="content-reader-tags"></div></div>
           <button type="button" id="content-reader-close" aria-label="Close article">RETURN TO SHELL</button>
         </header>
-        <div class="content-reader__body" id="content-reader-body"></div>
+        <div class="content-reader__body" id="content-reader-body" tabindex="0" aria-label="Article body"></div>
       </article>
-      <div class="terminal-status"><span>Welcome to eDEX-UI v${canonicalEdexVersion} - Electron v4.1.4</span></div>
-      <span class="terminal-times"><span id="terminal-time">SESSION // READY</span><span id="terminal-time-secondary"></span></span>
-      <div class="terminal-output" id="terminal-output" role="log" aria-live="polite"></div>
-      <form class="terminal-prompt" id="terminal-form">
-        <label class="terminal-powerline" for="terminal-input"><span>~/.c/</span><strong>eDEX-UI</strong><span class="terminal-powerline__chevron"> ❯</span></label>
-        <span class="terminal-editor">
-          <input id="terminal-input" autocomplete="off" spellcheck="false" aria-label="Terminal command" />
-          <span class="cursor" aria-hidden="true"></span>
-        </span>
-      </form>
-      <div class="terminal-footer"><span>TYPE <b>HELP</b> FOR COMMANDS</span><span id="latency">381ms</span><span id="terminal-footer-time">lun. 29 avril 2019 20:27:29 CEST</span></div>
+      <div class="terminal-runtime" id="terminal-runtime">
+        <div class="terminal-status"><span>Welcome to eDEX-UI v${canonicalEdexVersion} - Electron v4.1.4</span></div>
+        <span class="terminal-times"><span id="terminal-time">SESSION // READY</span><span id="terminal-time-secondary"></span></span>
+        <div class="terminal-output" id="terminal-output" role="log" aria-live="polite"></div>
+        <form class="terminal-prompt" id="terminal-form">
+          <label class="terminal-powerline" for="terminal-input"><span>~/.c/</span><strong>eDEX-UI</strong><span class="terminal-powerline__chevron"> ❯</span></label>
+          <span class="terminal-editor">
+            <input id="terminal-input" autocomplete="off" spellcheck="false" aria-label="Terminal command" />
+            <span class="cursor" aria-hidden="true"></span>
+          </span>
+        </form>
+        <div class="terminal-footer"><span>TYPE <b>HELP</b> FOR COMMANDS</span><span id="latency">381ms</span><span id="terminal-footer-time">lun. 29 avril 2019 20:27:29 CEST</span></div>
+      </div>
     </section>
 
     <aside class="panel network-panel" aria-label="Network telemetry">
@@ -171,6 +174,7 @@ const contentReaderSummary = document.querySelector<HTMLElement>("#content-reade
 const contentReaderTags = document.querySelector<HTMLElement>("#content-reader-tags")!;
 const contentReaderBody = document.querySelector<HTMLElement>("#content-reader-body")!;
 const contentReaderClose = document.querySelector<HTMLButtonElement>("#content-reader-close")!;
+const terminalRuntime = document.querySelector<HTMLElement>("#terminal-runtime")!;
 const audioDeck = new AudioDeck();
 lifecycle.add(() => audioDeck.dispose());
 const runtimeScheduler = staticMode ? undefined : new RuntimeScheduler(documentVisibilitySource(document));
@@ -225,7 +229,10 @@ if (staticMode) {
     });
   });
 }
-const commandDeck = new CommandDeckController(createSandboxFilesystem({ includeBlogContent: !staticMode, startInBlog: !staticMode }));
+const commandDeck = new CommandDeckController(createSandboxFilesystem({
+  blogDocuments: staticMode ? [] : blogDocuments,
+  startInBlog: !staticMode
+}));
 const imageViewer = new ImageViewer(commandDeckElement, () => audioDeck.play("denied"));
 lifecycle.add(() => imageViewer.dispose());
 
@@ -323,6 +330,8 @@ function renderContent(): void {
   if (!entry || preview?.kind !== "document") {
     contentReader.hidden = true;
     terminalPanel.classList.remove("content-open");
+    terminalRuntime.inert = false;
+    terminalRuntime.removeAttribute("aria-hidden");
     return;
   }
   contentReaderTitle.textContent = preview.title;
@@ -336,6 +345,8 @@ function renderContent(): void {
   contentReaderBody.innerHTML = renderSafeMarkdown(preview.markdown.replace(/^#\s+.+\n+/, ""));
   contentReader.hidden = false;
   terminalPanel.classList.add("content-open");
+  terminalRuntime.inert = true;
+  terminalRuntime.setAttribute("aria-hidden", "true");
   contentReaderBody.scrollTop = 0;
 }
 

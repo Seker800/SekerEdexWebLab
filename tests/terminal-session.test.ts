@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createSandboxFilesystem } from "../apps/clone/src/browser-filesystem.js";
 import { TerminalSessionDeck } from "../apps/clone/src/terminal-session.js";
+import { blogDocuments } from "../apps/clone/src/blog-content-registry.js";
 
 describe("browser filesystem", () => {
   it("navigates the frozen eDEX tree without escaping its declared root", () => {
@@ -35,20 +36,37 @@ describe("browser filesystem", () => {
   });
 
   it("exposes blog documents and images only in the runtime content tree", () => {
-    const filesystem = createSandboxFilesystem();
+    const filesystem = createSandboxFilesystem({ blogDocuments });
     expect(filesystem.list(filesystem.home).map((entry) => entry.name)).toContain("Blog");
     expect(filesystem.list(`${filesystem.home}/Blog`).map((entry) => entry.name)).toEqual(["Show disks", "Go up", "posts", "projects", "images", "about.md"]);
     expect(filesystem.entry(`${filesystem.home}/Blog/posts`, "welcome.md")?.preview).toMatchObject({ kind: "document", title: "Welcome to the command deck" });
     expect(filesystem.entry(`${filesystem.home}/Blog/images`, "command-deck.svg")?.preview).toMatchObject({ kind: "image", mediaType: "image/svg+xml" });
-    expect(createSandboxFilesystem({ includeBlogContent: false }).list(filesystem.home).map((entry) => entry.name)).not.toContain("Blog");
-    expect(createSandboxFilesystem({ startInBlog: true }).initialPath).toBe(`${filesystem.home}/Blog`);
-    expect(createSandboxFilesystem({ includeBlogContent: false, startInBlog: true }).initialPath).toBe(filesystem.home);
+    expect(createSandboxFilesystem().list(filesystem.home).map((entry) => entry.name)).not.toContain("Blog");
+    expect(createSandboxFilesystem({ blogDocuments, startInBlog: true }).initialPath).toBe(`${filesystem.home}/Blog`);
+    expect(createSandboxFilesystem({ startInBlog: true }).initialPath).toBe(filesystem.home);
   });
 
   it("can start the runtime session directly in the blog content tree", () => {
-    const deck = new TerminalSessionDeck(createSandboxFilesystem({ startInBlog: true }));
+    const deck = new TerminalSessionDeck(createSandboxFilesystem({ blogDocuments, startInBlog: true }));
     expect(deck.current.cwd).toBe(`${deck.filesystem.home}/Blog`);
     expect(deck.filesystemEntries().map((entry) => entry.name)).toEqual(["Show disks", "Go up", "posts", "projects", "images", "about.md"]);
+  });
+
+  it("projects nested content paths without filesystem-specific article wiring", () => {
+    const filesystem = createSandboxFilesystem({
+      blogDocuments: [{
+        relativePath: "notes/architecture/boundaries.md",
+        title: "Boundaries",
+        summary: "A nested document.",
+        publishedAt: "2026-09-18",
+        tags: ["architecture"],
+        markdown: "# Boundaries"
+      }]
+    });
+
+    expect(filesystem.list(`${filesystem.home}/Blog`).map((entry) => entry.name)).toContain("notes");
+    expect(filesystem.list(`${filesystem.home}/Blog/notes`).map((entry) => entry.name)).toContain("architecture");
+    expect(filesystem.entry(`${filesystem.home}/Blog/notes/architecture`, "boundaries.md")?.content).toBe("# Boundaries");
   });
 });
 
@@ -137,7 +155,7 @@ describe("terminal session deck", () => {
   });
 
   it("returns typed blog preview actions instead of terminal insertion", () => {
-    const deck = new TerminalSessionDeck();
+    const deck = new TerminalSessionDeck(createSandboxFilesystem({ blogDocuments }));
     deck.activateFilesystemEntry("Blog");
     deck.activateFilesystemEntry("posts");
     const document = deck.activateFilesystemEntry("welcome.md");

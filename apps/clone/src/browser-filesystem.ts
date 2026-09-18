@@ -26,6 +26,15 @@ export interface BrowserImagePreview {
 
 export type BrowserFilePreview = BrowserDocumentPreview | BrowserImagePreview;
 
+export interface BrowserDocumentSource {
+  relativePath: string;
+  title: string;
+  summary: string;
+  publishedAt: string;
+  tags: readonly string[];
+  markdown: string;
+}
+
 export interface BrowserFilesystem {
   readonly root: string;
   readonly home: string;
@@ -80,67 +89,68 @@ const baseSeedDirectories: Readonly<Record<string, readonly SeedEntry[]>> = {
 };
 
 const blogRoot = `${home}/Blog`;
-const welcomeMarkdown = `# Welcome to the command deck
 
-This folder is the content entrance for the future blog. Articles remain ordinary files, while the center panel provides a focused reading view.
-
-## How it works
-
-- Select a folder to browse its children.
-- Select a Markdown file to read it in the center panel.
-- Select an image to open the media viewer.
-
-The terminal can still read the same source with \`cat\`, so navigation and content share one filesystem model.`;
-const architectureMarkdown = `# Building a blog inside eDEX
-
-The blog keeps the single screen command deck and gives each region a useful role.
-
-## Content flow
-
-1. The filesystem exposes folders and typed file previews.
-2. The command deck controller owns the selected article.
-3. The reader renders escaped Markdown in the terminal region.
-4. The image viewer owns zoom, sequence navigation, and dismissal.
-
-This keeps content data separate from DOM rendering and makes a future file based content pipeline straightforward.`;
-const projectMarkdown = `# SekerEdexWebLab
-
-An unofficial browser implementation inspired by eDEX-UI. The current prototype studies its full screen layout, terminal interaction, filesystem behavior, keyboard feedback, audio, and telemetry.
-
-## Current focus
-
-- Preserve the fixed 1920 × 1080 desktop composition.
-- Connect visible modules through typed commands and events.
-- Add blog reading without weakening the reference capture path.`;
-const aboutMarkdown = `# About this prototype
-
-This is a neutral starter page for the future blog. Replace the sample articles with real Markdown content when the editorial structure is ready.
-
-The interface is an unofficial implementation and is not endorsed by eDEX-UI or its author.`;
-
-function documentSeed(name: string, title: string, summary: string, markdown: string, tags: readonly string[]): SeedEntry {
-  return { name, category: "file", icon: "file", content: markdown, preview: { kind: "document", title, summary, publishedAt: "2026-09-18", tags, markdown } };
+function documentSeed(document: BrowserDocumentSource): SeedEntry {
+  const name = document.relativePath.split("/").at(-1)!;
+  return {
+    name,
+    category: "file",
+    icon: "file",
+    content: document.markdown,
+    preview: {
+      kind: "document",
+      title: document.title,
+      summary: document.summary,
+      publishedAt: document.publishedAt,
+      tags: document.tags,
+      markdown: document.markdown
+    }
+  };
 }
 
-const blogSeedDirectories: Readonly<Record<string, readonly SeedEntry[]>> = {
-  [blogRoot]: [
-    { name: "posts", category: "directory" },
-    { name: "projects", category: "directory" },
-    { name: "images", category: "directory" },
-    documentSeed("about.md", "About this prototype", "A starting point for the future blog.", aboutMarkdown, ["about"])
-  ],
-  [`${blogRoot}/posts`]: [
-    documentSeed("welcome.md", "Welcome to the command deck", "Using the filesystem as a blog navigation model.", welcomeMarkdown, ["notes", "interface"]),
-    documentSeed("building-edex-web.md", "Building a blog inside eDEX", "The content architecture behind the command deck.", architectureMarkdown, ["engineering", "design"])
-  ],
-  [`${blogRoot}/projects`]: [
-    documentSeed("SekerEdexWebLab.md", "SekerEdexWebLab", "Project notes for the browser based eDEX study.", projectMarkdown, ["project", "web"])
-  ],
-  [`${blogRoot}/images`]: [
+function createBlogSeedDirectories(documents: readonly BrowserDocumentSource[]): Readonly<Record<string, readonly SeedEntry[]>> {
+  const directories = new Map<string, SeedEntry[]>([[blogRoot, []]]);
+  const ensureDirectory = (relativeDirectory: string): SeedEntry[] => {
+    const absoluteDirectory = relativeDirectory === "" ? blogRoot : `${blogRoot}/${relativeDirectory}`;
+    const existing = directories.get(absoluteDirectory);
+    if (existing) return existing;
+
+    const segments = relativeDirectory.split("/");
+    const name = segments.pop()!;
+    const parentRelative = segments.join("/");
+    ensureDirectory(parentRelative).push({ name, category: "directory" });
+    const entries: SeedEntry[] = [];
+    directories.set(absoluteDirectory, entries);
+    return entries;
+  };
+
+  for (const document of documents) {
+    const segments = document.relativePath.split("/");
+    segments.pop();
+    ensureDirectory(segments.join("/")).push(documentSeed(document));
+  }
+
+  ensureDirectory("images").push(
     { name: "command-deck.svg", category: "file", icon: "file", preview: { kind: "image", src: "/blog/command-deck.svg", alt: "Diagram of the blog command deck regions", caption: "Filesystem, reader, telemetry, and keyboard share one command deck.", mediaType: "image/svg+xml" } },
     { name: "content-flow.svg", category: "file", icon: "file", preview: { kind: "image", src: "/blog/content-flow.svg", alt: "Diagram of the typed blog content flow", caption: "A typed activation flows from the filesystem to either the reader or media viewer.", mediaType: "image/svg+xml" } }
-  ]
-};
+  );
+
+  const rootOrder = new Map(["posts", "projects", "images"].map((name, index) => [name, index]));
+  for (const [directory, entries] of directories) {
+    entries.sort((left, right) => {
+      const categoryOrder = Number(right.category === "directory") - Number(left.category === "directory");
+      if (categoryOrder !== 0) return categoryOrder;
+      if (directory === blogRoot) {
+        const leftOrder = rootOrder.get(left.name) ?? Number.MAX_SAFE_INTEGER;
+        const rightOrder = rootOrder.get(right.name) ?? Number.MAX_SAFE_INTEGER;
+        if (leftOrder !== rightOrder) return leftOrder - rightOrder;
+      }
+      return left.name.localeCompare(right.name);
+    });
+  }
+
+  return Object.fromEntries(directories);
+}
 
 function join(parent: string, name: string): string {
   return parent === "/" ? `/${name}` : `${parent}/${name}`;
@@ -183,12 +193,13 @@ function normalizeWithinRoot(cwd: string, requestedPath: string): string {
   return segments.length === 0 ? root : `${root}/${segments.join("/")}`;
 }
 
-export function createSandboxFilesystem(options: { includeBlogContent?: boolean; startInBlog?: boolean } = {}): BrowserFilesystem {
-  const includeBlogContent = options.includeBlogContent ?? true;
-  const initialPath = includeBlogContent && options.startInBlog ? blogRoot : home;
+export function createSandboxFilesystem(options: { blogDocuments?: readonly BrowserDocumentSource[]; startInBlog?: boolean } = {}): BrowserFilesystem {
+  const documents = options.blogDocuments ?? [];
+  const hasBlogContent = documents.length > 0;
+  const initialPath = hasBlogContent && options.startInBlog ? blogRoot : home;
   const directorySeeds = new Map<string, readonly SeedEntry[]>([
     ...Object.entries(baseSeedDirectories),
-    ...(includeBlogContent ? Object.entries(blogSeedDirectories) : [])
+    ...(hasBlogContent ? Object.entries(createBlogSeedDirectories(documents)) : [])
   ]);
   const canonical = canonicalFileEntries.map(canonicalEntry);
   const blogEntry = seededEntry(home, { name: "Blog", category: "directory" });
@@ -207,7 +218,7 @@ export function createSandboxFilesystem(options: { includeBlogContent?: boolean;
   };
 
   const list = (path: string): BrowserFileEntry[] => {
-    if (path === home) return [...canonical.map((entry) => ({ ...entry })), ...(includeBlogContent ? [{ ...blogEntry }] : [])];
+    if (path === home) return [...canonical.map((entry) => ({ ...entry })), ...(hasBlogContent ? [{ ...blogEntry }] : [])];
     const seeds = directorySeeds.get(path);
     if (!seeds) return [];
     return [

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { CommandDeckController } from "../apps/clone/src/command-deck-controller.js";
 import { DisposableRegistry } from "../apps/clone/src/disposable-registry.js";
+import { createSandboxFilesystem } from "../apps/clone/src/browser-filesystem.js";
+import { blogDocuments } from "../apps/clone/src/blog-content-registry.js";
 
 describe("command deck controller", () => {
   it("routes typed intents through one immutable session snapshot", () => {
@@ -36,7 +38,7 @@ describe("command deck controller", () => {
   });
 
   it("owns the selected article and clears it on navigation", () => {
-    const controller = new CommandDeckController();
+    const controller = new CommandDeckController(createSandboxFilesystem({ blogDocuments }));
     controller.dispatch({ type: "activate-filesystem-entry", name: "Blog" });
     controller.dispatch({ type: "activate-filesystem-entry", name: "posts" });
     controller.dispatch({ type: "activate-filesystem-entry", name: "welcome.md" });

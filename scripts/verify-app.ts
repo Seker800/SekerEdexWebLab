@@ -549,13 +549,64 @@ try {
   if (!await motionPage.locator("#content-reader").isVisible()) throw new Error("Markdown file did not open the central article reader");
   if (await motionPage.locator("#content-reader-title").textContent() !== "Welcome to the command deck") throw new Error("Article reader did not render typed document metadata");
   if (!await motionPage.locator("#content-reader-body").textContent().then((value) => value?.includes("Select a folder"))) throw new Error("Article reader did not render Markdown content");
+  const articleAccessibility = await motionPage.evaluate(() => {
+    const runtime = document.querySelector<HTMLElement>("#terminal-runtime")!;
+    const body = document.querySelector<HTMLElement>("#content-reader-body")!;
+    return {
+      runtimeInert: runtime.inert,
+      runtimeAriaHidden: runtime.getAttribute("aria-hidden"),
+      bodyTabIndex: body.tabIndex,
+      bodyScrollable: body.scrollHeight > body.clientHeight
+    };
+  });
+  if (!articleAccessibility.runtimeInert || articleAccessibility.runtimeAriaHidden !== "true") {
+    throw new Error(`Article reader did not isolate hidden terminal controls: ${JSON.stringify(articleAccessibility)}`);
+  }
+  if (articleAccessibility.bodyTabIndex !== 0 || !articleAccessibility.bodyScrollable) {
+    throw new Error(`Article body is not a keyboard-scrollable region: ${JSON.stringify(articleAccessibility)}`);
+  }
+  await motionPage.keyboard.press("Tab");
+  if (await motionPage.evaluate(() => document.activeElement?.id) !== "content-reader-body") {
+    throw new Error("Article reader did not move focus from its return control to the article body");
+  }
+  const articleScrollBefore = await motionPage.locator("#content-reader-body").evaluate((body) => body.scrollTop);
+  await motionPage.keyboard.press("PageDown");
+  await motionPage.waitForTimeout(100);
+  const articleScrollAfter = await motionPage.locator("#content-reader-body").evaluate((body) => body.scrollTop);
+  if (articleScrollAfter <= articleScrollBefore) throw new Error("Article body did not scroll from the keyboard");
   await motionPage.screenshot({ path: path.join(artifactDirectory, "blog-reader.png"), animations: "disabled", omitBackground: true });
   await motionPage.locator("#content-reader-close").click();
   if (await motionPage.locator("#content-reader").isVisible()) throw new Error("Article reader did not return to the terminal");
+  const restoredTerminalAccessibility = await motionPage.evaluate(() => {
+    const runtime = document.querySelector<HTMLElement>("#terminal-runtime")!;
+    return { inert: runtime.inert, ariaHidden: runtime.getAttribute("aria-hidden") };
+  });
+  if (restoredTerminalAccessibility.inert || restoredTerminalAccessibility.ariaHidden !== null) {
+    throw new Error(`Article reader did not restore terminal accessibility: ${JSON.stringify(restoredTerminalAccessibility)}`);
+  }
   await motionPage.locator('.file-grid button[data-file-name="Go up"]').click();
   await motionPage.locator('.file-grid button[data-file-name="images"]').click();
   await motionPage.locator('.file-grid button[data-file-name="command-deck.svg"]').click();
   if (!await motionPage.locator(".image-viewer").isVisible()) throw new Error("Image file did not open the media viewer");
+  const modalIsolation = await motionPage.evaluate(() => ({
+    background: Array.from(document.querySelectorAll<HTMLElement>("#command-deck > :not(.image-viewer)"))
+      .every((element) => element.inert && element.getAttribute("aria-hidden") === "true"),
+    activeElement: (document.activeElement as HTMLElement | null)?.dataset.viewerAction
+  }));
+  if (!modalIsolation.background || modalIsolation.activeElement !== "close") {
+    throw new Error(`Image viewer did not establish its modal focus boundary: ${JSON.stringify(modalIsolation)}`);
+  }
+  const modalFocusPath: string[] = [];
+  for (let index = 0; index < 7; index += 1) {
+    await motionPage.keyboard.press("Tab");
+    modalFocusPath.push(await motionPage.evaluate(() => {
+      const active = document.activeElement as HTMLElement | null;
+      return active?.dataset.viewerAction ?? active?.id ?? active?.tagName ?? "NONE";
+    }));
+  }
+  if (modalFocusPath.some((entry) => !["close", "previous", "zoom-out", "zoom-in", "next"].includes(entry))) {
+    throw new Error(`Image viewer focus escaped the dialog: ${JSON.stringify(modalFocusPath)}`);
+  }
   if (await motionPage.locator(".image-viewer__counter").textContent() !== "1 / 2 · image/svg+xml") throw new Error("Image viewer did not expose media sequence metadata");
   await motionPage.locator('[data-viewer-action="zoom-in"]').click();
   if (await motionPage.locator(".image-viewer__zoom").textContent() !== "125%") throw new Error("Image viewer zoom control did not update");
@@ -571,13 +622,28 @@ try {
   const viewerTranslateBefore = await motionPage.locator(".image-viewer__dialog").evaluate((node) => getComputedStyle(node).translate);
   await motionPage.mouse.move(viewerHeaderBounds.x + 80, viewerHeaderBounds.y + viewerHeaderBounds.height / 2);
   await motionPage.mouse.down();
-  await motionPage.mouse.move(viewerHeaderBounds.x + 120, viewerHeaderBounds.y + viewerHeaderBounds.height / 2 + 20);
+  await motionPage.mouse.move(1915, 1075);
   await motionPage.mouse.up();
   const viewerTranslateAfter = await motionPage.locator(".image-viewer__dialog").evaluate((node) => getComputedStyle(node).translate);
   if (viewerTranslateAfter === viewerTranslateBefore) throw new Error("Image viewer title bar did not drag the modal");
+  const constrainedViewer = await motionPage.evaluate(() => {
+    const overlay = document.querySelector<HTMLElement>(".image-viewer")!.getBoundingClientRect();
+    const dialog = document.querySelector<HTMLElement>(".image-viewer__dialog")!.getBoundingClientRect();
+    const close = document.querySelector<HTMLElement>('[data-viewer-action="close"]')!.getBoundingClientRect();
+    return {
+      dialogInside: dialog.left >= overlay.left - 1 && dialog.top >= overlay.top - 1 && dialog.right <= overlay.right + 1 && dialog.bottom <= overlay.bottom + 1,
+      closeInside: close.left >= overlay.left && close.top >= overlay.top && close.right <= overlay.right && close.bottom <= overlay.bottom
+    };
+  });
+  if (!constrainedViewer.dialogInside || !constrainedViewer.closeInside) {
+    throw new Error(`Image viewer escaped the logical canvas: ${JSON.stringify(constrainedViewer)}`);
+  }
   await motionPage.screenshot({ path: path.join(artifactDirectory, "image-viewer.png"), animations: "disabled", omitBackground: true });
   await motionPage.keyboard.press("Escape");
   if (await motionPage.locator(".image-viewer").isVisible()) throw new Error("Image viewer did not close with Escape");
+  if (!await motionPage.evaluate(() => Array.from(document.querySelectorAll<HTMLElement>("#command-deck > :not(.image-viewer)")).every((element) => !element.inert && element.getAttribute("aria-hidden") === null))) {
+    throw new Error("Image viewer did not restore the command deck after dismissal");
+  }
   await motionContext.close();
   const metrics = await compareScreenshots(
     path.resolve("references/edex-ui-v2.2.8/screenshot_default.png"),
@@ -630,8 +696,8 @@ try {
       "keyboard navigable terminal tablist",
       "on-screen terminal shortcuts",
       "filesystem navigation, disk view and insertion",
-      "blog folder navigation and central Markdown reading",
-      "image viewer zoom, sequence navigation and keyboard dismissal",
+      "blog folder navigation, terminal isolation and keyboard-scrolled Markdown reading",
+      "image viewer focus containment, modal isolation, bounded dragging, zoom, sequence navigation and keyboard dismissal",
       "theme and keyboard file special actions",
       "outcome-specific sound feedback",
       "persistently visible sound control",

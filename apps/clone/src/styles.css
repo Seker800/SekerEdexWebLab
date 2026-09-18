@@ -417,12 +417,9 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 /* The inset frame supplies one row and this overlay preserves the second
    source raster row above the negative-z active tab. */
 .terminal-panel::after { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: color-mix(in srgb, var(--signal) 48%, var(--surface)); pointer-events: none; z-index: 3; }
-.terminal-panel > * { translate: var(--capture-terminal-offset-x) 0; scale: var(--capture-terminal-scale-x) 1; transform-origin: center; }
-.terminal-panel.content-open > .terminal-status,
-.terminal-panel.content-open > .terminal-times,
-.terminal-panel.content-open > .terminal-output,
-.terminal-panel.content-open > .terminal-prompt,
-.terminal-panel.content-open > .terminal-footer { visibility: hidden; }
+.terminal-panel > :not(.terminal-runtime), .terminal-runtime > * { translate: var(--capture-terminal-offset-x) 0; scale: var(--capture-terminal-scale-x) 1; transform-origin: center; }
+.terminal-runtime { display: contents; }
+.terminal-panel.content-open > .terminal-runtime > * { visibility: hidden; }
 .content-reader[hidden], .image-viewer[hidden] { display: none !important; }
 .content-reader { position: absolute; inset: 6.7cqh .8cqw 1.2cqh; z-index: 2; display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(var(--signal-rgb), .72); background: linear-gradient(135deg, rgba(var(--signal-rgb), .055), transparent 34%), rgba(2, 10, 12, .98); color: var(--signal); text-transform: none; }
 .content-reader > header { display: grid; grid-template-columns: 1fr auto; gap: 1.5cqw; padding: 1.5cqh 1.2cqw 1.25cqh; border-bottom: 1px solid rgba(var(--signal-rgb), .35); }
