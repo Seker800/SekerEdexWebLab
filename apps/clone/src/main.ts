@@ -2,7 +2,7 @@ import "./styles.css";
 import { AudioDeck } from "./audio-deck.js";
 import { completeBootImmediately, runBootSequence, type BootElements } from "./boot-sequence.js";
 import { canonicalCpuTraces, canonicalEdexVersion, canonicalGlobeConstellation, canonicalMemoryPointStates, canonicalNetworkConnectionLocations, canonicalNetworkTraces, canonicalSatelliteAnimationAdvanceMs, type MemoryPointState } from "./canonical-runtime.js";
-import { initializeEdexGlobe, loadEdexIcons, renderEdexIcon, type EdexGlobeHandle, type EdexGlobeLayers } from "./edex-assets.js";
+import { initializeEdexGlobe, loadEdexIcons, renderFileIcon, type EdexGlobeHandle, type EdexGlobeLayers } from "./edex-assets.js";
 import { canonicalFileEntries } from "./filesystem-model.js";
 import { bindPhysicalKeyboardFeedback, bindPointerKeyboardFeedback, bindPointerKeyRepeat, keyboardKeysForEvent } from "./keyboard-feedback.js";
 import { loadKeyboardLayout, resolveKeyboardCommand } from "./keyboard-layout.js";
@@ -137,7 +137,7 @@ app.innerHTML = `
     <section class="panel filesystem-panel" aria-label="Filesystem">
       <header class="section-label"><span>FILESYSTEM</span><small>/home/squared/.config/eDEX-UI</small></header>
       <div class="file-grid">
-        ${canonicalFileEntries.map(({ icon, name, category }) => `<button type="button" data-icon="${icon}" data-category="${category}"><b>${renderEdexIcon(edexIcons, icon)}</b><span>${name}</span></button>`).join("")}
+        ${canonicalFileEntries.map(({ icon, name, category }) => `<button type="button" data-icon="${icon}" data-category="${category}"><b>${renderFileIcon(edexIcons, icon)}</b><span>${name}</span></button>`).join("")}
       </div>
       <div class="filesystem-source-scrollbar" aria-hidden="true"></div>
       <footer><span>Mount /home/squared used 71%</span><progress class="storage-meter" value="71" max="100"></progress></footer>
@@ -321,7 +321,7 @@ function renderFilesystem(): void {
     ? "Showing available block devices"
     : snapshot.current.cwd;
   fileGrid.innerHTML = filesystemEntries.map(({ icon, name, category }) =>
-    `<button type="button" data-file-name="${escapeHtml(name)}" data-icon="${icon}" data-category="${category}"><b>${renderEdexIcon(edexIcons, icon)}</b><span>${escapeHtml(name)}</span></button>`
+    `<button type="button" data-file-name="${escapeHtml(name)}" data-icon="${icon}" data-category="${category}"><b>${renderFileIcon(edexIcons, icon)}</b><span>${escapeHtml(name)}</span></button>`
   ).join("");
 }
 

@@ -6,14 +6,27 @@ export interface EdexIcon {
 
 export type EdexIconSet = Record<string, EdexIcon>;
 
+const applicationFileIcons: EdexIconSet = {
+  markdown: {
+    width: 24,
+    height: 24,
+    svg: '<path d="M6 2.5h8l4 4V21.5H6zM14 2.5v4h4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 11h2l2 2.6 2-2.6h2v7h-2v-4l-2 2.5-2-2.5v4H8z"/>'
+  },
+  image: {
+    width: 24,
+    height: 24,
+    svg: '<path d="M6 2.5h8l4 4V21.5H6zM14 2.5v4h4" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="11" r="1.4"/><path d="m8 18 3.2-3.4 2.1 2.1 1.8-1.9L18 18z"/>'
+  }
+};
+
 export async function loadEdexIcons(): Promise<EdexIconSet> {
   const response = await fetch("/icons/edex-file-icons.json");
   if (!response.ok) throw new Error(`Unable to load upstream eDEX icons (${response.status})`);
   return response.json() as Promise<EdexIconSet>;
 }
 
-export function renderEdexIcon(icons: EdexIconSet, name: string): string {
-  const icon = icons[name] ?? icons.file;
+export function renderFileIcon(icons: EdexIconSet, name: string): string {
+  const icon = applicationFileIcons[name] ?? icons[name] ?? icons.file;
   if (!icon) throw new Error(`Missing upstream eDEX icon: ${name}`);
   const width = Number(icon.width) || 512;
   const height = Number(icon.height) || 512;

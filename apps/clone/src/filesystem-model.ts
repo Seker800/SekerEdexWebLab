@@ -1,4 +1,4 @@
-export type FileIconName = "showDisks" | "up" | "dir" | "kblayoutsDir" | "themesDir" | "symlink" | "file" | "config" | "settings";
+export type FileIconName = "showDisks" | "up" | "dir" | "kblayoutsDir" | "themesDir" | "symlink" | "file" | "config" | "settings" | "markdown" | "image";
 
 export interface CanonicalFileEntry {
   icon: FileIconName;

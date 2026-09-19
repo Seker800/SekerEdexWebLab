@@ -65,7 +65,8 @@ Phase 0 只实现一个参考配置：eDEX-UI 2.2、默认 `tron` 主题、QWERT
 的图片，内容注册表使用 YAML 与 Zod 校验 frontmatter、路径碰撞、图片 alt 和相对资源，再生成不含
 解析器运行时代码的类型化清单。内容树保留仓库真实层级并挂载到 `/home/squared/Blog`；canonical
 eDEX 目录独立挂载到 `/home/squared/.config/eDEX-UI`，静态参考模式不接收个人内容。虚拟文件系统
-只投影目录、文件和预览，不拥有内容发现逻辑。文章链接、文件点击与 hash 地址统一发送类型化
+只投影目录、文件和预览，不拥有内容发现逻辑；投影边界根据内容节点类型分配项目自有的 `markdown`
+与 `image` 图标语义，界面不解析扩展名猜测类型。文章链接、文件点击与 hash 地址统一发送类型化
 content intent；Blog 外的沙箱目录写入类型化 `history.state`，文章内锚点只在阅读器中定位，二者都不
 占用内容 hash 路由。文章与图片作为两种内容视图挂载到同一个 `FullscreenContentOverlay`：它统一
 全屏几何、背景隔离、关闭按钮、Escape 行为和生命周期，并在打开时把整个 command deck 切换为

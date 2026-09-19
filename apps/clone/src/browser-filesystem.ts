@@ -93,6 +93,7 @@ function contentSeed(node: Exclude<ContentTreeNode, ContentDirectoryNode>): Seed
     return {
       name: contentBasename(node.relativePath),
       category: "file",
+      icon: "markdown",
       contentPath: node.relativePath,
       content: node.markdown,
       preview: {
@@ -109,6 +110,7 @@ function contentSeed(node: Exclude<ContentTreeNode, ContentDirectoryNode>): Seed
   return {
     name: contentBasename(node.relativePath),
     category: "file",
+    icon: "image",
     contentPath: node.relativePath,
     preview: {
       kind: "image",

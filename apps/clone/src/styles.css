@@ -557,7 +557,9 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .file-grid button:active { animation: file-feedback-blink .1s linear infinite; }
 .file-grid b { position: relative; top: -.45cqh; width: 5cqh; height: 5cqh; display: grid; place-items: center; }
 .file-grid button[data-icon="dir"] b { transform: translateY(var(--capture-directory-icon-offset-y)) scaleY(var(--capture-directory-icon-scale-y)); }
-.file-grid button[data-icon="file"] b { transform: scaleY(var(--capture-file-icon-scale-y)); }
+.file-grid button[data-icon="file"] b,
+.file-grid button[data-icon="markdown"] b,
+.file-grid button[data-icon="image"] b { transform: scaleY(var(--capture-file-icon-scale-y)); }
 .file-grid button[data-icon="showDisks"] b, .file-grid button[data-icon="up"] b { width: 4cqh; height: 4cqh; }
 .file-grid svg { display: block; width: 100%; height: 100%; fill: var(--signal); }
 .file-grid svg:not([viewBox="0 0 24 24"]) { padding: .5cqh; }
