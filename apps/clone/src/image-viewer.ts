@@ -13,6 +13,7 @@ export class ImageViewer {
   private items: BrowserFileEntry[] = [];
   private index = 0;
   private zoom = 1;
+  private readonly descriptions = new Map<string, { alt: string; caption?: string }>();
   private dragOrigin: { pointerX: number; pointerY: number; x: number; y: number } | null = null;
   private x = 0;
   private y = 0;
@@ -29,7 +30,10 @@ export class ImageViewer {
   constructor(
     host: HTMLElement,
     private readonly onClose?: () => void,
-    private readonly onSelectionChange?: (entry: Readonly<BrowserFileEntry>) => void
+    private readonly onSelectionChange?: (
+      entry: Readonly<BrowserFileEntry>,
+      description?: Readonly<{ alt: string; caption?: string }>
+    ) => void
   ) {
     this.overlay = document.createElement("div");
     this.overlay.className = "image-viewer";
@@ -87,14 +91,16 @@ export class ImageViewer {
     window.addEventListener("resize", this.handleResize);
   }
 
-  open(items: readonly BrowserFileEntry[], selectedPath: string): void {
+  open(items: readonly BrowserFileEntry[], selectedPath: string, description?: { alt: string; caption?: string }): void {
     this.items = items.filter((entry) => entry.preview?.kind === "image");
     if (this.items.length === 0) return;
+    this.descriptions.clear();
+    if (description) this.descriptions.set(selectedPath, { ...description });
     this.index = Math.max(0, this.items.findIndex((entry) => entry.path === selectedPath));
     this.x = 0;
     this.y = 0;
     this.overlay.hidden = false;
-    this.render();
+    this.render(false);
     this.focusBoundary.activate(this.overlay.querySelector<HTMLButtonElement>('[data-viewer-action="close"]')!);
   }
 
@@ -114,7 +120,7 @@ export class ImageViewer {
 
   private move(direction: -1 | 1): void {
     this.index = (this.index + direction + this.items.length) % this.items.length;
-    this.render();
+    this.render(true);
   }
 
   private setZoom(value: number): void {
@@ -133,16 +139,17 @@ export class ImageViewer {
 
   private readonly handleResize = (): void => this.position();
 
-  private render(): void {
+  private render(notifySelection: boolean): void {
     const entry = this.items[this.index]!;
     const preview = entry.preview as BrowserImagePreview;
+    const description = this.descriptions.get(entry.path);
     this.title.textContent = entry.name;
     this.image.src = preview.src;
-    this.image.alt = preview.alt;
-    this.caption.textContent = preview.caption ?? preview.alt;
+    this.image.alt = description?.alt ?? preview.alt;
+    this.caption.textContent = description?.caption ?? description?.alt ?? preview.caption ?? preview.alt;
     this.counter.textContent = `${this.index + 1} / ${this.items.length} · ${preview.mediaType}`;
     this.setZoom(1);
     this.position();
-    this.onSelectionChange?.(entry);
+    if (notifySelection) this.onSelectionChange?.(entry, description);
   }
 }

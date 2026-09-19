@@ -261,6 +261,14 @@ export class TerminalSessionDeck {
     return { kind: "missing", feedback: "error" };
   }
 
+  activateFilesystemPath(path: string): FilesystemActivation {
+    const resolved = this.filesystem.resolve(this.filesystem.root, path);
+    if (resolved !== path || !this.filesystem.isDirectory(resolved)) return { kind: "missing", feedback: "error" };
+    this.current.cwd = resolved;
+    this.current.filesystemView = "directory";
+    return { kind: "navigated", feedback: "success" };
+  }
+
   private createSession(index: number, entries: TerminalEntry[]): TerminalSessionState {
     return {
       index,

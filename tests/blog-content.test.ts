@@ -13,7 +13,7 @@ const tree = buildContentTree(entries);
 describe("blog content renderer", () => {
   it("renders the supported article structure", () => {
     const html = renderContentMarkdown("# Title\n\nA **bold** value with `code`.\n\n- First\n- Second\n\n1. One\n2. Two", { documentPath: "posts/trip/index.md", tree });
-    expect(html).toContain("<h1>Title</h1>");
+    expect(html).toContain('<h1 id="title" tabindex="-1">Title</h1>');
     expect(html).toContain("<strong>bold</strong>");
     expect(html).toContain("<code>code</code>");
     expect(html.replaceAll("\n", "")).toContain("<ul><li>First</li><li>Second</li></ul>");
@@ -48,6 +48,29 @@ describe("blog content renderer", () => {
   it("keeps mail links in-page-safe and external web links isolated", () => {
     const html = renderContentMarkdown("[Mail](mailto:test@example.com) [Web](http://example.com)", { documentPath: "posts/trip/index.md", tree });
     expect(html).toContain('href="mailto:test@example.com"');
-    expect(html).toContain('href="http://example.com" target="_blank" rel="noreferrer"');
+    expect(html).toContain('href="http://example.com" target="_blank" rel="noopener noreferrer"');
+  });
+
+  it("preserves safe in-page and site-root links without treating them as missing content", () => {
+    const html = renderContentMarkdown("[Section](#details)\n\n## Details\n\n[Home](/) [Unsafe](//example.com)", { documentPath: "posts/trip/index.md", tree });
+    expect(html).toContain('href="#details" data-content-anchor="details"');
+    expect(html).toContain('<h2 id="details" tabindex="-1">Details</h2>');
+    expect(html).toContain('href="/"');
+    expect(html).not.toContain('href="//example.com"');
+    expect(html.match(/content-reference--missing/gu)).toHaveLength(1);
+  });
+
+  it("gives duplicate and non-latin headings stable unique anchors", () => {
+    const html = renderContentMarkdown("[跳转](#你好-世界)\n\n## 你好 世界\n\n## 你好 世界", { documentPath: "posts/trip/index.md", tree });
+    expect(html).toContain('data-content-anchor="你好-世界"');
+    expect(html).toContain('<h2 id="你好-世界" tabindex="-1">你好 世界</h2>');
+    expect(html).toContain('<h2 id="你好-世界-2" tabindex="-1">你好 世界</h2>');
+  });
+
+  it("does not nest an image button inside a Markdown link", () => {
+    const html = renderContentMarkdown("[![Ridge at sunrise](./ridge.webp)](../next.md)", { documentPath: "posts/trip/index.md", tree });
+    expect(html).toContain('href="#/blog/posts/next.md"');
+    expect(html).toContain('<img src="/assets/ridge.webp" alt="Ridge at sunrise"');
+    expect(html).not.toContain("<button");
   });
 });

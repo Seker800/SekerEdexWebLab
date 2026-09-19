@@ -241,10 +241,9 @@ const commandDeck = new CommandDeckController(browserFilesystem);
 let lastContentHash = "";
 const imageViewer = new ImageViewer(commandDeckElement, () => {
   audioDeck.play("denied");
-  const directory = currentContentDirectory();
-  if (directory !== undefined) writeContentLocation(directory);
-}, (entry) => {
-  if (entry.contentPath) writeContentLocation(entry.contentPath);
+  syncLocationToDeck();
+}, (entry, description) => {
+  if (entry.contentPath) writeContentLocation(entry.contentPath, "push", description);
 });
 lifecycle.add(() => imageViewer.dispose());
 
@@ -373,15 +372,66 @@ function currentContentDirectory(): string | undefined {
     : undefined;
 }
 
-function writeContentLocation(relativePath: string): void {
+type ContentHistoryMode = "push" | "replace";
+
+interface DeckHistoryState {
+  readonly contentPath?: string;
+  readonly filesystemPath?: string;
+  readonly imageDescription?: { readonly alt: string; readonly caption?: string };
+}
+
+function deckHistoryState(relativePath: string | undefined, imageDescription?: { alt: string; caption?: string }): DeckHistoryState {
+  return relativePath === undefined
+    ? { filesystemPath: commandDeck.snapshot().current.cwd }
+    : { contentPath: relativePath, ...(imageDescription && { imageDescription: { ...imageDescription } }) };
+}
+
+function hasHistoryState(value: unknown, expected: DeckHistoryState): boolean {
+  if (typeof value !== "object" || value === null) return false;
+  const current = value as Record<string, unknown>;
+  return current.contentPath === expected.contentPath
+    && current.filesystemPath === expected.filesystemPath
+    && JSON.stringify(current.imageDescription) === JSON.stringify(expected.imageDescription);
+}
+
+function historyFilesystemPath(value: unknown): string | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const path = (value as Record<string, unknown>).filesystemPath;
+  return typeof path === "string" ? path : undefined;
+}
+
+function historyImageDescription(value: unknown, relativePath: string): { alt: string; caption?: string } | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const state = value as Record<string, unknown>;
+  if (state.contentPath !== relativePath || typeof state.imageDescription !== "object" || state.imageDescription === null) return undefined;
+  const description = state.imageDescription as Record<string, unknown>;
+  if (typeof description.alt !== "string" || description.alt === "") return undefined;
+  return {
+    alt: description.alt,
+    ...(typeof description.caption === "string" && { caption: description.caption })
+  };
+}
+
+function writeContentLocation(
+  relativePath: string | undefined,
+  mode: ContentHistoryMode = "push",
+  imageDescription?: { alt: string; caption?: string }
+): void {
   if (staticMode) return;
-  const nextHash = contentHash(relativePath);
-  if (window.location.hash === nextHash) {
+  const nextHash = relativePath === undefined ? "" : contentHash(relativePath);
+  const nextState = deckHistoryState(relativePath, imageDescription);
+  if (window.location.hash === nextHash && hasHistoryState(window.history.state, nextState)) {
     lastContentHash = nextHash;
     return;
   }
   lastContentHash = nextHash;
-  window.history.pushState(null, "", nextHash);
+  const nextUrl = nextHash === "" ? `${window.location.pathname}${window.location.search}` : nextHash;
+  if (mode === "replace") window.history.replaceState(nextState, "", nextUrl);
+  else window.history.pushState(nextState, "", nextUrl);
+}
+
+function syncLocationToDeck(mode: ContentHistoryMode = "push"): void {
+  writeContentLocation(currentContentDirectory(), mode);
 }
 
 function directoryImages(relativePath: string) {
@@ -390,12 +440,12 @@ function directoryImages(relativePath: string) {
   return browserFilesystem.list(absoluteDirectory).filter((entry) => entry.preview?.kind === "image");
 }
 
-function openContentPath(relativePath: string, options: { render?: boolean; focus?: boolean } = {}): void {
+function openContentPath(relativePath: string, options: { render?: boolean; focus?: boolean; imageDescription?: { alt: string; caption?: string } } = {}): void {
   const result = commandDeck.dispatch({ type: "activate-content-path", relativePath }).filesystem!;
   if (result.kind !== "image") imageViewer.close({ notify: false });
   if (result.kind === "missing") {
     commandDeck.dispatch({ type: "activate-content-path", relativePath: "" });
-    writeContentLocation("");
+    writeContentLocation("", "replace");
   }
   if (options.render !== false) {
     renderTerminal();
@@ -403,21 +453,44 @@ function openContentPath(relativePath: string, options: { render?: boolean; focu
   }
   if (result.kind === "document" && options.focus !== false) contentReaderClose.focus();
   if (result.kind === "image" && result.entry.contentPath) {
-    imageViewer.open(directoryImages(result.entry.contentPath), result.entry.path);
+    imageViewer.open(
+      directoryImages(result.entry.contentPath),
+      result.entry.path,
+      options.imageDescription
+    );
   }
 }
 
-function restoreContentLocation(options: { render?: boolean } = {}): void {
+function restoreContentLocation(options: { render?: boolean; state?: unknown } = {}): void {
   if (staticMode) return;
+  const historyState = options.state ?? window.history.state;
   const relativePath = parseContentHash(window.location.hash);
   if (relativePath === undefined) {
+    const filesystemPath = historyFilesystemPath(historyState);
+    if (filesystemPath) {
+      const result = commandDeck.dispatch({ type: "activate-filesystem-path", path: filesystemPath }).filesystem;
+      if (result?.kind === "navigated") {
+        lastContentHash = "";
+        imageViewer.close({ notify: false });
+        if (options.render !== false) {
+          renderTerminal();
+          renderSessionChrome();
+        }
+        return;
+      }
+    }
     lastContentHash = contentHash("");
-    window.history.replaceState(null, "", lastContentHash);
+    writeContentLocation("", "replace");
     openContentPath("", { ...(options.render !== undefined && { render: options.render }), focus: false });
     return;
   }
   lastContentHash = window.location.hash;
-  openContentPath(relativePath, { ...(options.render !== undefined && { render: options.render }), focus: false });
+  const imageDescription = historyImageDescription(historyState, relativePath);
+  openContentPath(relativePath, {
+    ...(options.render !== undefined && { render: options.render }),
+    focus: false,
+    ...(imageDescription && { imageDescription })
+  });
 }
 
 function switchSession(index: number): void {
@@ -425,6 +498,7 @@ function switchSession(index: number): void {
   commandDeck.dispatch({ type: "activate-session", index });
   renderTerminal();
   renderSessionChrome();
+  syncLocationToDeck();
   setInputValue(commandDeck.snapshot().current.draft);
   input.focus();
 }
@@ -433,6 +507,7 @@ function switchAdjacentSession(direction: -1 | 1): void {
   commandDeck.dispatch({ type: "activate-adjacent-session", direction });
   renderTerminal();
   renderSessionChrome();
+  syncLocationToDeck();
   setInputValue(commandDeck.snapshot().current.draft);
   input.focus();
 }
@@ -502,6 +577,7 @@ function submitCommand(): void {
   input.value = "";
   renderTerminal();
   renderSessionChrome();
+  syncLocationToDeck();
   playFeedback(feedback);
 }
 
@@ -544,26 +620,39 @@ lifecycle.listen<MouseEvent>(output, "click", () => input.focus());
 lifecycle.listen<MouseEvent>(contentReaderClose, "click", () => {
   commandDeck.dispatch({ type: "close-content" });
   renderSessionChrome();
-  const directory = currentContentDirectory();
-  if (directory !== undefined) writeContentLocation(directory);
+  syncLocationToDeck();
   input.focus();
 });
 
 lifecycle.listen<MouseEvent>(contentReaderBody, "click", (event) => {
+  const anchor = (event.target as Element | null)?.closest<HTMLAnchorElement>("a[data-content-anchor]");
+  if (anchor) {
+    event.preventDefault();
+    const anchorId = anchor.dataset.contentAnchor;
+    const destination = Array.from(contentReaderBody.querySelectorAll<HTMLElement>("[id]"))
+      .find((element) => element.id === anchorId);
+    destination?.scrollIntoView({ block: "start" });
+    destination?.focus({ preventScroll: true });
+    return;
+  }
   const target = (event.target as Element | null)?.closest<HTMLElement>("[data-content-path]");
   const relativePath = target?.dataset.contentPath;
   if (!relativePath) return;
   event.preventDefault();
-  writeContentLocation(relativePath);
-  openContentPath(relativePath);
+  const image = target instanceof HTMLImageElement ? target : target.querySelector<HTMLImageElement>("img");
+  const imageDescription = image?.alt ? { alt: image.alt } : undefined;
+  writeContentLocation(relativePath, "push", imageDescription);
+  openContentPath(relativePath, {
+    ...(imageDescription && { imageDescription })
+  });
 });
 
-const handleContentHistory = (): void => {
+const handleContentHashChange = (): void => {
   if (window.location.hash === lastContentHash) return;
   restoreContentLocation();
 };
-lifecycle.listen<PopStateEvent>(window, "popstate", handleContentHistory);
-lifecycle.listen<HashChangeEvent>(window, "hashchange", handleContentHistory);
+lifecycle.listen<PopStateEvent>(window, "popstate", (event) => restoreContentLocation({ state: event.state }));
+lifecycle.listen<HashChangeEvent>(window, "hashchange", handleContentHashChange);
 
 lifecycle.listen<KeyboardEvent>(document, "keydown", (event) => {
   if (document.documentElement.dataset.bootPhase !== "complete") return;
@@ -672,8 +761,7 @@ lifecycle.listen<MouseEvent>(fileGrid, "click", (event) => {
   if (result.kind === "navigated" || result.kind === "show-disks") {
     renderTerminal();
     renderSessionChrome();
-    const directory = currentContentDirectory();
-    if (directory !== undefined) writeContentLocation(directory);
+    syncLocationToDeck();
   }
   if (result.kind === "theme" || result.kind === "keyboard") renderTerminal();
   if (result.kind === "document") {
@@ -685,6 +773,7 @@ lifecycle.listen<MouseEvent>(fileGrid, "click", (event) => {
     const images = result.entry.contentPath
       ? directoryImages(result.entry.contentPath)
       : commandDeck.snapshot().filesystem.entries.filter((entry) => entry.preview?.kind === "image");
+    if (result.entry.contentPath) writeContentLocation(result.entry.contentPath);
     imageViewer.open(images, result.entry.path);
   }
   if (result.kind === "insert") audioDeck.play("folder");

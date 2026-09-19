@@ -14,6 +14,7 @@ export type CommandDeckIntent =
   | { type: "activate-session"; index: number }
   | { type: "activate-adjacent-session"; direction: -1 | 1 }
   | { type: "activate-filesystem-entry"; name: string }
+  | { type: "activate-filesystem-path"; path: string }
   | { type: "activate-content-path"; relativePath: string }
   | { type: "close-content" }
   | { type: "toggle-modifier"; modifier: DeckModifier }
@@ -96,7 +97,7 @@ export class CommandDeckController {
       case "activate-filesystem-entry": {
         const filesystem = this.terminal.activateFilesystemEntry(intent.name);
         if (filesystem.kind === "document") this.openContent = filesystem.entry;
-        else if (filesystem.kind === "navigated" || filesystem.kind === "show-disks") this.openContent = null;
+        else if (filesystem.kind === "image" || filesystem.kind === "navigated" || filesystem.kind === "show-disks") this.openContent = null;
         return {
           filesystem,
           ...("feedback" in filesystem ? { feedback: filesystem.feedback } : {})
@@ -105,11 +106,16 @@ export class CommandDeckController {
       case "activate-content-path": {
         const filesystem = this.terminal.activateContentPath(intent.relativePath);
         if (filesystem.kind === "document") this.openContent = filesystem.entry;
-        else if (filesystem.kind === "navigated") this.openContent = null;
+        else if (filesystem.kind === "image" || filesystem.kind === "navigated") this.openContent = null;
         return {
           filesystem,
           ...("feedback" in filesystem ? { feedback: filesystem.feedback } : {})
         };
+      }
+      case "activate-filesystem-path": {
+        const filesystem = this.terminal.activateFilesystemPath(intent.path);
+        if (filesystem.kind === "navigated") this.openContent = null;
+        return { filesystem };
       }
       case "close-content":
         this.openContent = null;

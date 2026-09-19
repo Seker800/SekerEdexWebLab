@@ -554,12 +554,67 @@ try {
   if (!await motionPage.locator(".section-label small").textContent().then((value) => value?.endsWith("/Blog"))) {
     throw new Error("Runtime filesystem did not start in the blog content root");
   }
+  const contentTerminalInput = motionPage.locator("#terminal-input");
+  await contentTerminalInput.fill("cd ..");
+  await contentTerminalInput.press("Enter");
+  if (motionPage.url().includes("#/blog/") || await motionPage.locator(".section-label small").textContent() !== "/home/squared") {
+    throw new Error(`Leaving Blog did not expose the sandbox root state: ${motionPage.url()}`);
+  }
+  await contentTerminalInput.fill("cd Blog");
+  await contentTerminalInput.press("Enter");
+  await motionPage.goBack({ waitUntil: "networkidle" });
+  if (motionPage.url().includes("#/blog/") || await motionPage.locator(".section-label small").textContent() !== "/home/squared") {
+    throw new Error(`Browser back did not restore the non-content filesystem state: ${motionPage.url()}`);
+  }
+  await motionPage.goForward({ waitUntil: "networkidle" });
+  if (!motionPage.url().endsWith("#/blog/") || !await motionPage.locator(".section-label small").textContent().then((value) => value?.endsWith("/Blog"))) {
+    throw new Error(`Browser forward did not restore the content root: ${motionPage.url()}`);
+  }
+  await contentTerminalInput.fill("cd posts");
+  await contentTerminalInput.press("Enter");
+  if (!motionPage.url().endsWith("#/blog/posts")) throw new Error(`Terminal navigation did not update the content hash: ${motionPage.url()}`);
+  await contentTerminalInput.fill("cat welcome.md");
+  await contentTerminalInput.press("Enter");
+  if (!await motionPage.locator("#terminal-output").textContent().then((value) => value?.includes("# Welcome to the command deck"))) {
+    throw new Error("Terminal could not read the real Markdown content file");
+  }
+  const historyLengthBeforeMissingContent = await motionPage.evaluate(() => window.history.length);
+  await motionPage.evaluate(() => { window.location.hash = "#/blog/posts/missing.md"; });
+  await motionPage.waitForFunction(() => window.location.hash === "#/blog/");
+  const historyLengthAfterMissingContent = await motionPage.evaluate(() => window.history.length);
+  if (historyLengthAfterMissingContent !== historyLengthBeforeMissingContent + 1) {
+    throw new Error(`Missing content recovery polluted browser history: ${historyLengthBeforeMissingContent} → ${historyLengthAfterMissingContent}`);
+  }
+  await motionPage.goBack({ waitUntil: "networkidle" });
+  if (!motionPage.url().endsWith("#/blog/posts") || !await motionPage.locator(".section-label small").textContent().then((value) => value?.endsWith("/Blog/posts"))) {
+    throw new Error(`Browser back did not escape a missing content URL: ${motionPage.url()}`);
+  }
+  await contentTerminalInput.fill("cd ..");
+  await contentTerminalInput.press("Enter");
+  if (!motionPage.url().endsWith("#/blog/")) throw new Error(`Terminal navigation did not restore the content root hash: ${motionPage.url()}`);
   await motionPage.locator('.file-grid button[data-file-name="posts"]').click();
   await motionPage.locator('.file-grid button[data-file-name="welcome.md"]').click();
   if (!await motionPage.locator("#content-reader").isVisible()) throw new Error("Markdown file did not open the central article reader");
   if (await motionPage.locator("#content-reader-title").textContent() !== "Welcome to the command deck") throw new Error("Article reader did not render typed document metadata");
+  await motionPage.locator("#content-reader-body").getByText("Select a folder", { exact: false }).waitFor();
   if (!await motionPage.locator("#content-reader-body").textContent().then((value) => value?.includes("Select a folder"))) throw new Error("Article reader did not render Markdown content");
   if (!motionPage.url().endsWith("#/blog/posts/welcome.md")) throw new Error(`Article navigation did not update the content hash: ${motionPage.url()}`);
+  await motionPage.locator("#content-reader-body").evaluate((body) => {
+    const link = document.createElement("a");
+    link.href = "#verification-anchor";
+    link.dataset.contentAnchor = "verification-anchor";
+    link.textContent = "Verification anchor";
+    const heading = document.createElement("h2");
+    heading.id = "verification-anchor";
+    heading.tabIndex = -1;
+    heading.textContent = "Verification destination";
+    body.prepend(link, heading);
+  });
+  await motionPage.getByRole("link", { name: "Verification anchor" }).click();
+  if (!motionPage.url().endsWith("#/blog/posts/welcome.md") || await motionPage.evaluate(() => document.activeElement?.id) !== "verification-anchor") {
+    throw new Error(`Article anchor escaped the reader's content route: ${motionPage.url()}`);
+  }
+  await motionPage.locator("#content-reader-close").focus();
   const articleAccessibility = await motionPage.evaluate(() => {
     const runtime = document.querySelector<HTMLElement>("#terminal-runtime")!;
     const body = document.querySelector<HTMLElement>("#content-reader-body")!;
@@ -586,6 +641,13 @@ try {
   const articleScrollAfter = await motionPage.locator("#content-reader-body").evaluate((body) => body.scrollTop);
   if (articleScrollAfter <= articleScrollBefore) throw new Error("Article body did not scroll from the keyboard");
   await motionPage.screenshot({ path: path.join(artifactDirectory, "blog-reader.png"), animations: "disabled", omitBackground: true });
+  await motionPage.locator(".terminal-tabs button").nth(1).click();
+  if (await motionPage.locator("#content-reader").isVisible() || !motionPage.url().endsWith("#/blog/")) {
+    throw new Error(`Switching terminal sessions left stale article location state: ${motionPage.url()}`);
+  }
+  await motionPage.locator(".terminal-tabs button").nth(0).click();
+  if (!motionPage.url().endsWith("#/blog/posts")) throw new Error(`Returning to a content session did not restore its directory hash: ${motionPage.url()}`);
+  await motionPage.locator('.file-grid button[data-file-name="welcome.md"]').click();
   await motionPage.locator("#content-reader-close").click();
   if (await motionPage.locator("#content-reader").isVisible()) throw new Error("Article reader did not return to the terminal");
   const restoredTerminalAccessibility = await motionPage.evaluate(() => {
@@ -597,8 +659,17 @@ try {
   }
   if (!motionPage.url().endsWith("#/blog/posts")) throw new Error(`Closing an article did not restore its directory hash: ${motionPage.url()}`);
   await motionPage.locator('.file-grid button[data-file-name="building-edex-web"]').click();
+  await motionPage.locator('.file-grid button[data-file-name="command-deck.svg"]').click();
+  if (!await motionPage.locator(".image-viewer").isVisible() || !motionPage.url().endsWith("#/blog/posts/building-edex-web/command-deck.svg")) {
+    throw new Error(`Opening media from the filesystem did not create a media history entry: ${motionPage.url()}`);
+  }
+  await motionPage.goBack({ waitUntil: "networkidle" });
+  if (await motionPage.locator(".image-viewer").isVisible() || !motionPage.url().endsWith("#/blog/posts/building-edex-web")) {
+    throw new Error(`Browser back did not restore the directory after filesystem media: ${motionPage.url()}`);
+  }
   await motionPage.locator('.file-grid button[data-file-name="index.md"]').click();
   const inlineImage = motionPage.locator('.content-image[data-content-path="posts/building-edex-web/command-deck.svg"]');
+  await inlineImage.waitFor();
   if (!await inlineImage.isVisible()) throw new Error("Relative Markdown image was not rendered from the content manifest");
   await inlineImage.locator("img").evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0 ? undefined : new Promise<void>((resolve, reject) => {
     image.addEventListener("load", () => resolve(), { once: true });
@@ -606,6 +677,9 @@ try {
   }));
   await inlineImage.click();
   if (!await motionPage.locator(".image-viewer").isVisible()) throw new Error("Image file did not open the media viewer");
+  if (await motionPage.locator(".image-viewer__stage img").getAttribute("alt") !== "The command deck regions") {
+    throw new Error("Image viewer did not preserve the author's Markdown alt text");
+  }
   if (!motionPage.url().endsWith("#/blog/posts/building-edex-web/command-deck.svg")) throw new Error(`Image navigation did not update the content hash: ${motionPage.url()}`);
   const modalIsolation = await motionPage.evaluate(() => ({
     background: Array.from(document.querySelectorAll<HTMLElement>("#command-deck > :not(.image-viewer)"))
@@ -660,6 +734,9 @@ try {
   await motionPage.screenshot({ path: path.join(artifactDirectory, "image-viewer.png"), animations: "disabled", omitBackground: true });
   await motionPage.goBack({ waitUntil: "networkidle" });
   if (await motionPage.locator("#image-viewer-title").textContent() !== "command-deck.svg") throw new Error("Browser back did not restore the previous media selection");
+  if (await motionPage.locator(".image-viewer__stage img").getAttribute("alt") !== "The command deck regions") {
+    throw new Error("Browser back did not preserve the author's Markdown alt text");
+  }
   await motionPage.goBack({ waitUntil: "networkidle" });
   if (await motionPage.locator(".image-viewer").isVisible() || !await motionPage.locator("#content-reader").isVisible()) {
     throw new Error("Browser back did not close media and restore the article");
@@ -671,6 +748,9 @@ try {
   }
   await motionPage.keyboard.press("Escape");
   if (await motionPage.locator(".image-viewer").isVisible()) throw new Error("Image viewer did not close with Escape");
+  if (await motionPage.locator("#content-reader").isVisible() || !motionPage.url().endsWith("#/blog/posts/building-edex-web")) {
+    throw new Error(`Closing media did not restore its directory state: ${motionPage.url()}`);
+  }
   if (!await motionPage.evaluate(() => Array.from(document.querySelectorAll<HTMLElement>("#command-deck > :not(.image-viewer)")).every((element) => !element.inert && element.getAttribute("aria-hidden") === null))) {
     throw new Error("Image viewer did not restore the command deck after dismissal");
   }

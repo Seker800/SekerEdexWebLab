@@ -1,0 +1,114 @@
+import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { createServer, type ViteDevServer } from "vite";
+import { afterEach, describe, expect, it } from "vitest";
+import { discoverContentFiles } from "../apps/clone/content-source-files.js";
+import { contentManifestPlugin } from "../apps/clone/vite.config.js";
+
+const temporaryDirectories: string[] = [];
+const developmentServers: ViteDevServer[] = [];
+
+afterEach(async () => {
+  await Promise.all(developmentServers.splice(0).map((server) => server.close()));
+  await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
+});
+
+async function waitFor(predicate: () => boolean, message: string): Promise<void> {
+  const deadline = Date.now() + 5_000;
+  while (!predicate()) {
+    if (Date.now() >= deadline) throw new Error(message);
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+}
+
+describe("content source discovery", () => {
+  it("returns deterministic regular files and refuses symbolic links", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "seker-content-"));
+    temporaryDirectories.push(root);
+    await mkdir(path.join(root, "posts"));
+    await writeFile(path.join(root, "posts", "b.md"), "b");
+    await writeFile(path.join(root, "a.md"), "a");
+
+    await expect(discoverContentFiles(root)).resolves.toEqual([
+      path.join(root, "a.md"),
+      path.join(root, "posts", "b.md")
+    ]);
+
+    const outside = path.join(root, "..", `${path.basename(root)}-outside.md`);
+    await writeFile(outside, "secret");
+    temporaryDirectories.push(outside);
+    await symlink(outside, path.join(root, "leak.md"));
+    await expect(discoverContentFiles(root)).rejects.toThrow(/symbolic link/i);
+  });
+
+  it("watches the content root and invalidates the virtual manifest for all Vite 7 file event types", () => {
+    const root = path.join(tmpdir(), "content-root");
+    const plugin = contentManifestPlugin(root);
+    const watched: string[] = [];
+    const invalidated: unknown[] = [];
+    const messages: unknown[] = [];
+    const virtualModule = {};
+    const server = {
+      watcher: { add: (file: string) => { watched.push(file); } },
+      moduleGraph: {
+        getModuleById: (id: string) => id === "\0virtual:content-manifest" ? virtualModule : undefined,
+        invalidateModule: (module: unknown) => { invalidated.push(module); }
+      },
+      ws: { send: (message: unknown) => { messages.push(message); } }
+    };
+    if (typeof plugin.configureServer !== "function" || typeof plugin.hotUpdate !== "function") {
+      throw new Error("Content plugin is missing its development-server hooks");
+    }
+    const hotUpdate = plugin.hotUpdate;
+
+    Reflect.apply(plugin.configureServer, {}, [server]);
+    const environment = {
+      name: "client",
+      moduleGraph: server.moduleGraph,
+      hot: server.ws
+    };
+    const results = (["create", "update", "delete"] as const).map((type) => Reflect.apply(hotUpdate, { environment }, [{
+      type,
+      file: path.join(root, "new.md"),
+      server,
+      timestamp: Date.now(),
+      modules: [],
+      read: () => ""
+    }]));
+
+    expect(watched).toEqual([root]);
+    expect(invalidated).toEqual([virtualModule, virtualModule, virtualModule]);
+    expect(messages).toEqual(Array.from({ length: 3 }, () => ({ type: "full-reload" })));
+    expect(results).toEqual([[], [], []]);
+  });
+
+  it("receives real create and delete events from a running Vite development server", async () => {
+    const projectRoot = await mkdtemp(path.join(tmpdir(), "seker-vite-content-"));
+    temporaryDirectories.push(projectRoot);
+    const contentRoot = path.join(projectRoot, "content");
+    await mkdir(contentRoot);
+    await writeFile(path.join(projectRoot, "index.html"), '<script type="module" src="/main.js"></script>');
+    await writeFile(path.join(projectRoot, "main.js"), 'import "virtual:content-manifest";');
+    const server = await createServer({
+      configFile: false,
+      root: projectRoot,
+      logLevel: "silent",
+      server: { host: "127.0.0.1", port: 0 },
+      plugins: [contentManifestPlugin(contentRoot)]
+    });
+    developmentServers.push(server);
+    const watcherReady = new Promise<void>((resolve) => server.watcher.once("ready", resolve));
+    await server.listen();
+    await watcherReady;
+    const observed: string[] = [];
+    server.watcher.on("add", (file) => { if (file.startsWith(contentRoot)) observed.push("create"); });
+    server.watcher.on("unlink", (file) => { if (file.startsWith(contentRoot)) observed.push("delete"); });
+
+    const article = path.join(contentRoot, "new.md");
+    await writeFile(article, "# New");
+    await waitFor(() => observed.includes("create"), "Vite did not emit a create event for new content");
+    await rm(article);
+    await waitFor(() => observed.includes("delete"), "Vite did not emit a delete event for removed content");
+  }, 10_000);
+});

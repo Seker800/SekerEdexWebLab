@@ -1,30 +1,36 @@
-import { readFile, readdir } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { defineConfig, normalizePath, type Plugin } from "vite";
 import { createContentManifest, supportedContentMediaExtensions } from "./src/content/content-registry.js";
+import { discoverContentFiles } from "./content-source-files.js";
 
 const virtualModuleId = "virtual:content-manifest";
 const resolvedVirtualModuleId = `\0${virtualModuleId}`;
 
-async function filesBelow(directory: string): Promise<string[]> {
-  const entries = await readdir(directory, { withFileTypes: true });
-  const nested = await Promise.all(entries.map((entry) => {
-    const absolutePath = path.join(directory, entry.name);
-    return entry.isDirectory() ? filesBelow(absolutePath) : [absolutePath];
-  }));
-  return nested.flat().sort((left, right) => left.localeCompare(right));
+function isContentFile(contentRoot: string, file: string): boolean {
+  const relative = path.relative(contentRoot, file);
+  return relative !== "" && relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
 }
 
-function contentManifestPlugin(): Plugin {
-  const contentRoot = path.resolve(import.meta.dirname, "../../content/blog");
+export function contentManifestPlugin(contentRoot = path.resolve(import.meta.dirname, "../../content/blog")): Plugin {
   return {
     name: "seker-content-manifest",
+    configureServer(server) {
+      server.watcher.add(contentRoot);
+    },
+    hotUpdate(options) {
+      if (!isContentFile(contentRoot, options.file)) return;
+      const virtualModule = this.environment.moduleGraph.getModuleById(resolvedVirtualModuleId);
+      if (virtualModule) this.environment.moduleGraph.invalidateModule(virtualModule, new Set(), options.timestamp, true);
+      if (this.environment.name === "client") this.environment.hot.send({ type: "full-reload" });
+      return [];
+    },
     resolveId(id) {
       return id === virtualModuleId ? resolvedVirtualModuleId : undefined;
     },
     async load(id) {
       if (id !== resolvedVirtualModuleId) return undefined;
-      const files = await filesBelow(contentRoot);
+      const files = await discoverContentFiles(contentRoot);
       for (const file of files) this.addWatchFile(file);
       const markdownFiles = files.filter((file) => file.endsWith(".md"));
       const mediaFiles = files.filter((file) => supportedContentMediaExtensions.includes(path.extname(file).slice(1).toLocaleLowerCase()));

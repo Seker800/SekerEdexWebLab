@@ -14,6 +14,9 @@ describe("content tree", () => {
     expect(listContentDirectory(tree, "").map((node) => node.relativePath)).toEqual(["posts"]);
     expect(listContentDirectory(tree, "posts").map((node) => node.relativePath)).toEqual(["posts/trip", "posts/next.md"]);
     expect(listContentDirectory(tree, "posts/trip").map((node) => node.relativePath)).toEqual(["posts/trip/index.md", "posts/trip/ridge.webp"]);
+    expect(Object.isFrozen(tree.root)).toBe(true);
+    expect(Object.isFrozen(tree.root.children)).toBe(true);
+    expect(Object.isFrozen(tree.get("posts/trip/index.md"))).toBe(true);
   });
 
   it("resolves references inside the manifest and refuses root escapes", () => {

@@ -66,8 +66,14 @@ Phase 0 只实现一个参考配置：eDEX-UI 2.2、默认 `tron` 主题、QWERT
 解析器运行时代码的类型化清单。内容树保留仓库真实层级并挂载到 `/home/squared/Blog`；canonical
 eDEX 目录独立挂载到 `/home/squared/.config/eDEX-UI`，静态参考模式不接收个人内容。虚拟文件系统
 只投影目录、文件和预览，不拥有内容发现逻辑。文章链接、文件点击与 hash 地址统一发送类型化
-content intent；文章阅读模式通过独立终端容器切换 `inert` 与 `aria-hidden`，图片弹窗通过共享模态
+content intent；Blog 外的沙箱目录写入类型化 `history.state`，文章内锚点只在阅读器中定位，二者都不
+占用内容 hash 路由。文章阅读模式通过独立终端容器切换 `inert` 与 `aria-hidden`，图片弹窗通过共享模态
 焦点边界隔离背景、循环焦点并恢复原状态。
+
+内容发现只接受内容根内的真实普通文件和目录，符号链接与其他特殊文件会使构建失败；开发服务器
+监听内容根并通过 Vite 7 `hotUpdate` 在新增、删除或修改内容时失效虚拟清单。当前阶段把 Markdown 正文保留在清单中，是为
+了让阅读器与同步终端 `cat` 共享完全相同的文件内容。若实际内容规模证明首屏预算不足，应先引入
+异步 content repository 端口并同时迁移终端读取协议，不能只把阅读器改成惰性加载而让虚拟文件为空。
 
 ## Invariants
 

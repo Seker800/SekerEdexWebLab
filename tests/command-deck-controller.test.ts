@@ -54,6 +54,26 @@ describe("command deck controller", () => {
     expect(controller.snapshot().content?.path).toBe(`${controller.snapshot().filesystem.contentRoot}/posts/welcome.md`);
     expect(controller.snapshot().current.cwd).toBe(`${controller.snapshot().filesystem.contentRoot}/posts`);
   });
+
+  it("does not retain a stale article selection when media replaces it", () => {
+    const controller = new CommandDeckController(createSandboxFilesystem({ contentEntries: contentManifest.entries, startInContent: true }));
+    controller.dispatch({ type: "activate-content-path", relativePath: "posts/building-edex-web/index.md" });
+    expect(controller.snapshot().content?.preview?.kind).toBe("document");
+
+    const media = controller.dispatch({ type: "activate-content-path", relativePath: "posts/building-edex-web/command-deck.svg" });
+    expect(media.filesystem?.kind).toBe("image");
+    expect(controller.snapshot().content).toBeNull();
+  });
+
+  it("restores an absolute sandbox directory through a typed history intent", () => {
+    const controller = new CommandDeckController(createSandboxFilesystem({ contentEntries: contentManifest.entries, startInContent: true }));
+    const home = controller.snapshot().filesystem.root;
+
+    expect(controller.dispatch({ type: "activate-filesystem-path", path: home }).filesystem).toEqual({ kind: "navigated", feedback: "success" });
+    expect(controller.snapshot().current.cwd).toBe(home);
+    expect(controller.dispatch({ type: "activate-filesystem-path", path: "/outside" }).filesystem).toEqual({ kind: "missing", feedback: "error" });
+    expect(controller.snapshot().current.cwd).toBe(home);
+  });
 });
 
 describe("disposable registry", () => {

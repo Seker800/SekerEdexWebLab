@@ -11,7 +11,7 @@ export type ContentTreeNode = ContentDirectoryNode | ContentEntry;
 
 export interface ContentTree {
   readonly root: ContentDirectoryNode;
-  readonly byPath: ReadonlyMap<string, ContentTreeNode>;
+  get(relativePath: string): ContentTreeNode | undefined;
 }
 
 interface MutableDirectoryNode {
@@ -32,6 +32,24 @@ function sortNodes(nodes: ContentTreeNode[]): void {
     return nodeName(left).localeCompare(nodeName(right));
   });
   for (const node of nodes) if (node.kind === "directory") sortNodes(node.children as ContentTreeNode[]);
+}
+
+function freezeEntry(entry: ContentEntry): ContentEntry {
+  return entry.kind === "document"
+    ? Object.freeze({ ...entry, tags: Object.freeze([...entry.tags]) })
+    : Object.freeze({ ...entry });
+}
+
+function freezeDirectory(directory: MutableDirectoryNode): ContentDirectoryNode {
+  const children = directory.children.map((child) => child.kind === "directory"
+    ? freezeDirectory(child as MutableDirectoryNode)
+    : freezeEntry(child));
+  return Object.freeze({
+    kind: "directory",
+    name: directory.name,
+    relativePath: directory.relativePath,
+    children: Object.freeze(children)
+  });
 }
 
 export function buildContentTree(entries: readonly ContentEntry[]): ContentTree {
@@ -59,12 +77,19 @@ export function buildContentTree(entries: readonly ContentEntry[]): ContentTree 
     byPath.set(entry.relativePath, entry);
   }
   sortNodes(root.children);
-  return Object.freeze({ root, byPath });
+  const frozenRoot = freezeDirectory(root);
+  const frozenByPath = new Map<string, ContentTreeNode>();
+  const index = (node: ContentTreeNode): void => {
+    frozenByPath.set(node.relativePath, node);
+    if (node.kind === "directory") for (const child of node.children) index(child);
+  };
+  index(frozenRoot);
+  return Object.freeze({ root: frozenRoot, get: (relativePath: string) => frozenByPath.get(relativePath) });
 }
 
 export function listContentDirectory(tree: ContentTree, relativePath: string): readonly ContentTreeNode[] {
   const normalized = normalizeContentPath(relativePath, { allowRoot: true });
-  const node = tree.byPath.get(normalized);
+  const node = tree.get(normalized);
   return node?.kind === "directory" ? node.children : [];
 }
 
@@ -91,5 +116,5 @@ function resolveRelativePath(documentPath: string, reference: string): string | 
 
 export function resolveContentReference(tree: ContentTree, documentPath: string, reference: string): ContentTreeNode | undefined {
   const resolved = resolveRelativePath(documentPath, reference);
-  return resolved ? tree.byPath.get(resolved) : undefined;
+  return resolved ? tree.get(resolved) : undefined;
 }
