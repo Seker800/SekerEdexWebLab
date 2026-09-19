@@ -36,7 +36,7 @@ export class ImageViewer {
     this.surface.setAttribute("role", "region");
     this.surface.setAttribute("aria-labelledby", "image-viewer-title");
     this.surface.innerHTML = `
-      <header class="image-viewer__header"><span id="image-viewer-title"></span><button type="button" data-viewer-action="close" aria-label="Close image viewer">CLOSE</button></header>
+      <header class="image-viewer__header"><div><small>MEDIA VIEWER</small><h1 id="image-viewer-title"></h1></div><button type="button" data-viewer-action="close" aria-label="Close image viewer">RETURN TO SHELL</button></header>
       <div class="image-viewer__stage"><img alt=""></div>
       <p class="image-viewer__caption"></p>
       <footer><button type="button" data-viewer-action="previous" aria-label="Previous image">← PREV</button><span class="image-viewer__counter"></span><button type="button" data-viewer-action="zoom-out" aria-label="Zoom out">−</button><span class="image-viewer__zoom"></span><button type="button" data-viewer-action="zoom-in" aria-label="Zoom in">+</button><button type="button" data-viewer-action="next" aria-label="Next image">NEXT →</button></footer>

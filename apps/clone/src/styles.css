@@ -447,6 +447,8 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 
 .image-viewer { position: absolute; inset: 6.7cqh .8cqw 1.2cqh; z-index: 2; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; overflow: hidden; border: 1px solid rgba(var(--signal-rgb), .72); background: linear-gradient(135deg, rgba(var(--signal-rgb), .055), transparent 34%), rgba(2, 10, 12, .98); color: var(--signal); text-transform: none; }
 .image-viewer__header { display: flex; align-items: center; justify-content: space-between; padding: 1.1cqh 1.2cqw; border-bottom: 1px solid rgba(var(--signal-rgb), .42); color: var(--signal); font: 1.3cqh var(--font-ui); }
+.image-viewer__header small { display: block; color: rgba(var(--signal-rgb), .62); font: 1.05cqh var(--font-ui); text-transform: uppercase; }
+.image-viewer__header h1 { margin: .55cqh 0 0; font: 2.2cqh/1.1 var(--font-ui); letter-spacing: .04em; }
 .image-viewer__stage { min-height: 0; display: grid; place-items: center; overflow: auto; padding: 2cqh 1cqw; background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(var(--signal-rgb), .018) 3px 4px); }
 .image-viewer__stage img { display: block; max-width: min(100%, 54cqw); max-height: 48cqh; transform-origin: center; transition: scale .12s ease; }
 .image-viewer__caption { margin: 0; padding: .9cqh .7cqw; border-top: 1px solid rgba(var(--signal-rgb), .2); color: rgba(var(--signal-rgb), .75); font: 1.15cqh/1.4 var(--font-mono); text-transform: none; }

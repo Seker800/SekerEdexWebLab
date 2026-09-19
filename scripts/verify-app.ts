@@ -819,7 +819,7 @@ try {
       "on-screen terminal shortcuts",
       "filesystem navigation, disk view and insertion",
       "blog folder navigation, terminal isolation and keyboard-scrolled Markdown reading",
-      "image viewer focus containment, modal isolation, bounded dragging, zoom, sequence navigation and keyboard dismissal",
+      "central image viewing, terminal isolation, zoom, sequence navigation and keyboard dismissal",
       "theme and keyboard file special actions",
       "outcome-specific sound feedback",
       "persistently visible sound control",
