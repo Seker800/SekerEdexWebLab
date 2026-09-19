@@ -1,4 +1,5 @@
 import type { BrowserFileEntry, BrowserImagePreview } from "./browser-filesystem.js";
+import type { FullscreenContentOverlay } from "./fullscreen-content-overlay.js";
 
 export class ImageViewer {
   private readonly surface: HTMLElement;
@@ -13,8 +14,7 @@ export class ImageViewer {
   private readonly descriptions = new Map<string, { alt: string; caption?: string }>();
   private readonly handleKeydown = (event: KeyboardEvent): void => {
     if (this.surface.hidden) return;
-    if (event.key === "Escape") this.close();
-    else if (event.key === "ArrowLeft") this.move(-1);
+    if (event.key === "ArrowLeft") this.move(-1);
     else if (event.key === "ArrowRight") this.move(1);
     else return;
     event.preventDefault();
@@ -22,9 +22,7 @@ export class ImageViewer {
   };
 
   constructor(
-    private readonly host: HTMLElement,
-    private readonly background: HTMLElement,
-    private readonly onClose?: () => void,
+    private readonly overlay: FullscreenContentOverlay,
     private readonly onSelectionChange?: (
       entry: Readonly<BrowserFileEntry>,
       description?: Readonly<{ alt: string; caption?: string }>
@@ -36,12 +34,12 @@ export class ImageViewer {
     this.surface.setAttribute("role", "region");
     this.surface.setAttribute("aria-labelledby", "image-viewer-title");
     this.surface.innerHTML = `
-      <header class="image-viewer__header"><div><small>MEDIA VIEWER</small><h1 id="image-viewer-title"></h1></div><button type="button" data-viewer-action="close" aria-label="Close image viewer">RETURN TO SHELL</button></header>
+      <header class="image-viewer__header"><div><small>MEDIA VIEWER</small><h1 id="image-viewer-title"></h1></div></header>
       <div class="image-viewer__stage"><img alt=""></div>
       <p class="image-viewer__caption"></p>
       <footer><button type="button" data-viewer-action="previous" aria-label="Previous image">← PREV</button><span class="image-viewer__counter"></span><button type="button" data-viewer-action="zoom-out" aria-label="Zoom out">−</button><span class="image-viewer__zoom"></span><button type="button" data-viewer-action="zoom-in" aria-label="Zoom in">+</button><button type="button" data-viewer-action="next" aria-label="Next image">NEXT →</button></footer>
     `;
-    host.append(this.surface);
+    this.overlay.register("image", this.surface);
     this.image = this.surface.querySelector("img")!;
     this.title = this.surface.querySelector("#image-viewer-title")!;
     this.caption = this.surface.querySelector(".image-viewer__caption")!;
@@ -52,8 +50,7 @@ export class ImageViewer {
       const button = (event.target as Element | null)?.closest<HTMLButtonElement>("[data-viewer-action]");
       if (!button) return;
       const action = button.dataset.viewerAction;
-      if (action === "close") this.close();
-      else if (action === "previous") this.move(-1);
+      if (action === "previous") this.move(-1);
       else if (action === "next") this.move(1);
       else if (action === "zoom-out") this.setZoom(this.zoom - 0.25);
       else if (action === "zoom-in") this.setZoom(this.zoom + 0.25);
@@ -67,21 +64,13 @@ export class ImageViewer {
     this.descriptions.clear();
     if (description) this.descriptions.set(selectedPath, { ...description });
     this.index = Math.max(0, this.items.findIndex((entry) => entry.path === selectedPath));
-    this.surface.hidden = false;
-    this.host.classList.add("content-open");
-    this.background.inert = true;
-    this.background.setAttribute("aria-hidden", "true");
     this.render(false);
-    this.surface.querySelector<HTMLButtonElement>('[data-viewer-action="close"]')!.focus();
+    this.overlay.open("image");
   }
 
   close(options: { notify?: boolean } = {}): void {
-    if (this.surface.hidden) return;
-    this.surface.hidden = true;
-    this.host.classList.remove("content-open");
-    this.background.inert = false;
-    this.background.removeAttribute("aria-hidden");
-    if (options.notify !== false) this.onClose?.();
+    if (!this.overlay.isActive("image")) return;
+    this.overlay.close(options);
   }
 
   dispose(): void {

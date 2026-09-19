@@ -65,7 +65,8 @@ npm run content:check
 
 无需修改 `apps/clone/src`。构建插件会生成媒体哈希 URL，左下角文件系统会按仓库真实目录挂载到
 `/home/squared/Blog`，文章和图片地址使用 `#/blog/...`，适用于无需 rewrite 的静态托管。文章与图片
-都会在中央终端内容区打开；图片仍支持同目录切换、缩放、Escape 关闭和 Back/Forward 恢复。
+都会在同一个全屏内容层中打开，并共享位置、尺寸、关闭按钮和 Escape 行为；图片仍支持同目录切换、
+缩放和 Back/Forward 恢复。
 
 ## Commit 与 Push
 

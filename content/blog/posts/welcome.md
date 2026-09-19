@@ -34,11 +34,11 @@ Every document is still a readable file in the sandbox. A visitor can browse to 
 
 ## Runtime boundaries
 
-Opening an article temporarily removes the hidden terminal controls from keyboard navigation. Closing it restores those controls without rebuilding the session, so command history and the current directory remain intact.
+Opening an article temporarily isolates the command deck from keyboard navigation. Closing it restores the deck without rebuilding the session, so command history and the current directory remain intact.
 
 ## Media boundaries
 
-Images use a separate modal layer with its own focus boundary. The modal isolates the command deck while it is open and returns focus to the file that launched it when it closes.
+Articles and images use the same fullscreen content layer, focus boundary and close control. Switching content types changes only the renderer; the surrounding navigation and browser history follow one shared contract.
 
 ## Build boundary
 

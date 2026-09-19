@@ -13,6 +13,7 @@ import { documentVisibilitySource, RuntimeScheduler } from "./runtime-scheduler.
 import { DisposableRegistry } from "./disposable-registry.js";
 import { createSandboxFilesystem } from "./browser-filesystem.js";
 import { ImageViewer } from "./image-viewer.js";
+import { FullscreenContentOverlay } from "./fullscreen-content-overlay.js";
 import { contentManifest } from "virtual:content-manifest";
 import { buildContentTree } from "./content/content-tree.js";
 import { contentDirname } from "./content/content-model.js";
@@ -97,13 +98,6 @@ app.innerHTML = `
       <nav class="terminal-tabs" role="tablist" aria-label="Terminal sessions">
         <button class="active" type="button" role="tab" aria-controls="terminal-output"><span>MAIN SHELL</span></button><button type="button" role="tab" aria-controls="terminal-output"><span>EMPTY</span></button><button type="button" role="tab" aria-controls="terminal-output"><span>EMPTY</span></button><button type="button" role="tab" aria-controls="terminal-output"><span>EMPTY</span></button><button type="button" role="tab" aria-controls="terminal-output"><span>EMPTY</span></button>
       </nav>
-      <article class="content-reader" id="content-reader" hidden aria-labelledby="content-reader-title">
-        <header>
-          <div><small id="content-reader-meta"></small><h1 id="content-reader-title"></h1><p id="content-reader-summary"></p><div id="content-reader-tags"></div></div>
-          <button type="button" id="content-reader-close" aria-label="Close article">RETURN TO SHELL</button>
-        </header>
-        <div class="content-reader__body" id="content-reader-body" tabindex="0" aria-label="Article body"></div>
-      </article>
       <div class="terminal-runtime" id="terminal-runtime">
         <div class="terminal-status"><span>Welcome to eDEX-UI v${canonicalEdexVersion} - Electron v4.1.4</span></div>
         <span class="terminal-times"><span id="terminal-time">SESSION // READY</span><span id="terminal-time-secondary"></span></span>
@@ -157,6 +151,17 @@ app.innerHTML = `
       }).join("")}</div>`).join("")}
     </section>
   </main>
+  <section class="content-overlay" id="content-overlay" role="dialog" aria-modal="true" aria-label="Content browser" hidden>
+    <button class="content-overlay__close" type="button" id="content-overlay-close" aria-label="Close content browser">RETURN TO DECK</button>
+    <div class="content-overlay__viewport" id="content-overlay-viewport">
+      <article class="content-reader" id="content-reader" data-content-view="document" hidden aria-labelledby="content-reader-title">
+        <header>
+          <div><small id="content-reader-meta"></small><h1 id="content-reader-title"></h1><p id="content-reader-summary"></p><div id="content-reader-tags"></div></div>
+        </header>
+        <div class="content-reader__body" id="content-reader-body" tabindex="0" aria-label="Article body"></div>
+      </article>
+    </div>
+  </section>
   </div>
 `;
 
@@ -169,15 +174,15 @@ const promptPrefix = document.querySelector<HTMLElement>(".terminal-prompt .term
 const promptDirectory = document.querySelector<HTMLElement>(".terminal-prompt .terminal-powerline > strong")!;
 const terminalTabs = [...document.querySelectorAll<HTMLButtonElement>(".terminal-tabs button")];
 const commandDeckElement = document.querySelector<HTMLElement>("#command-deck")!;
-const terminalPanel = document.querySelector<HTMLElement>(".terminal-panel")!;
+const contentOverlayElement = document.querySelector<HTMLElement>("#content-overlay")!;
+const contentOverlayViewport = document.querySelector<HTMLElement>("#content-overlay-viewport")!;
+const contentOverlayClose = document.querySelector<HTMLButtonElement>("#content-overlay-close")!;
 const contentReader = document.querySelector<HTMLElement>("#content-reader")!;
 const contentReaderTitle = document.querySelector<HTMLElement>("#content-reader-title")!;
 const contentReaderMeta = document.querySelector<HTMLElement>("#content-reader-meta")!;
 const contentReaderSummary = document.querySelector<HTMLElement>("#content-reader-summary")!;
 const contentReaderTags = document.querySelector<HTMLElement>("#content-reader-tags")!;
 const contentReaderBody = document.querySelector<HTMLElement>("#content-reader-body")!;
-const contentReaderClose = document.querySelector<HTMLButtonElement>("#content-reader-close")!;
-const terminalRuntime = document.querySelector<HTMLElement>("#terminal-runtime")!;
 const audioDeck = new AudioDeck();
 lifecycle.add(() => audioDeck.dispose());
 const runtimeScheduler = staticMode ? undefined : new RuntimeScheduler(documentVisibilitySource(document));
@@ -239,10 +244,22 @@ const browserFilesystem = createSandboxFilesystem({
 });
 const commandDeck = new CommandDeckController(browserFilesystem);
 let lastContentHash = "";
-const imageViewer = new ImageViewer(terminalPanel, terminalRuntime, () => {
-  audioDeck.play("denied");
-  syncLocationToDeck();
-}, (entry, description) => {
+const contentOverlay = new FullscreenContentOverlay(
+  contentOverlayElement,
+  contentOverlayViewport,
+  commandDeckElement,
+  contentOverlayClose,
+  () => {
+    commandDeck.dispatch({ type: "close-content" });
+    renderSessionChrome();
+    syncLocationToDeck();
+    audioDeck.play("denied");
+    input.focus();
+  }
+);
+contentOverlay.register("document", contentReader);
+lifecycle.add(() => contentOverlay.dispose());
+const imageViewer = new ImageViewer(contentOverlay, (entry, description) => {
   if (entry.contentPath) writeContentLocation(entry.contentPath, "push", description);
 });
 lifecycle.add(() => imageViewer.dispose());
@@ -339,10 +356,7 @@ function renderContent(): void {
   const entry = commandDeck.snapshot().content;
   const preview = entry?.preview;
   if (!entry || preview?.kind !== "document") {
-    contentReader.hidden = true;
-    terminalPanel.classList.remove("content-open");
-    terminalRuntime.inert = false;
-    terminalRuntime.removeAttribute("aria-hidden");
+    if (contentOverlay.isActive("document")) contentOverlay.close({ notify: false });
     return;
   }
   contentReaderTitle.textContent = preview.title;
@@ -357,10 +371,7 @@ function renderContent(): void {
     documentPath: preview.contentPath,
     tree: contentTree
   });
-  contentReader.hidden = false;
-  terminalPanel.classList.add("content-open");
-  terminalRuntime.inert = true;
-  terminalRuntime.setAttribute("aria-hidden", "true");
+  contentOverlay.open("document", { focus: false });
   contentReaderBody.scrollTop = 0;
 }
 
@@ -451,7 +462,7 @@ function openContentPath(relativePath: string, options: { render?: boolean; focu
     renderTerminal();
     renderSessionChrome();
   }
-  if (result.kind === "document" && options.focus !== false) contentReaderClose.focus();
+  if (result.kind === "document" && options.focus !== false) contentOverlayClose.focus();
   if (result.kind === "image" && result.entry.contentPath) {
     imageViewer.open(
       directoryImages(result.entry.contentPath),
@@ -617,13 +628,6 @@ lifecycle.listen<KeyboardEvent>(input, "keydown", (event) => {
 
 lifecycle.listen<InputEvent>(input, "input", () => commandDeck.dispatch({ type: "set-draft", value: input.value }));
 lifecycle.listen<MouseEvent>(output, "click", () => input.focus());
-lifecycle.listen<MouseEvent>(contentReaderClose, "click", () => {
-  commandDeck.dispatch({ type: "close-content" });
-  renderSessionChrome();
-  syncLocationToDeck();
-  input.focus();
-});
-
 lifecycle.listen<MouseEvent>(contentReaderBody, "click", (event) => {
   const anchor = (event.target as Element | null)?.closest<HTMLAnchorElement>("a[data-content-anchor]");
   if (anchor) {
@@ -767,7 +771,7 @@ lifecycle.listen<MouseEvent>(fileGrid, "click", (event) => {
   if (result.kind === "document") {
     renderSessionChrome();
     if (result.entry.contentPath) writeContentLocation(result.entry.contentPath);
-    contentReaderClose.focus();
+    contentOverlayClose.focus();
   }
   if (result.kind === "image") {
     const images = result.entry.contentPath

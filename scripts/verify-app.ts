@@ -629,6 +629,8 @@ try {
       deckInert: deck.inert,
       deckAriaHidden: deck.getAttribute("aria-hidden"),
       articleIsActive: overlay.dataset.contentView === "document",
+      overlayBounds: { x: overlayBounds.x, y: overlayBounds.y, width: overlayBounds.width, height: overlayBounds.height },
+      stageBounds: { x: stageBounds.x, y: stageBounds.y, width: stageBounds.width, height: stageBounds.height },
       fillsStage: Math.abs(overlayBounds.left - stageBounds.left) < 1
         && Math.abs(overlayBounds.top - stageBounds.top) < 1
         && Math.abs(overlayBounds.width - stageBounds.width) < 1
@@ -714,7 +716,7 @@ try {
     const overlayBounds = overlay.getBoundingClientRect();
     const stageBounds = stage.getBoundingClientRect();
     return {
-      viewerParentIsOverlay: viewer.parentElement === overlay,
+      viewerInsideOverlay: viewer.closest("#content-overlay") === overlay,
       activeView: overlay.dataset.contentView,
       deckInert: deck.inert,
       deckAriaHidden: deck.getAttribute("aria-hidden"),
@@ -725,7 +727,7 @@ try {
         && Math.abs(overlayBounds.height - stageBounds.height) < 1
     };
   });
-  if (!fullscreenMediaState.viewerParentIsOverlay || fullscreenMediaState.activeView !== "image"
+  if (!fullscreenMediaState.viewerInsideOverlay || fullscreenMediaState.activeView !== "image"
     || !fullscreenMediaState.deckInert || fullscreenMediaState.deckAriaHidden !== "true"
     || fullscreenMediaState.activeElement !== "content-overlay-close" || !fullscreenMediaState.fillsStage) {
     throw new Error(`Image did not use the shared fullscreen content overlay: ${JSON.stringify(fullscreenMediaState)}`);
