@@ -715,30 +715,33 @@ try {
   const initialRevealState = await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-state");
   if (initialRevealState === "ready") throw new Error("Cached image skipped the minimum media reveal animation");
   await motionPage.locator('.image-viewer__stage[data-reveal-state="revealing"]').waitFor({ timeout: 3_000 });
-  await motionPage.waitForTimeout(120);
+  await motionPage.waitForTimeout(240);
   const revealVisual = await motionPage.evaluate(() => {
     const stage = document.querySelector<HTMLElement>(".image-viewer__stage")!;
     const image = stage.querySelector<HTMLImageElement>("img")!;
     const reveal = stage.querySelector<HTMLElement>(".image-viewer__reveal")!;
-    const tile = reveal.querySelectorAll<HTMLElement>(".image-viewer__reveal-tile").item(59);
+    const tiles = [...reveal.querySelectorAll<HTMLElement>(".image-viewer__reveal-tile")];
     const stageBounds = stage.getBoundingClientRect();
     const revealBounds = reveal.getBoundingClientRect();
     const containScale = Math.min(stageBounds.width / image.naturalWidth, stageBounds.height / image.naturalHeight);
     const expectedWidth = image.naturalWidth * containScale;
     const expectedHeight = image.naturalHeight * containScale;
-    const tileStyle = getComputedStyle(tile);
+    const tileStyles = tiles.map((tile) => getComputedStyle(tile));
     return {
       imageOpacity: getComputedStyle(image).opacity,
-      tileBackgroundImage: tileStyle.backgroundImage,
-      tileFilter: tileStyle.filter,
+      tilesWithImage: tileStyles.filter((style) => style.backgroundImage.includes("url(")).length,
+      hiddenTiles: tileStyles.filter((style) => Number.parseFloat(style.opacity) < 0.05).length,
+      visibleTiles: tileStyles.filter((style) => Number.parseFloat(style.opacity) > 0.05).length,
+      filterVariants: new Set(tileStyles.filter((style) => Number.parseFloat(style.opacity) > 0.05).map((style) => style.filter)).size,
       leftDelta: Math.abs(revealBounds.left - (stageBounds.left + (stageBounds.width - expectedWidth) / 2)),
       topDelta: Math.abs(revealBounds.top - (stageBounds.top + (stageBounds.height - expectedHeight) / 2)),
       widthDelta: Math.abs(revealBounds.width - expectedWidth),
       heightDelta: Math.abs(revealBounds.height - expectedHeight)
     };
   });
-  if (revealVisual.imageOpacity !== "0" || !revealVisual.tileBackgroundImage.includes("url(")
-    || revealVisual.tileFilter === "none" || revealVisual.leftDelta > 1 || revealVisual.topDelta > 1
+  if (revealVisual.imageOpacity !== "0" || revealVisual.tilesWithImage !== 60
+    || revealVisual.hiddenTiles === 0 || revealVisual.visibleTiles === 0 || revealVisual.filterVariants < 2
+    || revealVisual.leftDelta > 1 || revealVisual.topDelta > 1
     || revealVisual.widthDelta > 1 || revealVisual.heightDelta > 1) {
     throw new Error(`Media reveal was not reconstructed from image-bound tiles: ${JSON.stringify(revealVisual)}`);
   }
