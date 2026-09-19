@@ -714,6 +714,22 @@ try {
   if (!await motionPage.locator(".image-viewer").isVisible()) throw new Error("Image file did not open the media viewer");
   const initialRevealState = await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-state");
   if (initialRevealState === "ready") throw new Error("Cached image skipped the minimum media reveal animation");
+  await motionPage.locator('.image-viewer__stage[data-reveal-state="revealing"]').waitFor({ timeout: 3_000 });
+  await motionPage.waitForTimeout(120);
+  const revealVisual = await motionPage.evaluate(() => {
+    const image = document.querySelector<HTMLElement>(".image-viewer__stage img")!;
+    const tile = document.querySelector<HTMLElement>(".image-viewer__reveal-tile")!;
+    const tileStyle = getComputedStyle(tile);
+    return {
+      imageOpacity: getComputedStyle(image).opacity,
+      backdropFilter: tileStyle.backdropFilter,
+      tileBackgroundColor: tileStyle.backgroundColor
+    };
+  });
+  if (revealVisual.imageOpacity !== "1" || revealVisual.backdropFilter === "none"
+    || !revealVisual.tileBackgroundColor.startsWith("rgba(170, 207, 209,")) {
+    throw new Error(`Media reveal did not transition from signal blue to source color: ${JSON.stringify(revealVisual)}`);
+  }
   await motionPage.locator('.image-viewer__stage[data-reveal-state="ready"]').waitFor({ timeout: 3_000 });
   const revealElapsedMs = Date.now() - revealStartedAt;
   if (revealElapsedMs < 480) throw new Error(`Media reveal completed too quickly: ${revealElapsedMs}ms`);
