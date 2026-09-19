@@ -24,6 +24,11 @@ try {
     runId: `edex-${Date.now()}`
   });
   process.stdout.write(`Replication workflow ${report.status}: ${path.join(report.artifactDirectory, "final-report.json")}\n`);
+  if (report.status !== "passed") {
+    const reasons = report.attempts.at(-1)?.verdict.reasons ?? [];
+    if (reasons.length > 0) process.stderr.write(`${reasons.join("\n")}\n`);
+    if (report.blocker) process.stderr.write(`${report.blocker}\n`);
+  }
   process.exitCode = report.status === "passed" ? 0 : report.status === "failed" ? 1 : 2;
 } finally {
   await server.close();
