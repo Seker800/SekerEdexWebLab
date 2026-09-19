@@ -642,17 +642,17 @@ try {
   }
   await motionPage.locator("#content-overlay-close").focus();
   const articleAccessibility = await motionPage.evaluate(() => {
-    const runtime = document.querySelector<HTMLElement>("#terminal-runtime")!;
+    const deck = document.querySelector<HTMLElement>("#command-deck")!;
     const body = document.querySelector<HTMLElement>("#content-reader-body")!;
     return {
-      runtimeInert: runtime.inert,
-      runtimeAriaHidden: runtime.getAttribute("aria-hidden"),
+      deckInert: deck.inert,
+      deckAriaHidden: deck.getAttribute("aria-hidden"),
       bodyTabIndex: body.tabIndex,
       bodyScrollable: body.scrollHeight > body.clientHeight
     };
   });
-  if (!articleAccessibility.runtimeInert || articleAccessibility.runtimeAriaHidden !== "true") {
-    throw new Error(`Article reader did not isolate hidden terminal controls: ${JSON.stringify(articleAccessibility)}`);
+  if (!articleAccessibility.deckInert || articleAccessibility.deckAriaHidden !== "true") {
+    throw new Error(`Article reader did not isolate the command deck: ${JSON.stringify(articleAccessibility)}`);
   }
   if (articleAccessibility.bodyTabIndex !== 0 || !articleAccessibility.bodyScrollable) {
     throw new Error(`Article body is not a keyboard-scrollable region: ${JSON.stringify(articleAccessibility)}`);
@@ -667,23 +667,22 @@ try {
   const articleScrollAfter = await motionPage.locator("#content-reader-body").evaluate((body) => body.scrollTop);
   if (articleScrollAfter <= articleScrollBefore) throw new Error("Article body did not scroll from the keyboard");
   await motionPage.screenshot({ path: path.join(artifactDirectory, "blog-reader.png"), animations: "disabled", omitBackground: true });
+  await motionPage.locator("#content-overlay-close").click();
+  if (await motionPage.locator("#content-reader").isVisible()) throw new Error("Shared content close did not return from the article");
+  const restoredDeckAccessibility = await motionPage.evaluate(() => {
+    const deck = document.querySelector<HTMLElement>("#command-deck")!;
+    return { inert: deck.inert, ariaHidden: deck.getAttribute("aria-hidden") };
+  });
+  if (restoredDeckAccessibility.inert || restoredDeckAccessibility.ariaHidden !== null) {
+    throw new Error(`Shared content close did not restore the command deck: ${JSON.stringify(restoredDeckAccessibility)}`);
+  }
+  if (!motionPage.url().endsWith("#/blog/posts")) throw new Error(`Closing an article did not restore its directory hash: ${motionPage.url()}`);
   await motionPage.locator(".terminal-tabs button").nth(1).click();
   if (await motionPage.locator("#content-reader").isVisible() || !motionPage.url().endsWith("#/blog/")) {
     throw new Error(`Switching terminal sessions left stale article location state: ${motionPage.url()}`);
   }
   await motionPage.locator(".terminal-tabs button").nth(0).click();
   if (!motionPage.url().endsWith("#/blog/posts")) throw new Error(`Returning to a content session did not restore its directory hash: ${motionPage.url()}`);
-  await motionPage.locator('.file-grid button[data-file-name="welcome.md"]').click();
-  await motionPage.locator("#content-overlay-close").click();
-  if (await motionPage.locator("#content-reader").isVisible()) throw new Error("Article reader did not return to the terminal");
-  const restoredTerminalAccessibility = await motionPage.evaluate(() => {
-    const runtime = document.querySelector<HTMLElement>("#terminal-runtime")!;
-    return { inert: runtime.inert, ariaHidden: runtime.getAttribute("aria-hidden") };
-  });
-  if (restoredTerminalAccessibility.inert || restoredTerminalAccessibility.ariaHidden !== null) {
-    throw new Error(`Article reader did not restore terminal accessibility: ${JSON.stringify(restoredTerminalAccessibility)}`);
-  }
-  if (!motionPage.url().endsWith("#/blog/posts")) throw new Error(`Closing an article did not restore its directory hash: ${motionPage.url()}`);
   await motionPage.locator('.file-grid button[data-file-name="building-edex-web"]').click();
   await motionPage.locator('.file-grid button[data-file-name="command-deck.svg"]').click();
   if (!await motionPage.locator(".image-viewer").isVisible() || !motionPage.url().endsWith("#/blog/posts/building-edex-web/command-deck.svg")) {
