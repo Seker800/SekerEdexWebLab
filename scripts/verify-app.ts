@@ -845,6 +845,28 @@ try {
   if (!await motionPage.locator(".section-label small").textContent().then((value) => value?.endsWith("/Blog"))) {
     throw new Error("Invalid content URL did not fall back to the content root");
   }
+  const directImagePage = await motionContext.newPage();
+  directImagePage.on("console", (message) => { if (message.type() === "error") consoleErrors.push(`direct-image: ${message.text()}`); });
+  directImagePage.on("pageerror", (error) => pageErrors.push(`direct-image: ${error.message}`));
+  await directImagePage.goto("http://127.0.0.1:4174/?fastboot=1#/blog/posts/night-routes/tokyo-night.jpg", { waitUntil: "networkidle" });
+  await directImagePage.locator("[data-ready]").waitFor();
+  if (await directImagePage.locator(".image-viewer").isVisible()) {
+    throw new Error("Direct image route started its reveal behind the startup gate");
+  }
+  await directImagePage.getByRole("button", { name: "Initialize system" }).click();
+  await directImagePage.locator('html[data-boot-phase="complete"]').waitFor({ timeout: 10_000 });
+  await directImagePage.locator('.image-viewer__stage[data-reveal-state="revealing"]').waitFor({ timeout: 3_000 });
+  await directImagePage.waitForTimeout(240);
+  const directRevealTiles = await directImagePage.locator(".image-viewer__reveal-tile").evaluateAll((tiles) => tiles.reduce((counts, tile) => {
+    const opacity = Number.parseFloat(getComputedStyle(tile).opacity);
+    if (opacity < 0.05) counts.hidden += 1;
+    if (opacity > 0.05) counts.visible += 1;
+    return counts;
+  }, { hidden: 0, visible: 0 }));
+  if (directRevealTiles.hidden === 0 || directRevealTiles.visible === 0) {
+    throw new Error(`Direct image route did not replay the staged reveal after boot: ${JSON.stringify(directRevealTiles)}`);
+  }
+  await directImagePage.close();
   await motionContext.close();
   const metrics = await compareScreenshots(
     path.resolve("references/edex-ui-v2.2.8/screenshot_default.png"),
