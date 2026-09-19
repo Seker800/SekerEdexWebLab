@@ -15,7 +15,8 @@ describe("image reveal plan", () => {
     const plan = createImageRevealPlan({ columns: 10, rows: 6 });
     const lastTile = plan.tiles.at(-1)!;
 
-    expect(plan.minimumVisibleMs).toBeGreaterThanOrEqual(480);
+    expect(plan.minimumVisibleMs).toBeGreaterThanOrEqual(800);
+    expect(plan.minimumVisibleMs).toBeLessThan(1_000);
     expect(lastTile.delayMs + plan.tileDurationMs).toBe(plan.minimumVisibleMs);
   });
 
