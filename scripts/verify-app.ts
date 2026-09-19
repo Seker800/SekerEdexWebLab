@@ -717,18 +717,30 @@ try {
   await motionPage.locator('.image-viewer__stage[data-reveal-state="revealing"]').waitFor({ timeout: 3_000 });
   await motionPage.waitForTimeout(120);
   const revealVisual = await motionPage.evaluate(() => {
-    const image = document.querySelector<HTMLElement>(".image-viewer__stage img")!;
-    const tile = document.querySelector<HTMLElement>(".image-viewer__reveal-tile")!;
+    const stage = document.querySelector<HTMLElement>(".image-viewer__stage")!;
+    const image = stage.querySelector<HTMLImageElement>("img")!;
+    const reveal = stage.querySelector<HTMLElement>(".image-viewer__reveal")!;
+    const tile = reveal.querySelectorAll<HTMLElement>(".image-viewer__reveal-tile").item(59);
+    const stageBounds = stage.getBoundingClientRect();
+    const revealBounds = reveal.getBoundingClientRect();
+    const containScale = Math.min(stageBounds.width / image.naturalWidth, stageBounds.height / image.naturalHeight);
+    const expectedWidth = image.naturalWidth * containScale;
+    const expectedHeight = image.naturalHeight * containScale;
     const tileStyle = getComputedStyle(tile);
     return {
       imageOpacity: getComputedStyle(image).opacity,
-      backdropFilter: tileStyle.backdropFilter,
-      tileBackgroundColor: tileStyle.backgroundColor
+      tileBackgroundImage: tileStyle.backgroundImage,
+      tileFilter: tileStyle.filter,
+      leftDelta: Math.abs(revealBounds.left - (stageBounds.left + (stageBounds.width - expectedWidth) / 2)),
+      topDelta: Math.abs(revealBounds.top - (stageBounds.top + (stageBounds.height - expectedHeight) / 2)),
+      widthDelta: Math.abs(revealBounds.width - expectedWidth),
+      heightDelta: Math.abs(revealBounds.height - expectedHeight)
     };
   });
-  if (revealVisual.imageOpacity !== "1" || revealVisual.backdropFilter === "none"
-    || !revealVisual.tileBackgroundColor.startsWith("rgba(170, 207, 209,")) {
-    throw new Error(`Media reveal did not transition from signal blue to source color: ${JSON.stringify(revealVisual)}`);
+  if (revealVisual.imageOpacity !== "0" || !revealVisual.tileBackgroundImage.includes("url(")
+    || revealVisual.tileFilter === "none" || revealVisual.leftDelta > 1 || revealVisual.topDelta > 1
+    || revealVisual.widthDelta > 1 || revealVisual.heightDelta > 1) {
+    throw new Error(`Media reveal was not reconstructed from image-bound tiles: ${JSON.stringify(revealVisual)}`);
   }
   await motionPage.locator('.image-viewer__stage[data-reveal-state="ready"]').waitFor({ timeout: 3_000 });
   const revealElapsedMs = Date.now() - revealStartedAt;
