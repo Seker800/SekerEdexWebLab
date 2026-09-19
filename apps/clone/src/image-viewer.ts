@@ -1,9 +1,14 @@
 import type { BrowserFileEntry, BrowserImagePreview } from "./browser-filesystem.js";
 import type { FullscreenContentOverlay } from "./fullscreen-content-overlay.js";
+import { createImageRevealPlan, type ImageRevealPlan } from "./image-reveal.js";
 
 export class ImageViewer {
   private readonly surface: HTMLElement;
+  private readonly stage: HTMLElement;
   private readonly image: HTMLImageElement;
+  private readonly reveal: HTMLElement;
+  private readonly revealLabel: HTMLElement;
+  private readonly revealPlan: ImageRevealPlan;
   private readonly title: HTMLElement;
   private readonly caption: HTMLElement;
   private readonly counter: HTMLElement;
@@ -11,6 +16,8 @@ export class ImageViewer {
   private items: BrowserFileEntry[] = [];
   private index = 0;
   private zoom = 1;
+  private revealRevision = 0;
+  private revealTimer: number | undefined;
   private readonly descriptions = new Map<string, { alt: string; caption?: string }>();
   private readonly handleKeydown = (event: KeyboardEvent): void => {
     if (this.surface.hidden) return;
@@ -35,12 +42,30 @@ export class ImageViewer {
     this.surface.setAttribute("aria-labelledby", "image-viewer-title");
     this.surface.innerHTML = `
       <header class="image-viewer__header"><div><small>MEDIA VIEWER</small><h1 id="image-viewer-title"></h1></div></header>
-      <div class="image-viewer__stage"><img alt=""></div>
+      <div class="image-viewer__stage" data-reveal-state="ready">
+        <img alt="">
+        <div class="image-viewer__reveal"><span class="image-viewer__reveal-label" role="status" aria-live="polite"></span></div>
+      </div>
       <p class="image-viewer__caption"></p>
       <footer><button type="button" data-viewer-action="previous" aria-label="Previous image">← PREV</button><span class="image-viewer__counter"></span><button type="button" data-viewer-action="zoom-out" aria-label="Zoom out">−</button><span class="image-viewer__zoom"></span><button type="button" data-viewer-action="zoom-in" aria-label="Zoom in">+</button><button type="button" data-viewer-action="next" aria-label="Next image">NEXT →</button></footer>
     `;
     this.overlay.register("image", this.surface);
+    this.stage = this.surface.querySelector(".image-viewer__stage")!;
     this.image = this.surface.querySelector("img")!;
+    this.reveal = this.surface.querySelector(".image-viewer__reveal")!;
+    this.revealLabel = this.surface.querySelector(".image-viewer__reveal-label")!;
+    this.revealPlan = createImageRevealPlan({
+      reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    });
+    this.reveal.style.setProperty("--image-reveal-columns", String(this.revealPlan.columns));
+    this.reveal.style.setProperty("--image-reveal-rows", String(this.revealPlan.rows));
+    this.reveal.style.setProperty("--image-reveal-tile-duration", `${this.revealPlan.tileDurationMs}ms`);
+    for (const tile of this.revealPlan.tiles) {
+      const block = document.createElement("span");
+      block.className = "image-viewer__reveal-tile";
+      block.style.setProperty("--image-reveal-delay", `${tile.delayMs}ms`);
+      this.reveal.append(block);
+    }
     this.title = this.surface.querySelector("#image-viewer-title")!;
     this.caption = this.surface.querySelector(".image-viewer__caption")!;
     this.counter = this.surface.querySelector(".image-viewer__counter")!;
@@ -70,11 +95,13 @@ export class ImageViewer {
 
   close(options: { notify?: boolean } = {}): void {
     if (!this.overlay.isActive("image")) return;
+    this.cancelReveal();
     this.overlay.close(options);
   }
 
   dispose(): void {
     this.close({ notify: false });
+    this.cancelReveal();
     document.removeEventListener("keydown", this.handleKeydown, { capture: true });
     this.surface.remove();
   }
@@ -95,11 +122,70 @@ export class ImageViewer {
     const preview = entry.preview as BrowserImagePreview;
     const description = this.descriptions.get(entry.path);
     this.title.textContent = entry.name;
-    this.image.src = preview.src;
     this.image.alt = description?.alt ?? preview.alt;
     this.caption.textContent = description?.caption ?? description?.alt ?? preview.caption ?? preview.alt;
     this.counter.textContent = `${this.index + 1} / ${this.items.length} · ${preview.mediaType}`;
     this.setZoom(1);
+    void this.revealImage(preview.src);
     if (notifySelection) this.onSelectionChange?.(entry, description);
+  }
+
+  private async revealImage(source: string): Promise<void> {
+    this.cancelReveal();
+    const revision = this.revealRevision;
+    this.stage.dataset.revealState = "loading";
+    this.stage.setAttribute("aria-busy", "true");
+    this.revealLabel.textContent = "DECODING MEDIA";
+    this.image.src = source;
+
+    try {
+      await this.decodeImage();
+    } catch {
+      if (revision !== this.revealRevision) return;
+      this.stage.dataset.revealState = "error";
+      this.stage.setAttribute("aria-busy", "false");
+      this.revealLabel.textContent = "MEDIA DECODE ERROR";
+      return;
+    }
+    if (revision !== this.revealRevision) return;
+
+    if (this.revealPlan.minimumVisibleMs === 0) {
+      this.finishReveal(revision);
+      return;
+    }
+
+    this.revealLabel.textContent = "RASTER ACQUISITION";
+    this.stage.dataset.revealState = "revealing";
+    this.revealTimer = window.setTimeout(() => {
+      this.finishReveal(revision);
+    }, this.revealPlan.minimumVisibleMs);
+  }
+
+  private async decodeImage(): Promise<void> {
+    try {
+      await this.image.decode();
+    } catch {
+      if (!this.image.complete) {
+        await new Promise<void>((resolve, reject) => {
+          this.image.addEventListener("load", () => resolve(), { once: true });
+          this.image.addEventListener("error", () => reject(new Error("Image failed to load")), { once: true });
+        });
+      }
+    }
+    if (this.image.naturalWidth === 0) throw new Error("Image failed to decode");
+  }
+
+  private finishReveal(revision: number): void {
+    if (revision !== this.revealRevision) return;
+    this.revealTimer = undefined;
+    this.stage.dataset.revealState = "ready";
+    this.stage.setAttribute("aria-busy", "false");
+    this.revealLabel.textContent = "";
+  }
+
+  private cancelReveal(): void {
+    this.revealRevision += 1;
+    if (this.revealTimer !== undefined) window.clearTimeout(this.revealTimer);
+    this.revealTimer = undefined;
   }
 }

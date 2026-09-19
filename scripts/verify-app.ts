@@ -709,8 +709,14 @@ try {
     image.addEventListener("load", () => resolve(), { once: true });
     image.addEventListener("error", () => reject(new Error("Relative Markdown image failed to load")), { once: true });
   }));
+  const revealStartedAt = Date.now();
   await inlineImage.click();
   if (!await motionPage.locator(".image-viewer").isVisible()) throw new Error("Image file did not open the media viewer");
+  const initialRevealState = await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-state");
+  if (initialRevealState === "ready") throw new Error("Cached image skipped the minimum media reveal animation");
+  await motionPage.locator('.image-viewer__stage[data-reveal-state="ready"]').waitFor({ timeout: 3_000 });
+  const revealElapsedMs = Date.now() - revealStartedAt;
+  if (revealElapsedMs < 480) throw new Error(`Media reveal completed too quickly: ${revealElapsedMs}ms`);
   if (await motionPage.locator(".image-viewer__stage img").getAttribute("alt") !== "The command deck regions") {
     throw new Error("Image viewer did not preserve the author's Markdown alt text");
   }
@@ -768,6 +774,9 @@ try {
   if (await motionPage.locator(".image-viewer__zoom").textContent() !== "125%") throw new Error("Image viewer zoom control did not update");
   await motionPage.locator('[data-viewer-action="next"]').click();
   if (await motionPage.locator("#image-viewer-title").textContent() !== "content-flow.svg") throw new Error("Image viewer did not navigate to the next image");
+  if (await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-state") === "ready") {
+    throw new Error("Image sequence navigation skipped the media reveal animation");
+  }
   await motionPage.locator(".image-viewer__stage img").evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0 ? undefined : new Promise<void>((resolve, reject) => {
     image.addEventListener("load", () => resolve(), { once: true });
     image.addEventListener("error", () => reject(new Error("Image viewer asset failed to load")), { once: true });
@@ -877,7 +886,7 @@ try {
       "on-screen terminal shortcuts",
       "filesystem navigation, disk view and insertion",
       "blog folder navigation, terminal isolation and keyboard-scrolled Markdown reading",
-      "central image viewing, terminal isolation, zoom, sequence navigation and keyboard dismissal",
+      "central image viewing, minimum-duration raster reveal, terminal isolation, zoom, sequence navigation and keyboard dismissal",
       "theme and keyboard file special actions",
       "outcome-specific sound feedback",
       "persistently visible sound control",

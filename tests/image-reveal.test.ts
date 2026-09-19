@@ -26,4 +26,9 @@ describe("image reveal plan", () => {
     expect(plan.tileDurationMs).toBe(0);
     expect(plan.tiles.every((tile) => tile.delayMs === 0)).toBe(true);
   });
+
+  it("rejects invalid grid dimensions", () => {
+    expect(() => createImageRevealPlan({ columns: 0 })).toThrow(RangeError);
+    expect(() => createImageRevealPlan({ rows: 1.5 })).toThrow(RangeError);
+  });
 });
