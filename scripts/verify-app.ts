@@ -593,6 +593,9 @@ try {
   await contentTerminalInput.press("Enter");
   if (!motionPage.url().endsWith("#/blog/")) throw new Error(`Terminal navigation did not restore the content root hash: ${motionPage.url()}`);
   await motionPage.locator('.file-grid button[data-file-name="posts"]').click();
+  if (await motionPage.locator('.file-grid button[data-file-name="welcome.md"]').getAttribute("data-icon") !== "markdown") {
+    throw new Error("Markdown content did not render its document-specific icon");
+  }
   await motionPage.locator('.file-grid button[data-file-name="welcome.md"]').click();
   if (!await motionPage.locator("#content-reader").isVisible()) throw new Error("Markdown file did not open the central article reader");
   if (await motionPage.locator("#content-reader-title").textContent() !== "Welcome to the command deck") throw new Error("Article reader did not render typed document metadata");
@@ -686,6 +689,10 @@ try {
   await motionPage.locator(".terminal-tabs button").nth(0).click();
   if (!motionPage.url().endsWith("#/blog/posts")) throw new Error(`Returning to a content session did not restore its directory hash: ${motionPage.url()}`);
   await motionPage.locator('.file-grid button[data-file-name="building-edex-web"]').click();
+  if (await motionPage.locator('.file-grid button[data-file-name="index.md"]').getAttribute("data-icon") !== "markdown"
+    || await motionPage.locator('.file-grid button[data-file-name="command-deck.svg"]').getAttribute("data-icon") !== "image") {
+    throw new Error("Content filesystem did not visually distinguish Markdown documents from images");
+  }
   await motionPage.locator('.file-grid button[data-file-name="command-deck.svg"]').click();
   if (!await motionPage.locator(".image-viewer").isVisible() || !motionPage.url().endsWith("#/blog/posts/building-edex-web/command-deck.svg")) {
     throw new Error(`Opening media from the filesystem did not create a media history entry: ${motionPage.url()}`);

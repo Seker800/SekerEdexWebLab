@@ -39,8 +39,14 @@ describe("browser filesystem", () => {
     const filesystem = createSandboxFilesystem({ contentEntries: contentManifest.entries });
     expect(filesystem.list(filesystem.root).map((entry) => entry.name)).toContain("Blog");
     expect(filesystem.list(filesystem.contentRoot).map((entry) => entry.name)).toEqual(["Show disks", "Go up", "posts", "projects", "about.md"]);
-    expect(filesystem.entry(`${filesystem.contentRoot}/posts`, "welcome.md")?.preview).toMatchObject({ kind: "document", title: "Welcome to the command deck" });
-    expect(filesystem.entry(`${filesystem.contentRoot}/posts/building-edex-web`, "command-deck.svg")?.preview).toMatchObject({ kind: "image", mediaType: "image/svg+xml" });
+    expect(filesystem.entry(`${filesystem.contentRoot}/posts`, "welcome.md")).toMatchObject({
+      icon: "markdown",
+      preview: { kind: "document", title: "Welcome to the command deck" }
+    });
+    expect(filesystem.entry(`${filesystem.contentRoot}/posts/building-edex-web`, "command-deck.svg")).toMatchObject({
+      icon: "image",
+      preview: { kind: "image", mediaType: "image/svg+xml" }
+    });
     expect(createSandboxFilesystem().list(filesystem.root).map((entry) => entry.name)).not.toContain("Blog");
     expect(createSandboxFilesystem({ contentEntries: contentManifest.entries, startInContent: true }).initialPath).toBe(filesystem.contentRoot);
     expect(createSandboxFilesystem({ startInContent: true }).initialPath).toBe(filesystem.canonicalRoot);
