@@ -614,7 +614,33 @@ try {
   if (!motionPage.url().endsWith("#/blog/posts/welcome.md") || await motionPage.evaluate(() => document.activeElement?.id) !== "verification-anchor") {
     throw new Error(`Article anchor escaped the reader's content route: ${motionPage.url()}`);
   }
-  await motionPage.locator("#content-reader-close").focus();
+  const articleOverlayState = await motionPage.evaluate(() => {
+    const overlay = document.querySelector<HTMLElement>("#content-overlay");
+    const stage = document.querySelector<HTMLElement>(".canvas-stage")!;
+    const deck = document.querySelector<HTMLElement>("#command-deck")!;
+    const close = document.querySelector<HTMLButtonElement>("#content-overlay-close");
+    if (!overlay || !close) return null;
+    const overlayBounds = overlay.getBoundingClientRect();
+    const stageBounds = stage.getBoundingClientRect();
+    return {
+      parentIsStage: overlay.parentElement === stage,
+      role: overlay.getAttribute("role"),
+      ariaModal: overlay.getAttribute("aria-modal"),
+      deckInert: deck.inert,
+      deckAriaHidden: deck.getAttribute("aria-hidden"),
+      articleIsActive: overlay.dataset.contentView === "document",
+      fillsStage: Math.abs(overlayBounds.left - stageBounds.left) < 1
+        && Math.abs(overlayBounds.top - stageBounds.top) < 1
+        && Math.abs(overlayBounds.width - stageBounds.width) < 1
+        && Math.abs(overlayBounds.height - stageBounds.height) < 1
+    };
+  });
+  if (!articleOverlayState?.parentIsStage || articleOverlayState.role !== "dialog" || articleOverlayState.ariaModal !== "true"
+    || !articleOverlayState.deckInert || articleOverlayState.deckAriaHidden !== "true"
+    || !articleOverlayState.articleIsActive || !articleOverlayState.fillsStage) {
+    throw new Error(`Article did not use the shared fullscreen content overlay: ${JSON.stringify(articleOverlayState)}`);
+  }
+  await motionPage.locator("#content-overlay-close").focus();
   const articleAccessibility = await motionPage.evaluate(() => {
     const runtime = document.querySelector<HTMLElement>("#terminal-runtime")!;
     const body = document.querySelector<HTMLElement>("#content-reader-body")!;
@@ -648,7 +674,7 @@ try {
   await motionPage.locator(".terminal-tabs button").nth(0).click();
   if (!motionPage.url().endsWith("#/blog/posts")) throw new Error(`Returning to a content session did not restore its directory hash: ${motionPage.url()}`);
   await motionPage.locator('.file-grid button[data-file-name="welcome.md"]').click();
-  await motionPage.locator("#content-reader-close").click();
+  await motionPage.locator("#content-overlay-close").click();
   if (await motionPage.locator("#content-reader").isVisible()) throw new Error("Article reader did not return to the terminal");
   const restoredTerminalAccessibility = await motionPage.evaluate(() => {
     const runtime = document.querySelector<HTMLElement>("#terminal-runtime")!;
@@ -681,29 +707,29 @@ try {
     throw new Error("Image viewer did not preserve the author's Markdown alt text");
   }
   if (!motionPage.url().endsWith("#/blog/posts/building-edex-web/command-deck.svg")) throw new Error(`Image navigation did not update the content hash: ${motionPage.url()}`);
-  const centralMediaState = await motionPage.evaluate(() => {
+  const fullscreenMediaState = await motionPage.evaluate(() => {
     const viewer = document.querySelector<HTMLElement>(".image-viewer")!;
-    const terminalPanel = document.querySelector<HTMLElement>(".terminal-panel")!;
-    const runtime = document.querySelector<HTMLElement>("#terminal-runtime")!;
-    const viewerBounds = viewer.getBoundingClientRect();
-    const panelBounds = terminalPanel.getBoundingClientRect();
+    const overlay = document.querySelector<HTMLElement>("#content-overlay")!;
+    const stage = document.querySelector<HTMLElement>(".canvas-stage")!;
+    const deck = document.querySelector<HTMLElement>("#command-deck")!;
+    const overlayBounds = overlay.getBoundingClientRect();
+    const stageBounds = stage.getBoundingClientRect();
     return {
-      parentIsTerminal: viewer.parentElement === terminalPanel,
-      role: viewer.getAttribute("role"),
-      ariaModal: viewer.getAttribute("aria-modal"),
-      runtimeInert: runtime.inert,
-      runtimeAriaHidden: runtime.getAttribute("aria-hidden"),
-      commandDeckInertChildren: document.querySelectorAll("#command-deck > [inert]").length,
-      activeElement: (document.activeElement as HTMLElement | null)?.dataset.viewerAction,
-      insideTerminal: viewerBounds.left >= panelBounds.left && viewerBounds.top >= panelBounds.top
-        && viewerBounds.right <= panelBounds.right && viewerBounds.bottom <= panelBounds.bottom
+      viewerParentIsOverlay: viewer.parentElement === overlay,
+      activeView: overlay.dataset.contentView,
+      deckInert: deck.inert,
+      deckAriaHidden: deck.getAttribute("aria-hidden"),
+      activeElement: (document.activeElement as HTMLElement | null)?.id,
+      fillsStage: Math.abs(overlayBounds.left - stageBounds.left) < 1
+        && Math.abs(overlayBounds.top - stageBounds.top) < 1
+        && Math.abs(overlayBounds.width - stageBounds.width) < 1
+        && Math.abs(overlayBounds.height - stageBounds.height) < 1
     };
   });
-  if (!centralMediaState.parentIsTerminal || centralMediaState.role !== "region" || centralMediaState.ariaModal !== null
-    || !centralMediaState.runtimeInert || centralMediaState.runtimeAriaHidden !== "true"
-    || centralMediaState.commandDeckInertChildren !== 0 || centralMediaState.activeElement !== "close"
-    || !centralMediaState.insideTerminal) {
-    throw new Error(`Image viewer did not use the central content surface: ${JSON.stringify(centralMediaState)}`);
+  if (!fullscreenMediaState.viewerParentIsOverlay || fullscreenMediaState.activeView !== "image"
+    || !fullscreenMediaState.deckInert || fullscreenMediaState.deckAriaHidden !== "true"
+    || fullscreenMediaState.activeElement !== "content-overlay-close" || !fullscreenMediaState.fillsStage) {
+    throw new Error(`Image did not use the shared fullscreen content overlay: ${JSON.stringify(fullscreenMediaState)}`);
   }
   const mediaLayout = await motionPage.evaluate(() => {
     const viewer = document.querySelector<HTMLElement>(".image-viewer")!;
