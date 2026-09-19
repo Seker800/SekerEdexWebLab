@@ -1,12 +1,13 @@
 import type { BrowserFileEntry, BrowserImagePreview } from "./browser-filesystem.js";
 import type { FullscreenContentOverlay } from "./fullscreen-content-overlay.js";
-import { createImageRevealPlan, type ImageRevealPlan } from "./image-reveal.js";
+import { calculateContainedImageBounds, createImageRevealPlan, type ImageRevealPlan } from "./image-reveal.js";
 
 export class ImageViewer {
   private readonly surface: HTMLElement;
   private readonly stage: HTMLElement;
   private readonly image: HTMLImageElement;
   private readonly reveal: HTMLElement;
+  private readonly revealTiles: HTMLElement[] = [];
   private readonly revealLabel: HTMLElement;
   private readonly revealPlan: ImageRevealPlan;
   private readonly title: HTMLElement;
@@ -44,7 +45,8 @@ export class ImageViewer {
       <header class="image-viewer__header"><div><small>MEDIA VIEWER</small><h1 id="image-viewer-title"></h1></div></header>
       <div class="image-viewer__stage" data-reveal-state="ready">
         <img alt="">
-        <div class="image-viewer__reveal"><span class="image-viewer__reveal-label" role="status" aria-live="polite"></span></div>
+        <div class="image-viewer__reveal" aria-hidden="true"></div>
+        <span class="image-viewer__reveal-label" role="status" aria-live="polite"></span>
       </div>
       <p class="image-viewer__caption"></p>
       <footer><button type="button" data-viewer-action="previous" aria-label="Previous image">← PREV</button><span class="image-viewer__counter"></span><button type="button" data-viewer-action="zoom-out" aria-label="Zoom out">−</button><span class="image-viewer__zoom"></span><button type="button" data-viewer-action="zoom-in" aria-label="Zoom in">+</button><button type="button" data-viewer-action="next" aria-label="Next image">NEXT →</button></footer>
@@ -64,6 +66,8 @@ export class ImageViewer {
       const block = document.createElement("span");
       block.className = "image-viewer__reveal-tile";
       block.style.setProperty("--image-reveal-delay", `${tile.delayMs}ms`);
+      block.style.backgroundPosition = `${this.revealPlan.columns === 1 ? 0 : tile.column * 100 / (this.revealPlan.columns - 1)}% ${this.revealPlan.rows === 1 ? 0 : tile.row * 100 / (this.revealPlan.rows - 1)}%`;
+      this.revealTiles.push(block);
       this.reveal.append(block);
     }
     this.title = this.surface.querySelector("#image-viewer-title")!;
@@ -114,6 +118,7 @@ export class ImageViewer {
   private setZoom(value: number): void {
     this.zoom = Math.min(3, Math.max(0.5, value));
     this.image.style.scale = String(this.zoom);
+    this.reveal.style.scale = String(this.zoom);
     this.zoomLabel.textContent = `${Math.round(this.zoom * 100)}%`;
   }
 
@@ -136,6 +141,7 @@ export class ImageViewer {
     this.stage.dataset.revealState = "loading";
     this.stage.setAttribute("aria-busy", "true");
     this.revealLabel.textContent = "DECODING MEDIA";
+    this.clearRevealTiles();
     this.image.src = source;
 
     try {
@@ -154,6 +160,7 @@ export class ImageViewer {
       return;
     }
 
+    this.prepareRevealTiles(source);
     this.revealLabel.textContent = "RASTER ACQUISITION";
     this.stage.dataset.revealState = "revealing";
     this.revealTimer = window.setTimeout(() => {
@@ -181,6 +188,25 @@ export class ImageViewer {
     this.stage.dataset.revealState = "ready";
     this.stage.setAttribute("aria-busy", "false");
     this.revealLabel.textContent = "";
+  }
+
+  private prepareRevealTiles(source: string): void {
+    const bounds = calculateContainedImageBounds(
+      this.stage.clientWidth,
+      this.stage.clientHeight,
+      this.image.naturalWidth,
+      this.image.naturalHeight
+    );
+    this.reveal.style.left = `${bounds.left}px`;
+    this.reveal.style.top = `${bounds.top}px`;
+    this.reveal.style.width = `${bounds.width}px`;
+    this.reveal.style.height = `${bounds.height}px`;
+    const sourceUrl = new URL(source, document.baseURI).href;
+    for (const tile of this.revealTiles) tile.style.backgroundImage = `url(${JSON.stringify(sourceUrl)})`;
+  }
+
+  private clearRevealTiles(): void {
+    for (const tile of this.revealTiles) tile.style.backgroundImage = "none";
   }
 
   private cancelReveal(): void {

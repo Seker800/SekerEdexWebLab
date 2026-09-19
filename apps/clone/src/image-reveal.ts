@@ -13,6 +13,13 @@ export interface ImageRevealPlan {
   readonly tiles: readonly ImageRevealTile[];
 }
 
+export interface ContainedImageBounds {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
 interface ImageRevealOptions {
   readonly columns?: number;
   readonly rows?: number;
@@ -23,6 +30,28 @@ const DEFAULT_COLUMNS = 10;
 const DEFAULT_ROWS = 6;
 const TILE_DURATION_MS = 180;
 const TILE_STAGGER_MS = 6;
+
+export function calculateContainedImageBounds(
+  containerWidth: number,
+  containerHeight: number,
+  imageWidth: number,
+  imageHeight: number
+): ContainedImageBounds {
+  const dimensions = [containerWidth, containerHeight, imageWidth, imageHeight];
+  if (dimensions.some((value) => !Number.isFinite(value) || value <= 0)) {
+    throw new RangeError("Image reveal dimensions must be finite positive numbers");
+  }
+
+  const scale = Math.min(containerWidth / imageWidth, containerHeight / imageHeight);
+  const width = imageWidth * scale;
+  const height = imageHeight * scale;
+  return Object.freeze({
+    left: (containerWidth - width) / 2,
+    top: (containerHeight - height) / 2,
+    width,
+    height
+  });
+}
 
 export function createImageRevealPlan(options: ImageRevealOptions = {}): ImageRevealPlan {
   const columns = options.columns ?? DEFAULT_COLUMNS;
