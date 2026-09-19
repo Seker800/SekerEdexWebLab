@@ -12,9 +12,12 @@ import { createTelemetrySnapshot, sparklinePoints } from "./telemetry.js";
 import { documentVisibilitySource, RuntimeScheduler } from "./runtime-scheduler.js";
 import { DisposableRegistry } from "./disposable-registry.js";
 import { createSandboxFilesystem } from "./browser-filesystem.js";
-import { renderSafeMarkdown } from "./blog-content.js";
 import { ImageViewer } from "./image-viewer.js";
-import { blogDocuments } from "./blog-content-registry.js";
+import { contentManifest } from "virtual:content-manifest";
+import { buildContentTree } from "./content/content-tree.js";
+import { contentDirname } from "./content/content-model.js";
+import { contentHash, parseContentHash } from "./content/content-location.js";
+import { renderContentMarkdown } from "./content/markdown-renderer.js";
 
 const arrowIcons: Record<string, string> = {
   "↑": '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-opacity="1" d="m12.00004 7.99999 4.99996 5h-2.99996v4.00001h-4v-4.00001h-3z"/><path stroke-linejoin="round" fill-opacity=".65" d="m4 3h16c1.1046 0 1-.10457 1 1v16c0 1.1046.1046 1-1 1h-16c-1.10457 0-1 .1046-1-1v-16c0-1.10457-.10457-1 1-1zm0 1v16h16v-16z"/></svg>',
@@ -229,11 +232,20 @@ if (staticMode) {
     });
   });
 }
-const commandDeck = new CommandDeckController(createSandboxFilesystem({
-  blogDocuments: staticMode ? [] : blogDocuments,
-  startInBlog: !staticMode
-}));
-const imageViewer = new ImageViewer(commandDeckElement, () => audioDeck.play("denied"));
+const contentTree = buildContentTree(contentManifest.entries);
+const browserFilesystem = createSandboxFilesystem({
+  contentEntries: staticMode ? [] : contentManifest.entries,
+  startInContent: !staticMode
+});
+const commandDeck = new CommandDeckController(browserFilesystem);
+let lastContentHash = "";
+const imageViewer = new ImageViewer(commandDeckElement, () => {
+  audioDeck.play("denied");
+  const directory = currentContentDirectory();
+  if (directory !== undefined) writeContentLocation(directory);
+}, (entry) => {
+  if (entry.contentPath) writeContentLocation(entry.contentPath);
+});
 lifecycle.add(() => imageViewer.dispose());
 
 function renderTerminal(): void {
@@ -298,9 +310,9 @@ function renderFilesystem(): void {
 }
 
 function renderPrompt(): void {
-  const { current: { cwd }, filesystem: { home, root } } = commandDeck.snapshot();
-  if (cwd === home || cwd.startsWith(`${home}/`)) {
-    const suffix = cwd === home ? "" : `/${cwd.slice(home.length + 1)}`;
+  const { current: { cwd }, filesystem: { canonicalRoot, root } } = commandDeck.snapshot();
+  if (cwd === canonicalRoot || cwd.startsWith(`${canonicalRoot}/`)) {
+    const suffix = cwd === canonicalRoot ? "" : `/${cwd.slice(canonicalRoot.length + 1)}`;
     promptPrefix.textContent = "~/.c/";
     promptDirectory.textContent = `eDEX-UI${suffix}`;
     return;
@@ -342,12 +354,70 @@ function renderContent(): void {
     element.textContent = tag;
     return element;
   }));
-  contentReaderBody.innerHTML = renderSafeMarkdown(preview.markdown.replace(/^#\s+.+\n+/, ""));
+  contentReaderBody.innerHTML = renderContentMarkdown(preview.markdown.replace(/^#\s+.+\n+/, ""), {
+    documentPath: preview.contentPath,
+    tree: contentTree
+  });
   contentReader.hidden = false;
   terminalPanel.classList.add("content-open");
   terminalRuntime.inert = true;
   terminalRuntime.setAttribute("aria-hidden", "true");
   contentReaderBody.scrollTop = 0;
+}
+
+function currentContentDirectory(): string | undefined {
+  const snapshot = commandDeck.snapshot();
+  const cwd = snapshot.current.cwd;
+  return cwd === snapshot.filesystem.contentRoot ? "" : cwd.startsWith(`${snapshot.filesystem.contentRoot}/`)
+    ? cwd.slice(snapshot.filesystem.contentRoot.length + 1)
+    : undefined;
+}
+
+function writeContentLocation(relativePath: string): void {
+  if (staticMode) return;
+  const nextHash = contentHash(relativePath);
+  if (window.location.hash === nextHash) {
+    lastContentHash = nextHash;
+    return;
+  }
+  lastContentHash = nextHash;
+  window.history.pushState(null, "", nextHash);
+}
+
+function directoryImages(relativePath: string) {
+  const directory = contentDirname(relativePath);
+  const absoluteDirectory = directory === "" ? browserFilesystem.contentRoot : `${browserFilesystem.contentRoot}/${directory}`;
+  return browserFilesystem.list(absoluteDirectory).filter((entry) => entry.preview?.kind === "image");
+}
+
+function openContentPath(relativePath: string, options: { render?: boolean; focus?: boolean } = {}): void {
+  const result = commandDeck.dispatch({ type: "activate-content-path", relativePath }).filesystem!;
+  if (result.kind !== "image") imageViewer.close({ notify: false });
+  if (result.kind === "missing") {
+    commandDeck.dispatch({ type: "activate-content-path", relativePath: "" });
+    writeContentLocation("");
+  }
+  if (options.render !== false) {
+    renderTerminal();
+    renderSessionChrome();
+  }
+  if (result.kind === "document" && options.focus !== false) contentReaderClose.focus();
+  if (result.kind === "image" && result.entry.contentPath) {
+    imageViewer.open(directoryImages(result.entry.contentPath), result.entry.path);
+  }
+}
+
+function restoreContentLocation(options: { render?: boolean } = {}): void {
+  if (staticMode) return;
+  const relativePath = parseContentHash(window.location.hash);
+  if (relativePath === undefined) {
+    lastContentHash = contentHash("");
+    window.history.replaceState(null, "", lastContentHash);
+    openContentPath("", { ...(options.render !== undefined && { render: options.render }), focus: false });
+    return;
+  }
+  lastContentHash = window.location.hash;
+  openContentPath(relativePath, { ...(options.render !== undefined && { render: options.render }), focus: false });
 }
 
 function switchSession(index: number): void {
@@ -474,8 +544,26 @@ lifecycle.listen<MouseEvent>(output, "click", () => input.focus());
 lifecycle.listen<MouseEvent>(contentReaderClose, "click", () => {
   commandDeck.dispatch({ type: "close-content" });
   renderSessionChrome();
+  const directory = currentContentDirectory();
+  if (directory !== undefined) writeContentLocation(directory);
   input.focus();
 });
+
+lifecycle.listen<MouseEvent>(contentReaderBody, "click", (event) => {
+  const target = (event.target as Element | null)?.closest<HTMLElement>("[data-content-path]");
+  const relativePath = target?.dataset.contentPath;
+  if (!relativePath) return;
+  event.preventDefault();
+  writeContentLocation(relativePath);
+  openContentPath(relativePath);
+});
+
+const handleContentHistory = (): void => {
+  if (window.location.hash === lastContentHash) return;
+  restoreContentLocation();
+};
+lifecycle.listen<PopStateEvent>(window, "popstate", handleContentHistory);
+lifecycle.listen<HashChangeEvent>(window, "hashchange", handleContentHistory);
 
 lifecycle.listen<KeyboardEvent>(document, "keydown", (event) => {
   if (document.documentElement.dataset.bootPhase !== "complete") return;
@@ -584,14 +672,19 @@ lifecycle.listen<MouseEvent>(fileGrid, "click", (event) => {
   if (result.kind === "navigated" || result.kind === "show-disks") {
     renderTerminal();
     renderSessionChrome();
+    const directory = currentContentDirectory();
+    if (directory !== undefined) writeContentLocation(directory);
   }
   if (result.kind === "theme" || result.kind === "keyboard") renderTerminal();
   if (result.kind === "document") {
     renderSessionChrome();
+    if (result.entry.contentPath) writeContentLocation(result.entry.contentPath);
     contentReaderClose.focus();
   }
   if (result.kind === "image") {
-    const images = commandDeck.snapshot().filesystem.entries.filter((entry) => entry.preview?.kind === "image");
+    const images = result.entry.contentPath
+      ? directoryImages(result.entry.contentPath)
+      : commandDeck.snapshot().filesystem.entries.filter((entry) => entry.preview?.kind === "image");
     imageViewer.open(images, result.entry.path);
   }
   if (result.kind === "insert") audioDeck.play("folder");
@@ -673,6 +766,7 @@ const memoryPointStates: MemoryPointState[] = staticMode
   : seededShuffle(Array.from({ length: 440 }, (_, index) => index < 194 ? "active" : index < 344 ? "available" : "free"), 0x2ed2_0228);
 memoryGrid.innerHTML = memoryPointStates.map((state) => `<i class="${state}"></i>`).join("");
 
+if (!staticMode) restoreContentLocation({ render: false });
 renderTerminal();
 renderSessionChrome();
 renderTelemetry(0);

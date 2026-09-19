@@ -26,7 +26,11 @@ export class ImageViewer {
     event.stopPropagation();
   };
 
-  constructor(host: HTMLElement, private readonly onClose?: () => void) {
+  constructor(
+    host: HTMLElement,
+    private readonly onClose?: () => void,
+    private readonly onSelectionChange?: (entry: Readonly<BrowserFileEntry>) => void
+  ) {
     this.overlay = document.createElement("div");
     this.overlay.className = "image-viewer";
     this.overlay.hidden = true;
@@ -94,11 +98,11 @@ export class ImageViewer {
     this.focusBoundary.activate(this.overlay.querySelector<HTMLButtonElement>('[data-viewer-action="close"]')!);
   }
 
-  close(): void {
+  close(options: { notify?: boolean } = {}): void {
     if (this.overlay.hidden) return;
     this.overlay.hidden = true;
     this.focusBoundary.deactivate();
-    this.onClose?.();
+    if (options.notify !== false) this.onClose?.();
   }
 
   dispose(): void {
@@ -139,5 +143,6 @@ export class ImageViewer {
     this.counter.textContent = `${this.index + 1} / ${this.items.length} · ${preview.mediaType}`;
     this.setZoom(1);
     this.position();
+    this.onSelectionChange?.(entry);
   }
 }

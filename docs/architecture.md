@@ -50,7 +50,7 @@ Phase 0 只实现一个参考配置：eDEX-UI 2.2、默认 `tron` 主题、QWERT
 | shell | 固定全屏布局、面板生命周期、焦点与降级模式 |
 | terminal | 命令输入、历史、补全、输出和可访问输入路径 |
 | virtual-fs | 提供可导航的浏览器安全只读目录 |
-| content | 从仓库 Markdown 生成经过校验的类型化内容清单 |
+| content | 从仓库 Markdown 与媒体生成经过校验的类型化内容清单、内容树和安全相对引用 |
 | telemetry | 提供真实浏览器指标、会话指标和明确标注的模拟设备指标 |
 | keyboard | 显示布局、实体按键同步、触摸输入和组合键状态 |
 | audio | 用户手势解锁、音效播放与音量控制 |
@@ -61,10 +61,13 @@ Phase 0 只实现一个参考配置：eDEX-UI 2.2、默认 `tron` 主题、QWERT
 控制器返回不可变快照，DOM 层只负责渲染和焦点。页面级 `DisposableRegistry` 统一释放事件监听、
 音频、启动任务、Globe 渲染器与调度器，避免重启、隐藏页面或热重载后遗留写入者。
 
-博客正文位于仓库级 `content/blog/**/*.md`。Vite 在构建时通过 `import.meta.glob` 收集原始文件，
-内容注册表校验 frontmatter 并生成类型化清单；浏览器虚拟文件系统只接收该清单并投影为目录、
-文件和预览，不拥有文章正文或内容发现逻辑。文章阅读模式通过独立的终端运行时容器切换
-`inert` 与 `aria-hidden`，图片弹窗通过共享的模态焦点边界隔离背景、循环焦点并恢复原状态。
+博客内容位于仓库级 `content/blog`。`apps/clone/vite.config.ts` 在构建边界发现 Markdown 与受支持
+的图片，内容注册表使用 YAML 与 Zod 校验 frontmatter、路径碰撞、图片 alt 和相对资源，再生成不含
+解析器运行时代码的类型化清单。内容树保留仓库真实层级并挂载到 `/home/squared/Blog`；canonical
+eDEX 目录独立挂载到 `/home/squared/.config/eDEX-UI`，静态参考模式不接收个人内容。虚拟文件系统
+只投影目录、文件和预览，不拥有内容发现逻辑。文章链接、文件点击与 hash 地址统一发送类型化
+content intent；文章阅读模式通过独立终端容器切换 `inert` 与 `aria-hidden`，图片弹窗通过共享模态
+焦点边界隔离背景、循环焦点并恢复原状态。
 
 ## Invariants
 

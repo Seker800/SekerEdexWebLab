@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CommandDeckController } from "../apps/clone/src/command-deck-controller.js";
 import { DisposableRegistry } from "../apps/clone/src/disposable-registry.js";
 import { createSandboxFilesystem } from "../apps/clone/src/browser-filesystem.js";
-import { blogDocuments } from "../apps/clone/src/blog-content-registry.js";
+import { fixtureContentManifest as contentManifest } from "./content-fixture.js";
 
 describe("command deck controller", () => {
   it("routes typed intents through one immutable session snapshot", () => {
@@ -38,14 +38,21 @@ describe("command deck controller", () => {
   });
 
   it("owns the selected article and clears it on navigation", () => {
-    const controller = new CommandDeckController(createSandboxFilesystem({ blogDocuments }));
-    controller.dispatch({ type: "activate-filesystem-entry", name: "Blog" });
+    const controller = new CommandDeckController(createSandboxFilesystem({ contentEntries: contentManifest.entries, startInContent: true }));
     controller.dispatch({ type: "activate-filesystem-entry", name: "posts" });
     controller.dispatch({ type: "activate-filesystem-entry", name: "welcome.md" });
     expect(controller.snapshot().content?.preview).toMatchObject({ kind: "document", title: "Welcome to the command deck" });
     expect(Object.isFrozen(controller.snapshot().content?.preview)).toBe(true);
     controller.dispatch({ type: "close-content" });
     expect(controller.snapshot().content).toBeNull();
+  });
+
+  it("opens manifest content through one path intent for location restoration", () => {
+    const controller = new CommandDeckController(createSandboxFilesystem({ contentEntries: contentManifest.entries, startInContent: true }));
+    const result = controller.dispatch({ type: "activate-content-path", relativePath: "posts/welcome.md" });
+    expect(result.filesystem?.kind).toBe("document");
+    expect(controller.snapshot().content?.path).toBe(`${controller.snapshot().filesystem.contentRoot}/posts/welcome.md`);
+    expect(controller.snapshot().current.cwd).toBe(`${controller.snapshot().filesystem.contentRoot}/posts`);
   });
 });
 

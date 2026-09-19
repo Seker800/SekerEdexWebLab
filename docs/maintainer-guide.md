@@ -20,8 +20,9 @@
 ## 当前开发流程
 
 当前原型使用 Node.js 22、npm、Vite 和严格 TypeScript。完整本地门禁为 `npm run verify`，
-依次执行基准策略完整性、上游资产、静态检查、单元测试、生产构建、演示场景、Chromium、
-WebKit 和冻结视觉复刻验证。
+依次执行基准策略完整性、上游资产、静态检查、单元测试、内容核心覆盖率、生产构建、演示场景、
+Chromium、WebKit 和冻结视觉复刻验证。内容核心的 statements、branches、functions 与 lines
+覆盖率均不得低于 80%。
 
 CI 将这些职责拆成 `gate-integrity`、`source`、`app-chromium`、`app-webkit` 和
 `visual-canonical`。主分支应把五项全部配置为 required checks。基准、合同、判断器、门禁脚本、
@@ -33,6 +34,32 @@ baseline review，不能直接放宽阈值。
 
 自动修复只能写入 `apps/clone/src` 与 `content/blog`。不得为了通过门禁扩大可写范围、放宽阈值、
 修改参考证据、资产哈希或判定器。
+
+## 添加文章与照片
+
+`content/blog` 是运行态内容的唯一事实源。推荐每篇带图文章使用独立目录：
+
+```text
+content/blog/posts/my-trip/
+├── index.md
+├── cover.webp
+└── mountain.jpg
+```
+
+Markdown frontmatter 必须包含 `title`、`summary`、ISO 日期格式的 `publishedAt` 和字符串数组
+`tags`。旧的逗号分隔 `tags` 仍可读取，但新内容应使用 YAML 数组。图片支持 PNG、JPEG、WebP、
+AVIF、GIF 和 SVG；文章中用 `![可访问说明](./mountain.jpg)` 引用，alt 不得为空。相对文章链接
+同样按仓库路径解析，例如 `[下一篇](../next.md)`。原始 HTML、越界路径、缺失相对资源、重复路径
+和文件/目录碰撞都会使构建失败。
+
+添加内容后先运行：
+
+```sh
+npm run content:check
+```
+
+无需修改 `apps/clone/src`。构建插件会生成媒体哈希 URL，左下角文件系统会按仓库真实目录挂载到
+`/home/squared/Blog`，文章和图片地址使用 `#/blog/...`，适用于无需 rewrite 的静态托管。
 
 ## Commit 与 Push
 

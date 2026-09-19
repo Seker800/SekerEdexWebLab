@@ -559,6 +559,7 @@ try {
   if (!await motionPage.locator("#content-reader").isVisible()) throw new Error("Markdown file did not open the central article reader");
   if (await motionPage.locator("#content-reader-title").textContent() !== "Welcome to the command deck") throw new Error("Article reader did not render typed document metadata");
   if (!await motionPage.locator("#content-reader-body").textContent().then((value) => value?.includes("Select a folder"))) throw new Error("Article reader did not render Markdown content");
+  if (!motionPage.url().endsWith("#/blog/posts/welcome.md")) throw new Error(`Article navigation did not update the content hash: ${motionPage.url()}`);
   const articleAccessibility = await motionPage.evaluate(() => {
     const runtime = document.querySelector<HTMLElement>("#terminal-runtime")!;
     const body = document.querySelector<HTMLElement>("#content-reader-body")!;
@@ -594,10 +595,18 @@ try {
   if (restoredTerminalAccessibility.inert || restoredTerminalAccessibility.ariaHidden !== null) {
     throw new Error(`Article reader did not restore terminal accessibility: ${JSON.stringify(restoredTerminalAccessibility)}`);
   }
-  await motionPage.locator('.file-grid button[data-file-name="Go up"]').click();
-  await motionPage.locator('.file-grid button[data-file-name="images"]').click();
-  await motionPage.locator('.file-grid button[data-file-name="command-deck.svg"]').click();
+  if (!motionPage.url().endsWith("#/blog/posts")) throw new Error(`Closing an article did not restore its directory hash: ${motionPage.url()}`);
+  await motionPage.locator('.file-grid button[data-file-name="building-edex-web"]').click();
+  await motionPage.locator('.file-grid button[data-file-name="index.md"]').click();
+  const inlineImage = motionPage.locator('.content-image[data-content-path="posts/building-edex-web/command-deck.svg"]');
+  if (!await inlineImage.isVisible()) throw new Error("Relative Markdown image was not rendered from the content manifest");
+  await inlineImage.locator("img").evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0 ? undefined : new Promise<void>((resolve, reject) => {
+    image.addEventListener("load", () => resolve(), { once: true });
+    image.addEventListener("error", () => reject(new Error("Relative Markdown image failed to load")), { once: true });
+  }));
+  await inlineImage.click();
   if (!await motionPage.locator(".image-viewer").isVisible()) throw new Error("Image file did not open the media viewer");
+  if (!motionPage.url().endsWith("#/blog/posts/building-edex-web/command-deck.svg")) throw new Error(`Image navigation did not update the content hash: ${motionPage.url()}`);
   const modalIsolation = await motionPage.evaluate(() => ({
     background: Array.from(document.querySelectorAll<HTMLElement>("#command-deck > :not(.image-viewer)"))
       .every((element) => element.inert && element.getAttribute("aria-hidden") === "true"),
@@ -622,7 +631,7 @@ try {
   if (await motionPage.locator(".image-viewer__zoom").textContent() !== "125%") throw new Error("Image viewer zoom control did not update");
   await motionPage.locator('[data-viewer-action="next"]').click();
   if (await motionPage.locator("#image-viewer-title").textContent() !== "content-flow.svg") throw new Error("Image viewer did not navigate to the next image");
-  await motionPage.locator('.image-viewer__stage img[src$="content-flow.svg"]').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0 ? undefined : new Promise<void>((resolve, reject) => {
+  await motionPage.locator(".image-viewer__stage img").evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0 ? undefined : new Promise<void>((resolve, reject) => {
     image.addEventListener("load", () => resolve(), { once: true });
     image.addEventListener("error", () => reject(new Error("Image viewer asset failed to load")), { once: true });
   }));
@@ -649,10 +658,28 @@ try {
     throw new Error(`Image viewer escaped the logical canvas: ${JSON.stringify(constrainedViewer)}`);
   }
   await motionPage.screenshot({ path: path.join(artifactDirectory, "image-viewer.png"), animations: "disabled", omitBackground: true });
+  await motionPage.goBack({ waitUntil: "networkidle" });
+  if (await motionPage.locator("#image-viewer-title").textContent() !== "command-deck.svg") throw new Error("Browser back did not restore the previous media selection");
+  await motionPage.goBack({ waitUntil: "networkidle" });
+  if (await motionPage.locator(".image-viewer").isVisible() || !await motionPage.locator("#content-reader").isVisible()) {
+    throw new Error("Browser back did not close media and restore the article");
+  }
+  await motionPage.goForward({ waitUntil: "networkidle" });
+  await motionPage.goForward({ waitUntil: "networkidle" });
+  if (!await motionPage.locator(".image-viewer").isVisible() || await motionPage.locator("#image-viewer-title").textContent() !== "content-flow.svg") {
+    throw new Error("Browser forward did not restore the media sequence");
+  }
   await motionPage.keyboard.press("Escape");
   if (await motionPage.locator(".image-viewer").isVisible()) throw new Error("Image viewer did not close with Escape");
   if (!await motionPage.evaluate(() => Array.from(document.querySelectorAll<HTMLElement>("#command-deck > :not(.image-viewer)")).every((element) => !element.inert && element.getAttribute("aria-hidden") === null))) {
     throw new Error("Image viewer did not restore the command deck after dismissal");
+  }
+  await motionPage.evaluate(() => {
+    window.location.hash = "#/blog/%2e%2e/%2e%2e/secret";
+  });
+  await motionPage.waitForFunction(() => window.location.hash === "#/blog/");
+  if (!await motionPage.locator(".section-label small").textContent().then((value) => value?.endsWith("/Blog"))) {
+    throw new Error("Invalid content URL did not fall back to the content root");
   }
   await motionContext.close();
   const metrics = await compareScreenshots(

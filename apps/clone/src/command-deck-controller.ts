@@ -14,6 +14,7 @@ export type CommandDeckIntent =
   | { type: "activate-session"; index: number }
   | { type: "activate-adjacent-session"; direction: -1 | 1 }
   | { type: "activate-filesystem-entry"; name: string }
+  | { type: "activate-content-path"; relativePath: string }
   | { type: "close-content" }
   | { type: "toggle-modifier"; modifier: DeckModifier }
   | { type: "clear-momentary-modifiers" };
@@ -26,7 +27,12 @@ export interface CommandDeckSnapshot {
     readonly entries: readonly Readonly<TerminalEntry>[];
     readonly filesystemView: "directory" | "disks";
   };
-  readonly filesystem: { readonly root: string; readonly home: string; readonly entries: readonly Readonly<BrowserFileEntry>[] };
+  readonly filesystem: {
+    readonly root: string;
+    readonly canonicalRoot: string;
+    readonly contentRoot: string;
+    readonly entries: readonly Readonly<BrowserFileEntry>[];
+  };
   readonly tabs: readonly { readonly label: string; readonly active: boolean }[];
   readonly modifiers: Readonly<Record<DeckModifier, boolean>>;
   readonly content: Readonly<BrowserFileEntry> | null;
@@ -96,6 +102,15 @@ export class CommandDeckController {
           ...("feedback" in filesystem ? { feedback: filesystem.feedback } : {})
         };
       }
+      case "activate-content-path": {
+        const filesystem = this.terminal.activateContentPath(intent.relativePath);
+        if (filesystem.kind === "document") this.openContent = filesystem.entry;
+        else if (filesystem.kind === "navigated") this.openContent = null;
+        return {
+          filesystem,
+          ...("feedback" in filesystem ? { feedback: filesystem.feedback } : {})
+        };
+      }
       case "close-content":
         this.openContent = null;
         return {};
@@ -123,7 +138,8 @@ export class CommandDeckController {
       }),
       filesystem: Object.freeze({
         root: this.terminal.filesystem.root,
-        home: this.terminal.filesystem.home,
+        canonicalRoot: this.terminal.filesystem.canonicalRoot,
+        contentRoot: this.terminal.filesystem.contentRoot,
         entries: Object.freeze(this.terminal.filesystemEntries().map(freezeFileEntry))
       }),
       tabs: Object.freeze(Array.from({ length: 5 }, (_, index) => Object.freeze({

@@ -440,6 +440,10 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .content-reader__body code { padding: .08em .3em; background: rgba(var(--signal-rgb), .12); }
 .content-reader__body pre { overflow: auto; padding: 1.2cqh .8cqw; border-left: 2px solid var(--signal); background: rgba(var(--signal-rgb), .07); }
 .content-reader__body a { color: #d7ffff; }
+.content-reader__body .content-image { display: block; width: min(100%, 780px); margin: 1.5cqh auto; padding: 0; border: 1px solid rgba(var(--signal-rgb), .35); background: rgba(var(--signal-rgb), .035); color: inherit; cursor: zoom-in; }
+.content-reader__body .content-image img { display: block; width: 100%; height: auto; max-height: 48cqh; object-fit: contain; }
+.content-reader__body .content-image:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+.content-reference--missing, .content-image--invalid { color: #ffb7a8; border-bottom: 1px dotted currentColor; }
 
 .image-viewer { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; background: rgba(0, 5, 7, .76); backdrop-filter: blur(2px); }
 .image-viewer__dialog { width: min(64cqw, 1100px); max-height: 78cqh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; overflow: hidden; border: 1px solid var(--signal); background: rgba(3, 12, 15, .98); box-shadow: 0 0 0 1px #071013, 0 0 3cqw rgba(var(--signal-rgb), .22); }

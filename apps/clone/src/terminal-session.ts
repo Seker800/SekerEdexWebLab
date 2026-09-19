@@ -229,7 +229,7 @@ export class TerminalSessionDeck {
     }
     if (entry.preview?.kind === "document") return { kind: "document", entry, feedback: "info" };
     if (entry.preview?.kind === "image") return { kind: "image", entry, feedback: "info" };
-    if (this.current.cwd === `${this.filesystem.home}/themes` && entry.name.endsWith(".json")) {
+    if (this.current.cwd === `${this.filesystem.canonicalRoot}/themes` && entry.name.endsWith(".json")) {
       const theme = entry.name.slice(0, -5);
       const accepted = theme === "tron";
       this.current.entries.push(outputEntry(accepted
@@ -237,12 +237,28 @@ export class TerminalSessionDeck {
         : `theme: '${theme}' is unavailable; this replica is locked to the canonical tron theme`));
       return { kind: "theme", theme, accepted, feedback: accepted ? "success" : "denied" };
     }
-    if (this.current.cwd === `${this.filesystem.home}/keyboards` && entry.name.endsWith(".json")) {
+    if (this.current.cwd === `${this.filesystem.canonicalRoot}/keyboards` && entry.name.endsWith(".json")) {
       const layout = entry.name.slice(0, -5);
       this.current.entries.push(outputEntry(`KEYBOARD ${layout} ACTIVE`));
       return { kind: "keyboard", layout, feedback: "success" };
     }
     return { kind: "insert", value: quoteShellToken(entry.name) };
+  }
+
+  activateContentPath(relativePath: string): FilesystemActivation {
+    const absolutePath = relativePath === "" ? this.filesystem.contentRoot : `${this.filesystem.contentRoot}/${relativePath}`;
+    if (this.filesystem.isDirectory(absolutePath)) {
+      this.current.cwd = absolutePath;
+      this.current.filesystemView = "directory";
+      return { kind: "navigated", feedback: "success" };
+    }
+    const entry = this.filesystem.entryByPath(absolutePath);
+    if (!entry?.contentPath) return { kind: "missing", feedback: "error" };
+    this.current.cwd = absolutePath.slice(0, absolutePath.lastIndexOf("/"));
+    this.current.filesystemView = "directory";
+    if (entry.preview?.kind === "document") return { kind: "document", entry, feedback: "info" };
+    if (entry.preview?.kind === "image") return { kind: "image", entry, feedback: "info" };
+    return { kind: "missing", feedback: "error" };
   }
 
   private createSession(index: number, entries: TerminalEntry[]): TerminalSessionState {
