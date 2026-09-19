@@ -263,6 +263,7 @@ const imageViewer = new ImageViewer(contentOverlay, (entry, description) => {
   if (entry.contentPath) writeContentLocation(entry.contentPath, "push", description);
 });
 lifecycle.add(() => imageViewer.dispose());
+let pendingImageOpen: (() => void) | undefined;
 
 function renderTerminal(): void {
   output.innerHTML = commandDeck.snapshot().current.entries.map((entry) => {
@@ -453,7 +454,10 @@ function directoryImages(relativePath: string) {
 
 function openContentPath(relativePath: string, options: { render?: boolean; focus?: boolean; imageDescription?: { alt: string; caption?: string } } = {}): void {
   const result = commandDeck.dispatch({ type: "activate-content-path", relativePath }).filesystem!;
-  if (result.kind !== "image") imageViewer.close({ notify: false });
+  if (result.kind !== "image") {
+    pendingImageOpen = undefined;
+    imageViewer.close({ notify: false });
+  }
   if (result.kind === "missing") {
     commandDeck.dispatch({ type: "activate-content-path", relativePath: "" });
     writeContentLocation("", "replace");
@@ -464,11 +468,18 @@ function openContentPath(relativePath: string, options: { render?: boolean; focu
   }
   if (result.kind === "document" && options.focus !== false) contentOverlayClose.focus();
   if (result.kind === "image" && result.entry.contentPath) {
-    imageViewer.open(
-      directoryImages(result.entry.contentPath),
+    const contentPath = result.entry.contentPath;
+    const openImage = (): void => imageViewer.open(
+      directoryImages(contentPath),
       result.entry.path,
       options.imageDescription
     );
+    if (document.documentElement.dataset.bootPhase === "complete") {
+      pendingImageOpen = undefined;
+      openImage();
+    } else {
+      pendingImageOpen = openImage;
+    }
   }
 }
 
@@ -482,6 +493,7 @@ function restoreContentLocation(options: { render?: boolean; state?: unknown } =
       const result = commandDeck.dispatch({ type: "activate-filesystem-path", path: filesystemPath }).filesystem;
       if (result?.kind === "navigated") {
         lastContentHash = "";
+        pendingImageOpen = undefined;
         imageViewer.close({ notify: false });
         if (options.render !== false) {
           renderTerminal();
@@ -914,6 +926,9 @@ async function startBoot(): Promise<void> {
   try {
     await runBootSequence(bootElements, audioDeck, speed, controller.signal);
     input.focus();
+    const openPendingImage = pendingImageOpen;
+    pendingImageOpen = undefined;
+    openPendingImage?.();
   } catch (error) {
     if (!(error instanceof DOMException && error.name === "AbortError")) throw error;
   } finally {

@@ -846,6 +846,7 @@ try {
     throw new Error("Invalid content URL did not fall back to the content root");
   }
   const directImagePage = await motionContext.newPage();
+  await directImagePage.bringToFront();
   directImagePage.on("console", (message) => { if (message.type() === "error") consoleErrors.push(`direct-image: ${message.text()}`); });
   directImagePage.on("pageerror", (error) => pageErrors.push(`direct-image: ${error.message}`));
   await directImagePage.goto("http://127.0.0.1:4174/?fastboot=1#/blog/posts/night-routes/tokyo-night.jpg", { waitUntil: "networkidle" });
@@ -856,15 +857,18 @@ try {
   await directImagePage.getByRole("button", { name: "Initialize system" }).click();
   await directImagePage.locator('html[data-boot-phase="complete"]').waitFor({ timeout: 10_000 });
   await directImagePage.locator('.image-viewer__stage[data-reveal-state="revealing"]').waitFor({ timeout: 3_000 });
-  await directImagePage.waitForTimeout(240);
-  const directRevealTiles = await directImagePage.locator(".image-viewer__reveal-tile").evaluateAll((tiles) => tiles.reduce((counts, tile) => {
-    const opacity = Number.parseFloat(getComputedStyle(tile).opacity);
-    if (opacity < 0.05) counts.hidden += 1;
-    if (opacity > 0.05) counts.visible += 1;
-    return counts;
-  }, { hidden: 0, visible: 0 }));
-  if (directRevealTiles.hidden === 0 || directRevealTiles.visible === 0) {
-    throw new Error(`Direct image route did not replay the staged reveal after boot: ${JSON.stringify(directRevealTiles)}`);
+  const directReveal = await directImagePage.evaluate(() => {
+    const image = document.querySelector<HTMLImageElement>(".image-viewer__stage img")!;
+    const tile = document.querySelector<HTMLElement>(".image-viewer__reveal-tile")!;
+    const tileStyle = getComputedStyle(tile);
+    return {
+      imageOpacity: getComputedStyle(image).opacity,
+      tileAnimation: tileStyle.animationName,
+      tileBackground: tileStyle.backgroundImage
+    };
+  });
+  if (directReveal.imageOpacity !== "0" || directReveal.tileAnimation !== "image-viewer-tile-colorize" || directReveal.tileBackground === "none") {
+    throw new Error(`Direct image route did not enter the staged reveal after boot: ${JSON.stringify(directReveal)}`);
   }
   await directImagePage.close();
   await motionContext.close();
