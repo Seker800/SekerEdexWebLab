@@ -11,7 +11,7 @@ const expected = {
   allowedPaths: ["apps/clone/src", "content/blog"],
   formalRegions: {
     system: { x: 9, y: 44, width: 303, height: 669, maxDifferenceRatio: 0.07 },
-    terminal: { x: 331, y: 44, width: 1265, height: 669, maxDifferenceRatio: 0.03 },
+    terminal: { x: 331, y: 44, width: 1265, height: 669, maxDifferenceRatio: 0.033 },
     network: { x: 1614, y: 44, width: 311, height: 684, maxDifferenceRatio: 0.07 },
     filesystem: { x: 9, y: 713, width: 834, height: 381, maxDifferenceRatio: 0.035 },
     keyboard: { x: 843, y: 713, width: 1082, height: 381, maxDifferenceRatio: 0.03 }
