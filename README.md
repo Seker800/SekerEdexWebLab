@@ -66,13 +66,15 @@ Run the complete local gate:
 npm run verify
 ```
 
-It verifies upstream asset integrity, type checking, unit tests, the production build, startup and
-interaction behavior, regional visual comparison, and the deterministic replication workflow.
+It verifies the locked gate policy, upstream asset integrity, type checking, unit tests, the production
+build, demo workflow, startup and interaction behavior, Chromium and WebKit coverage, formal and
+perceptual regional visual budgets, and the deterministic replication workflow.
 
 Useful focused commands:
 
 | Command | Purpose |
 | --- | --- |
+| `npm run gate:verify` | Verify canonical evidence, visual ceilings, asset manifest, and repair roots |
 | `npm run app:verify` | Verify startup, audio, interactions, layouts, and browser errors |
 | `npm run app:verify:webkit` | Verify core interactions, fixed-canvas geometry, mobile fallback, and browser errors in WebKit |
 | `npm run app:hotspots` | Rank the most visible 64×64 difference regions |

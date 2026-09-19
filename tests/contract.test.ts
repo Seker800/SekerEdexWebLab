@@ -42,7 +42,8 @@ describe("scenario contract", () => {
     for (const allowedPath of [".", "src", "src/judge", "artifacts/runs", "references"]) {
       expect(() => scenarioContractSchema.parse({ ...base, allowedPaths: [allowedPath] })).toThrow();
     }
-    expect(scenarioContractSchema.parse({ ...base, allowedPaths: ["apps/clone"] }).allowedPaths).toEqual(["apps/clone"]);
+    expect(() => scenarioContractSchema.parse({ ...base, allowedPaths: ["apps/clone"] })).toThrow();
+    expect(scenarioContractSchema.parse({ ...base, allowedPaths: ["apps/clone/src"] }).allowedPaths).toEqual(["apps/clone/src"]);
   });
 
   it("accepts frozen screenshot evidence and requires one target source", () => {
@@ -112,5 +113,21 @@ describe("scenario contract", () => {
         entryPaths: ["../outside.css"]
       }
     })).toThrow();
+  });
+
+  it("rejects comparison profiles that name undeclared regions", () => {
+    expect(() => scenarioContractSchema.parse({
+      scenarioId: "invalid-region-profile",
+      targetScreenshotPath: "references/reference.png",
+      replicaUrl: "http://127.0.0.1:3000",
+      viewport: { width: 1280, height: 720 },
+      maxDifferenceRatio: 0.1,
+      comparisonRegions: { terminal: { x: 0, y: 0, width: 100, height: 100 } },
+      perceptualComparison: {
+        maxDifferenceRatio: 0.2,
+        comparisonOptions: { threshold: 0.08, includeAA: true },
+        regionMaxDifferenceRatios: { keyboard: 0.2 }
+      }
+    })).toThrow("unknown region keyboard");
   });
 });

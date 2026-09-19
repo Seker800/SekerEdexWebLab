@@ -1,0 +1,20 @@
+# Gate policy and immutable reference evidence require explicit owner review.
+/.github/ @Seker800
+/NORTH_STAR.md @Seker800
+/ARCHITECTURE.md @Seker800
+/docs/architecture.md @Seker800
+/docs/VISUAL_NORTH_STAR.md @Seker800
+/docs/adr/ @Seker800
+/specs/ @Seker800
+/schemas/ @Seker800
+/references/ @Seker800
+/scripts/verify-*.ts @Seker800
+/src/config/ @Seker800
+/src/judge/ @Seker800
+/src/orchestrator/ @Seker800
+/apps/clone/public/ @Seker800
+/apps/clone/upstream-asset-hashes.json @Seker800
+/apps/clone/licenses/ @Seker800
+/apps/clone/UPSTREAM_* @Seker800
+/LICENSE @Seker800
+/NOTICE.md @Seker800

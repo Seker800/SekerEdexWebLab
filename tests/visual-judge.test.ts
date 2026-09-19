@@ -26,4 +26,17 @@ describe("visual judge", () => {
     expect(verdict.status).toBe("failed");
     expect(verdict.reasons).toHaveLength(2);
   });
+
+  it("fails when a named region exceeds its own threshold", () => {
+    const verdict = judgeVisualResult(
+      metrics,
+      { consoleErrors: [], pageErrors: [], finalUrl: "http://replica" },
+      0.01,
+      { keyboard: { metrics: { ...metrics, differenceRatio: 0.2 }, maxDifferenceRatio: 0.1 } }
+    );
+
+    expect(verdict.status).toBe("failed");
+    expect(verdict.reasons).toEqual(["Visual region keyboard difference 20.000% exceeds 10.000%"]);
+    expect(verdict.regionMetrics?.keyboard?.differenceRatio).toBe(0.2);
+  });
 });

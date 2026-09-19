@@ -2,6 +2,7 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { loadContract } from "./config/contract.js";
+import { withRepairComparison } from "./config/repair-contract.js";
 import { PlaywrightCollector } from "./adapters/browser/playwright-collector.js";
 import { CodexRepairAgent } from "./adapters/codex/codex-repair-agent.js";
 import { assertCleanRepository, changedPaths, pathsOutsideAllowed } from "./adapters/codex/git-guard.js";
@@ -24,10 +25,13 @@ async function main(): Promise<void> {
   if (!configPath) throw new Error("Missing --config <file>");
 
   const repositoryRoot = process.cwd();
-  const contract = await loadContract(configPath);
+  const loadedContract = await loadContract(configPath);
   const artifactRoot = path.resolve(valueAfter(args, "--artifacts") ?? "artifacts/runs");
   await mkdir(artifactRoot, { recursive: true });
   const liveRepair = args.includes("--repair");
+  const contract = liveRepair && loadedContract.repairComparison
+    ? withRepairComparison(loadedContract)
+    : loadedContract;
   let repairAgent;
   let afterRepair: (() => Promise<void>) | undefined;
 

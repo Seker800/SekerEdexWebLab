@@ -1,18 +1,18 @@
 import type { ScenarioContract } from "./contract.js";
-import type { VisualComparisonOptions } from "../comparison/visual-comparator.js";
 
-export function withRepairComparison(
-  contract: ScenarioContract,
-  maxDifferenceRatio: number,
-  comparisonOptions?: Required<VisualComparisonOptions>
-): ScenarioContract {
-  if (maxDifferenceRatio < 0 || maxDifferenceRatio > 1) {
-    throw new Error(`Repair threshold must be between 0 and 1; received ${maxDifferenceRatio}`);
-  }
+export function withRepairComparison(contract: ScenarioContract): ScenarioContract {
+  const profile = contract.repairComparison;
+  if (!profile) throw new Error("Automated repair requires a repairComparison profile");
   return {
     ...contract,
-    maxDifferenceRatio,
-    ...(comparisonOptions ? { comparisonOptions } : {})
+    maxDifferenceRatio: profile.maxDifferenceRatio,
+    comparisonOptions: profile.comparisonOptions,
+    maxRegionRegressionRatio: profile.maxRegionRegressionRatio,
+    comparisonRegions: Object.fromEntries(Object.entries(contract.comparisonRegions ?? {}).map(([name, region]) => {
+      const { maxDifferenceRatio: _currentThreshold, ...bounds } = region;
+      const repairThreshold = profile.regionMaxDifferenceRatios[name];
+      return [name, repairThreshold === undefined ? bounds : { ...bounds, maxDifferenceRatio: repairThreshold }];
+    }))
   };
 }
 

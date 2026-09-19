@@ -128,9 +128,6 @@ export async function runWorkflow(options: WorkflowOptions): Promise<FinalReport
         contract.comparisonOptions
       );
       await writeJson(path.join(attemptDirectory, "metrics.json"), metrics);
-      const verdict = judgeVisualResult(metrics, replica.diagnostics, contract.maxDifferenceRatio);
-      const verdictPath = path.join(attemptDirectory, "verdict.json");
-      await writeJson(verdictPath, verdict);
       const regionEvidence = (await Promise.all(
         Object.entries(contract.comparisonRegions ?? {}).map(async ([name, region]) => {
           const regionDirectory = path.join(attemptDirectory, "regions", name);
@@ -147,6 +144,13 @@ export async function runWorkflow(options: WorkflowOptions): Promise<FinalReport
           return { name, diffScreenshotPath, metrics: regionMetrics };
         })
       )).sort((left, right) => right.metrics.differentPixels - left.metrics.differentPixels);
+      const regionJudgements = Object.fromEntries(regionEvidence.map((region) => [region.name, {
+        metrics: region.metrics,
+        maxDifferenceRatio: contract.comparisonRegions?.[region.name]?.maxDifferenceRatio ?? null
+      }]));
+      const verdict = judgeVisualResult(metrics, replica.diagnostics, contract.maxDifferenceRatio, regionJudgements);
+      const verdictPath = path.join(attemptDirectory, "verdict.json");
+      await writeJson(verdictPath, verdict);
 
       const attemptReport: AttemptReport = { attempt, replica, verdict };
       attempts.push(attemptReport);
@@ -215,12 +219,6 @@ export async function runWorkflow(options: WorkflowOptions): Promise<FinalReport
           contract.comparisonOptions
         );
         await writeJson(path.join(candidateDirectory, "metrics.json"), candidateMetrics);
-        const candidateVerdict = judgeVisualResult(
-          candidateMetrics,
-          candidateReplica.diagnostics,
-          contract.maxDifferenceRatio
-        );
-        await writeJson(path.join(candidateDirectory, "verdict.json"), candidateVerdict);
         const candidateRegionMetrics = await Promise.all(
           Object.entries(contract.comparisonRegions ?? {}).map(async ([name, region]) => {
             const regionDirectory = path.join(candidateDirectory, "regions", name);
@@ -236,6 +234,17 @@ export async function runWorkflow(options: WorkflowOptions): Promise<FinalReport
             return { name, metrics: regionMetrics };
           })
         );
+        const candidateRegionJudgements = Object.fromEntries(candidateRegionMetrics.map((region) => [region.name, {
+          metrics: region.metrics,
+          maxDifferenceRatio: contract.comparisonRegions?.[region.name]?.maxDifferenceRatio ?? null
+        }]));
+        const candidateVerdict = judgeVisualResult(
+          candidateMetrics,
+          candidateReplica.diagnostics,
+          contract.maxDifferenceRatio,
+          candidateRegionJudgements
+        );
+        await writeJson(path.join(candidateDirectory, "verdict.json"), candidateVerdict);
         const baselineRegionMetrics = new Map(regionEvidence.map((region) => [region.name, region.metrics]));
         const regionChanges = candidateRegionMetrics.flatMap(({ name, metrics: candidate }) => {
           const baseline = baselineRegionMetrics.get(name);
@@ -249,8 +258,12 @@ export async function runWorkflow(options: WorkflowOptions): Promise<FinalReport
 
         const candidateHealthy = candidateReplica.diagnostics.consoleErrors.length === 0
           && candidateReplica.diagnostics.pageErrors.length === 0;
+        const regionRegression = regionChanges.find(({ baseline, candidate }) =>
+          candidate.differenceRatio > baseline.differenceRatio + (contract.maxRegionRegressionRatio ?? 0)
+        );
         const improved = candidateMetrics.dimensionsMatch
           && candidateHealthy
+          && !regionRegression
           && candidateMetrics.differenceRatio < metrics.differenceRatio;
         const scoreChange = `${(metrics.differenceRatio * 100).toFixed(3)}% to ${(candidateMetrics.differenceRatio * 100).toFixed(3)}%`;
         const reason = improved
@@ -259,6 +272,8 @@ export async function runWorkflow(options: WorkflowOptions): Promise<FinalReport
             ? "Candidate screenshot dimensions do not match the target"
             : !candidateHealthy
               ? "Candidate browser diagnostics contain errors"
+              : regionRegression
+                ? `Visual region ${regionRegression.name} regressed from ${(regionRegression.baseline.differenceRatio * 100).toFixed(3)}% to ${(regionRegression.candidate.differenceRatio * 100).toFixed(3)}%`
               : `Visual difference did not improve: ${scoreChange}`;
         attemptReport.repairCandidate = {
           replica: candidateReplica,

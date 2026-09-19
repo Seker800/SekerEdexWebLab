@@ -14,11 +14,7 @@ import { runWorkflow } from "../src/orchestrator/run-workflow.js";
 const repositoryRoot = process.cwd();
 const configPath = path.resolve("specs/edex-command-deck.contract.json");
 const artifactRoot = path.resolve("artifacts/runs");
-const contract = withRepairComparison(
-  await loadContract(configPath),
-  0.04,
-  { threshold: 0.08, includeAA: true }
-);
+const contract = withRepairComparison(await loadContract(configPath));
 
 if (contract.allowedPaths.length === 0) throw new Error("Automated repair requires at least one allowed path");
 await assertCleanRepository(repositoryRoot);

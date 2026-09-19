@@ -22,7 +22,7 @@ The optional hotspot diagnostic composites both images over the product's black 
 
 Application verification records two complementary comparisons. The frozen formal metric keeps the scenario gate stable with Pixelmatch's antialias suppression. A diagnostic perceptual metric uses a stricter color threshold and includes antialiased pixels, so thin glyphs, one-pixel frames, ENCOM satellites and other details that remain obvious to a person cannot disappear from repair prioritization. A candidate that only improves the formal metric while regressing the perceptual metric requires direct visual evidence before acceptance.
 
-The autonomous eDEX repair command runs its transactional accept or rollback decision against the perceptual comparison. This prevents the repair loop from stopping at the looser formal threshold while visible glyph and globe differences remain. The frozen regression scenario keeps its original formal settings so historical pass criteria do not drift.
+The autonomous eDEX repair command loads its perceptual comparison profile from the same frozen scenario contract. A candidate must improve the whole-screen score without exceeding the declared regional regression allowance. The frozen regression scenario keeps its formal profile, while application verification enforces both formal and perceptual whole-screen and regional budgets.
 
 ### Judge
 
@@ -48,7 +48,7 @@ capture -> compare -> judge -> passed
 
 The orchestrator owns attempt limits and artifact directories. Components communicate through typed values and files.
 
-Every live repair is transactional over the contract's allowed paths. The controller requires a clean Git worktree, restricts Codex's writable sandbox roots, and restores the complete Git worktree plus newly created untracked files when a repair is rejected or fails. It captures and judges the candidate immediately after validation, and accepts it only when browser diagnostics remain clean, dimensions match, and the visual difference ratio strictly decreases. Equal, worse, malformed or failed candidates restore the baseline before another attempt. Candidate screenshots, metrics, verdicts and the accept/reject decision remain in the run artifacts.
+Every live repair is transactional over the contract's allowed paths. The controller requires a clean Git worktree, restricts Codex's writable sandbox roots, and restores the complete Git worktree plus newly created untracked files when a repair is rejected or fails. It captures and judges the candidate immediately after validation, and accepts it only when browser diagnostics remain clean, dimensions match, the visual difference ratio strictly decreases, and no named region exceeds its regression allowance. Equal, worse, locally regressive, malformed or failed candidates restore the baseline before another attempt. Candidate screenshots, metrics, verdicts and the accept/reject decision remain in the run artifacts.
 
 Before each repair, the orchestrator hashes every existing run artifact. It verifies the complete file manifest before writing trusted repair output or capturing a candidate, so a repair cannot rewrite earlier evidence or add forged evidence files. Contract validation rejects repair roots that overlap controller, schema, contract, reference or artifact paths.
 
@@ -100,6 +100,8 @@ artifacts/runs/<run-id>/
 - The frozen contract and target screenshot are hash checked after every repair.
 - Shell arguments are passed through process argument arrays, not shell interpolation.
 - Live repair is opt in and operates inside a Git repository.
+- Automated repair can write application source and repository Markdown content only. Canonical evidence, upstream assets, hash manifests, licenses, gate configuration, judges and orchestration remain outside its writable roots.
+- `gate:verify` binds the reference screenshot, source revision, asset manifest, visual ceilings and repair roots to the reviewed canonical policy. CODEOWNERS and protected branch settings provide the repository-level approval boundary for policy changes.
 
 ## Extension seams
 

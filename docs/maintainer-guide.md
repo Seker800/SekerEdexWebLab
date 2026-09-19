@@ -19,16 +19,16 @@
 
 ## 当前开发流程
 
-技术路线已经确定，但代码脚手架尚未建立。第一个可运行原型使用 Node.js 22 LTS、pnpm 10、
-Astro 静态输出、React、严格 TypeScript，并在同一变更中补充可执行的：
+当前原型使用 Node.js 22、npm、Vite 和严格 TypeScript。完整本地门禁为 `npm run verify`，
+依次执行基准策略完整性、上游资产、静态检查、单元测试、生产构建、演示场景、Chromium、
+WebKit 和冻结视觉复刻验证。
 
-- 安装、开发、测试和生产构建命令。
-- Node/运行时版本与 lockfile 策略。
-- 格式、静态检查、测试和构建组成的统一 `ci:check` 门禁。
-- 截图或视觉回归命令。
-- 性能采样方法。
+CI 将这些职责拆成 `gate-integrity`、`source`、`app-chromium`、`app-webkit` 和
+`visual-canonical`。主分支应把五项全部配置为 required checks。基准、合同、判断器、门禁脚本、
+上游资产和许可证由 `.github/CODEOWNERS` 保护；更新这些文件必须保留来源、差异证据和审核记录。
 
-不要在文档中保留无法执行的占位命令。
+自动修复只能写入 `apps/clone/src` 与 `content/blog`。不得为了通过门禁扩大可写范围、放宽阈值、
+修改参考证据、资产哈希或判定器。
 
 ## Commit 与 Push
 
@@ -38,7 +38,7 @@ Astro 静态输出、React、严格 TypeScript，并在同一变更中补充可�
 git status --short
 ```
 
-工具链建立后，再运行 `AGENTS.md` 规定的完整门禁。提交格式：
+运行 `npm run verify` 和 `AGENTS.md` 规定的完整门禁。提交格式：
 
 ```text
 新增: 建立可运行的全屏终端切片

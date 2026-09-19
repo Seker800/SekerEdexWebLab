@@ -43,6 +43,7 @@ export interface Verdict {
   status: "passed" | "failed";
   reasons: string[];
   metrics: VisualMetrics;
+  regionMetrics?: Record<string, VisualMetrics>;
 }
 
 export interface AttemptReport {

@@ -3,13 +3,16 @@ import path from "node:path";
 import { chromium } from "playwright";
 import { createServer } from "vite";
 import { compareScreenshotRegion, compareScreenshots, type ScreenshotRegion } from "../src/comparison/visual-comparator.js";
+import { loadContract } from "../src/config/contract.js";
+import { judgeVisualResult } from "../src/judge/visual-judge.js";
+import type { VisualMetrics } from "../src/domain/types.js";
 
-const canonicalRegionDefinitions: Record<string, { selector: string; expectedBounds: ScreenshotRegion; comparisonBounds: ScreenshotRegion }> = {
-  system: { selector: ".system-panel", expectedBounds: { x: 9, y: 44, width: 303, height: 669 }, comparisonBounds: { x: 9, y: 44, width: 303, height: 669 } },
-  terminal: { selector: ".terminal-panel", expectedBounds: { x: 331, y: 44, width: 1265, height: 669 }, comparisonBounds: { x: 331, y: 44, width: 1265, height: 669 } },
-  network: { selector: ".network-panel", expectedBounds: { x: 1614, y: 44, width: 311, height: 669 }, comparisonBounds: { x: 1614, y: 44, width: 311, height: 684 } },
-  filesystem: { selector: ".filesystem-panel", expectedBounds: { x: 9, y: 713, width: 834, height: 375 }, comparisonBounds: { x: 9, y: 713, width: 834, height: 381 } },
-  keyboard: { selector: ".keyboard-panel", expectedBounds: { x: 842, y: 723, width: 1073, height: 375 }, comparisonBounds: { x: 843, y: 713, width: 1082, height: 381 } }
+const canonicalRegionDefinitions: Record<string, { selector: string; expectedBounds: ScreenshotRegion }> = {
+  system: { selector: ".system-panel", expectedBounds: { x: 9, y: 44, width: 303, height: 669 } },
+  terminal: { selector: ".terminal-panel", expectedBounds: { x: 331, y: 44, width: 1265, height: 669 } },
+  network: { selector: ".network-panel", expectedBounds: { x: 1614, y: 44, width: 311, height: 669 } },
+  filesystem: { selector: ".filesystem-panel", expectedBounds: { x: 9, y: 713, width: 834, height: 375 } },
+  keyboard: { selector: ".keyboard-panel", expectedBounds: { x: 842, y: 723, width: 1073, height: 375 } }
 };
 
 function assertBounds(name: string, actual: ScreenshotRegion, expected: ScreenshotRegion, tolerance = 4): void {
@@ -21,6 +24,13 @@ function assertBounds(name: string, actual: ScreenshotRegion, expected: Screensh
 }
 
 const artifactDirectory = path.resolve("artifacts/app-verification");
+const contract = await loadContract(path.resolve("specs/edex-command-deck.contract.json"));
+if (!contract.comparisonRegions || !contract.perceptualComparison) {
+  throw new Error("The eDEX scenario must declare formal regions and a perceptual comparison profile");
+}
+for (const name of Object.keys(canonicalRegionDefinitions)) {
+  if (!contract.comparisonRegions[name]) throw new Error(`The eDEX scenario is missing comparison region ${name}`);
+}
 await mkdir(artifactDirectory, { recursive: true });
 const server = await createServer({
   root: path.resolve("apps/clone"),
@@ -654,29 +664,48 @@ try {
     path.resolve("references/edex-ui-v2.2.8/screenshot_default.png"),
     path.join(artifactDirectory, "command-deck.png"),
     path.join(artifactDirectory, "upstream-perceptual-diff.png"),
-    { threshold: 0.08, includeAA: true }
+    contract.perceptualComparison.comparisonOptions
   );
-  const regionMetrics = Object.fromEntries(await Promise.all(Object.entries(canonicalRegionDefinitions).map(async ([name, definition]) => [
+  const regionMetrics = Object.fromEntries(await Promise.all(Object.entries(contract.comparisonRegions).map(async ([name, region]) => [
     name,
     await compareScreenshotRegion(
       path.resolve("references/edex-ui-v2.2.8/screenshot_default.png"),
       path.join(artifactDirectory, "command-deck.png"),
       path.join(artifactDirectory, `upstream-diff-${name}.png`),
-      definition.comparisonBounds
+      region
     )
-  ])));
-  const perceptualRegionMetrics = Object.fromEntries(await Promise.all(Object.entries(canonicalRegionDefinitions).map(async ([name, definition]) => [
+  ]))) as Record<string, VisualMetrics>;
+  const perceptualRegionMetrics = Object.fromEntries(await Promise.all(Object.entries(contract.comparisonRegions).map(async ([name, region]) => [
     name,
     await compareScreenshotRegion(
       path.resolve("references/edex-ui-v2.2.8/screenshot_default.png"),
       path.join(artifactDirectory, "command-deck.png"),
       path.join(artifactDirectory, `upstream-perceptual-diff-${name}.png`),
-      definition.comparisonBounds,
-      { threshold: 0.08, includeAA: true }
+      region,
+      contract.perceptualComparison!.comparisonOptions
     )
-  ])));
+  ]))) as Record<string, VisualMetrics>;
+  const diagnostics = { consoleErrors, pageErrors, finalUrl: page.url() };
+  const formalVerdict = judgeVisualResult(
+    metrics,
+    diagnostics,
+    contract.maxDifferenceRatio,
+    Object.fromEntries(Object.entries(regionMetrics).map(([name, region]) => [name, {
+      metrics: region,
+      maxDifferenceRatio: contract.comparisonRegions?.[name]?.maxDifferenceRatio ?? null
+    }]))
+  );
+  const perceptualVerdict = judgeVisualResult(
+    perceptualMetrics,
+    diagnostics,
+    contract.perceptualComparison.maxDifferenceRatio,
+    Object.fromEntries(Object.entries(perceptualRegionMetrics).map(([name, region]) => [name, {
+      metrics: region,
+      maxDifferenceRatio: contract.perceptualComparison?.regionMaxDifferenceRatios[name] ?? null
+    }]))
+  );
   const report = {
-    status: consoleErrors.length === 0 && pageErrors.length === 0 ? "passed" : "failed",
+    status: formalVerdict.status === "passed" && perceptualVerdict.status === "passed" ? "passed" : "failed",
     viewport: { width: 1934, height: 1094 },
     requiredRegions: regions,
     bootChecks: { requiredPhases, observedPhases: bootEvidence.phases, titleStateBounds },
@@ -716,6 +745,7 @@ try {
     canonicalBounds,
     upstreamRegionMetrics: regionMetrics,
     upstreamPerceptualRegionMetrics: perceptualRegionMetrics,
+    visualVerdicts: { formal: formalVerdict, perceptual: perceptualVerdict },
     note: "The formal metric preserves the workflow threshold. The perceptual metric includes antialiased pixels so thin glyphs, globe details and one-pixel strokes remain visible to diagnostics."
   };
   await writeFile(path.join(artifactDirectory, "report.json"), `${JSON.stringify(report, null, 2)}\n`);

@@ -23,10 +23,11 @@
     "app:verify": "tsx scripts/verify-app.ts",
     "app:verify:webkit": "tsx scripts/verify-webkit.ts",
     "app:hotspots": "tsx scripts/analyze-app-hotspots.ts",
+    "gate:verify": "tsx scripts/verify-gate-integrity.ts",
     "assets:verify": "tsx scripts/verify-upstream-assets.ts",
     "upstream:sync": "tsx scripts/sync-upstream-source.ts",
     "replicate:repair": "tsx scripts/repair-replication.ts",
-    "verify": "npm run assets:verify && npm run check && npm test && npm run build && npm run app:verify && npm run app:verify:webkit && npm run replicate:verify",
+    "verify": "npm run gate:verify && npm run assets:verify && npm run check && npm test && npm run build && npm run demo && npm run app:verify && npm run app:verify:webkit && npm run replicate:verify",
     "replicate:verify": "tsx scripts/verify-replication.ts",
     "install:browsers": "playwright install chromium webkit"
   },

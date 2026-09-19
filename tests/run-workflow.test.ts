@@ -229,4 +229,71 @@ describe("workflow failure handling", () => {
     expect(rollbacks).toBe(2);
     expect(repaired).toBe(false);
   });
+
+  it("rejects a globally improved candidate that regresses a protected region", async () => {
+    const artifactRoot = await mkdtemp(path.join(tmpdir(), "edex-workflow-"));
+    temporaryDirectories.push(artifactRoot);
+    const targetPath = path.join(artifactRoot, "target.png");
+    const targetImage = new PNG({ width: 3, height: 1 });
+    targetImage.data.fill(0);
+    for (let index = 3; index < targetImage.data.length; index += 4) targetImage.data[index] = 255;
+    await writeFile(targetPath, PNG.sync.write(targetImage));
+
+    let repaired = false;
+    let rollbacks = 0;
+    const collector: PageCollector = {
+      async capture(url, _viewport, outputPath) {
+        const image = new PNG({ width: 3, height: 1 });
+        image.data.fill(0);
+        for (let index = 3; index < image.data.length; index += 4) image.data[index] = 255;
+        const differingPixels = repaired ? [0] : [1, 2];
+        for (const pixel of differingPixels) {
+          image.data[pixel * 4] = 255;
+          image.data[pixel * 4 + 1] = 255;
+          image.data[pixel * 4 + 2] = 255;
+        }
+        await writeFile(outputPath, PNG.sync.write(image));
+        return { screenshotPath: outputPath, diagnostics: { consoleErrors: [], pageErrors: [], finalUrl: url } };
+      },
+      async close() {}
+    };
+    const repairAgent: RepairAgent = {
+      async repair() {
+        repaired = true;
+        return { status: "changed", summary: "moves the mismatch", changedFiles: ["apps/clone/src/a.ts"], validations: [], remainingDifferences: [] };
+      }
+    };
+    const repairWorkspace: RepairWorkspace = {
+      async checkpoint() {},
+      async accept() {},
+      async rollback() { repaired = false; rollbacks += 1; }
+    };
+
+    const report = await runWorkflow({
+      contract: {
+        scenarioId: "reject-regional-regression",
+        targetScreenshotPath: targetPath,
+        replicaUrl: "http://replica.example",
+        viewport: { width: 3, height: 1 },
+        maxDifferenceRatio: 0,
+        maxRegionRegressionRatio: 0,
+        comparisonRegions: { leadingPixel: { x: 0, y: 0, width: 1, height: 1 } },
+        maxAttempts: 2,
+        allowedPaths: ["apps/clone/src"],
+        validationCommands: []
+      },
+      artifactRoot,
+      collector,
+      repairAgent,
+      repairWorkspace,
+      runId: "regional-regression-run"
+    });
+
+    expect(report.attempts[0]?.repairCandidate).toMatchObject({
+      decision: "rejected",
+      verdict: { metrics: { differentPixels: 1 } }
+    });
+    expect(report.attempts[0]?.repairCandidate?.reason).toContain("Visual region leadingPixel regressed");
+    expect(rollbacks).toBe(1);
+  });
 });

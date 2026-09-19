@@ -18,7 +18,14 @@ const protectedRepairPaths = [
   "src/adapters/codex",
   "src/config",
   "src/judge",
-  "src/orchestrator"
+  "src/orchestrator",
+  "apps/clone/public",
+  "apps/clone/upstream-asset-hashes.json",
+  "apps/clone/licenses",
+  "apps/clone/UPSTREAM_ASSETS.md",
+  "apps/clone/UPSTREAM_LICENSE",
+  "LICENSE",
+  "NOTICE.md"
 ] as const;
 
 function pathsOverlap(left: string, right: string): boolean {
@@ -46,7 +53,18 @@ const screenshotRegionSchema = z.object({
   x: z.number().int().min(0),
   y: z.number().int().min(0),
   width: z.number().int().min(1),
-  height: z.number().int().min(1)
+  height: z.number().int().min(1),
+  maxDifferenceRatio: z.number().min(0).max(1).optional()
+}).strict();
+
+const comparisonProfileSchema = z.object({
+  maxDifferenceRatio: z.number().min(0).max(1),
+  comparisonOptions: z.object({
+    threshold: z.number().min(0).max(1),
+    includeAA: z.boolean()
+  }).strict(),
+  regionMaxDifferenceRatios: z.record(z.string().min(1), z.number().min(0).max(1)).default({}),
+  maxRegionRegressionRatio: z.number().min(0).max(1).default(0)
 }).strict();
 
 export const scenarioContractSchema = z.object({
@@ -65,6 +83,9 @@ export const scenarioContractSchema = z.object({
     includeAA: z.boolean()
   }).strict().optional(),
   comparisonRegions: z.record(z.string().min(1), screenshotRegionSchema).optional(),
+  perceptualComparison: comparisonProfileSchema.optional(),
+  repairComparison: comparisonProfileSchema.optional(),
+  maxRegionRegressionRatio: z.number().min(0).max(1).optional(),
   maxAttempts: z.number().int().min(1).max(20).default(1),
   allowedPaths: z.array(repositoryRelativePathSchema).default([]),
   validationCommands: z.array(commandSchema).default([]),
@@ -81,6 +102,20 @@ export const scenarioContractSchema = z.object({
         path: ["allowedPaths"],
         message: `Repair path ${allowedPath} overlaps protected path ${protectedPath}`
       });
+    }
+  }
+  for (const [profileName, profile] of [
+    ["perceptualComparison", contract.perceptualComparison],
+    ["repairComparison", contract.repairComparison]
+  ] as const) {
+    for (const regionName of Object.keys(profile?.regionMaxDifferenceRatios ?? {})) {
+      if (!contract.comparisonRegions?.[regionName]) {
+        context.addIssue({
+          code: "custom",
+          path: [profileName, "regionMaxDifferenceRatios", regionName],
+          message: `Comparison profile references unknown region ${regionName}`
+        });
+      }
     }
   }
 });

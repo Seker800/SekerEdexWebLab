@@ -11,7 +11,10 @@
 - [ ] `npm run check`
 - [ ] `npm test`
 - [ ] `npm run demo`
+- [ ] `npm run gate:verify`
+- [ ] `npm run assets:verify`
 - [ ] `npm run app:verify`
+- [ ] `npm run app:verify:webkit`
 - [ ] `npm run replicate:verify`
 - [ ] Attribution remains accurate for copied code or assets
 
