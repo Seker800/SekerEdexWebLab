@@ -28,8 +28,8 @@ interface ImageRevealOptions {
 
 const DEFAULT_COLUMNS = 10;
 const DEFAULT_ROWS = 6;
-const TILE_DURATION_MS = 180;
-const TILE_STAGGER_MS = 6;
+const TILE_DURATION_MS = 240;
+const TILE_STAGGER_MS = 10;
 
 export function calculateContainedImageBounds(
   containerWidth: number,
