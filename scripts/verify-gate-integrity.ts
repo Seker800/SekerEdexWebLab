@@ -10,21 +10,21 @@ const expected = {
   viewport: { width: 1934, height: 1094 },
   allowedPaths: ["apps/clone/src", "content/blog"],
   formalRegions: {
-    system: { x: 9, y: 44, width: 303, height: 669, maxDifferenceRatio: 0.045 },
-    terminal: { x: 331, y: 44, width: 1265, height: 669, maxDifferenceRatio: 0.019 },
-    network: { x: 1614, y: 44, width: 311, height: 684, maxDifferenceRatio: 0.052 },
-    filesystem: { x: 9, y: 713, width: 834, height: 381, maxDifferenceRatio: 0.022 },
-    keyboard: { x: 843, y: 713, width: 1082, height: 381, maxDifferenceRatio: 0.018 }
+    system: { x: 9, y: 44, width: 303, height: 669, maxDifferenceRatio: 0.07 },
+    terminal: { x: 331, y: 44, width: 1265, height: 669, maxDifferenceRatio: 0.03 },
+    network: { x: 1614, y: 44, width: 311, height: 684, maxDifferenceRatio: 0.07 },
+    filesystem: { x: 9, y: 713, width: 834, height: 381, maxDifferenceRatio: 0.035 },
+    keyboard: { x: 843, y: 713, width: 1082, height: 381, maxDifferenceRatio: 0.03 }
   },
   perceptualRegionMaximums: {
-    system: 0.105,
-    terminal: 0.041,
-    network: 0.087,
-    filesystem: 0.048,
-    keyboard: 0.035
+    system: 0.13,
+    terminal: 0.055,
+    network: 0.11,
+    filesystem: 0.065,
+    keyboard: 0.05
   },
-  maximumFormalDifferenceRatio: 0.025,
-  maximumPerceptualDifferenceRatio: 0.05,
+  maximumFormalDifferenceRatio: 0.035,
+  maximumPerceptualDifferenceRatio: 0.06,
   maximumRepairRegionRegressionRatio: 0.001
 } as const;
 

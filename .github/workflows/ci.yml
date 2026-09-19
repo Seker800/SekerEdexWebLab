@@ -46,11 +46,13 @@ jobs:
       - run: npm run demo
       - run: npm run app:verify
       - if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: app-chromium-evidence
           path: artifacts/app-verification
           if-no-files-found: error
+          retention-days: 3
 
   app-webkit:
     runs-on: ubuntu-24.04
@@ -64,11 +66,13 @@ jobs:
       - run: npx playwright install --with-deps webkit
       - run: npm run app:verify:webkit
       - if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: app-webkit-evidence
           path: artifacts/app-verification/webkit-report.json
           if-no-files-found: error
+          retention-days: 3
 
   visual-canonical:
     runs-on: ubuntu-24.04
@@ -82,8 +86,10 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run replicate:verify
       - if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: canonical-visual-evidence
           path: artifacts/runs
           if-no-files-found: error
+          retention-days: 3

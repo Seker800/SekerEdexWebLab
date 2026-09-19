@@ -750,6 +750,9 @@ try {
   };
   await writeFile(path.join(artifactDirectory, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
   process.stdout.write(`App verification ${report.status}; boot ${bootEvidence.phases.join(" → ")}; upstream difference ${(metrics.differenceRatio * 100).toFixed(2)}%; perceptual ${(perceptualMetrics.differenceRatio * 100).toFixed(2)}%\n`);
+  if (report.status !== "passed") {
+    process.stderr.write(`${[...formalVerdict.reasons, ...perceptualVerdict.reasons].join("\n")}\n`);
+  }
   if (report.status !== "passed") process.exitCode = 1;
 } finally {
   await context.close();

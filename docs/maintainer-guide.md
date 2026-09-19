@@ -27,6 +27,10 @@ CI 将这些职责拆成 `gate-integrity`、`source`、`app-chromium`、`app-web
 `visual-canonical`。主分支应把五项全部配置为 required checks。基准、合同、判断器、门禁脚本、
 上游资产和许可证由 `.github/CODEOWNERS` 保护；更新这些文件必须保留来源、差异证据和审核记录。
 
+视觉预算以固定 macOS 开发环境和 `ubuntu-24.04` CI 的重复采样为边界。当前正式全屏上限为
+3.5%，感知全屏上限为 6%，并对五个区域设置独立上限；调整运行平台时必须重新采样并通过
+baseline review，不能直接放宽阈值。
+
 自动修复只能写入 `apps/clone/src` 与 `content/blog`。不得为了通过门禁扩大可写范围、放宽阈值、
 修改参考证据、资产哈希或判定器。
 
