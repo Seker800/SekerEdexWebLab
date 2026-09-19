@@ -705,6 +705,30 @@ try {
     || !centralMediaState.insideTerminal) {
     throw new Error(`Image viewer did not use the central content surface: ${JSON.stringify(centralMediaState)}`);
   }
+  const mediaLayout = await motionPage.evaluate(() => {
+    const viewer = document.querySelector<HTMLElement>(".image-viewer")!;
+    const stage = document.querySelector<HTMLElement>(".image-viewer__stage")!;
+    const image = stage.querySelector<HTMLImageElement>("img")!;
+    const header = document.querySelector<HTMLElement>(".image-viewer__header")!;
+    const footer = document.querySelector<HTMLElement>(".image-viewer footer")!;
+    const viewerBounds = viewer.getBoundingClientRect();
+    const stageBounds = stage.getBoundingClientRect();
+    const imageBounds = image.getBoundingClientRect();
+    return {
+      stageOverflow: getComputedStyle(stage).overflow,
+      imageObjectFit: getComputedStyle(image).objectFit,
+      headerPosition: getComputedStyle(header).position,
+      footerPosition: getComputedStyle(footer).position,
+      stageCoverage: (stageBounds.width * stageBounds.height) / (viewerBounds.width * viewerBounds.height),
+      imageFillsStageBox: Math.abs(imageBounds.width - stageBounds.width) < 1
+        && Math.abs(imageBounds.height - stageBounds.height) < 1
+    };
+  });
+  if (mediaLayout.stageOverflow !== "hidden" || mediaLayout.imageObjectFit !== "contain"
+    || mediaLayout.headerPosition !== "absolute" || mediaLayout.footerPosition !== "absolute"
+    || mediaLayout.stageCoverage < 0.98 || !mediaLayout.imageFillsStageBox) {
+    throw new Error(`Image viewer did not prioritize a fitted, non-scrolling media stage: ${JSON.stringify(mediaLayout)}`);
+  }
   if (await motionPage.locator(".image-viewer__counter").textContent() !== "1 / 2 · image/svg+xml") throw new Error("Image viewer did not expose media sequence metadata");
   await motionPage.locator('[data-viewer-action="zoom-in"]').click();
   if (await motionPage.locator(".image-viewer__zoom").textContent() !== "125%") throw new Error("Image viewer zoom control did not update");
