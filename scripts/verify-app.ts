@@ -681,24 +681,29 @@ try {
     throw new Error("Image viewer did not preserve the author's Markdown alt text");
   }
   if (!motionPage.url().endsWith("#/blog/posts/building-edex-web/command-deck.svg")) throw new Error(`Image navigation did not update the content hash: ${motionPage.url()}`);
-  const modalIsolation = await motionPage.evaluate(() => ({
-    background: Array.from(document.querySelectorAll<HTMLElement>("#command-deck > :not(.image-viewer)"))
-      .every((element) => element.inert && element.getAttribute("aria-hidden") === "true"),
-    activeElement: (document.activeElement as HTMLElement | null)?.dataset.viewerAction
-  }));
-  if (!modalIsolation.background || modalIsolation.activeElement !== "close") {
-    throw new Error(`Image viewer did not establish its modal focus boundary: ${JSON.stringify(modalIsolation)}`);
-  }
-  const modalFocusPath: string[] = [];
-  for (let index = 0; index < 7; index += 1) {
-    await motionPage.keyboard.press("Tab");
-    modalFocusPath.push(await motionPage.evaluate(() => {
-      const active = document.activeElement as HTMLElement | null;
-      return active?.dataset.viewerAction ?? active?.id ?? active?.tagName ?? "NONE";
-    }));
-  }
-  if (modalFocusPath.some((entry) => !["close", "previous", "zoom-out", "zoom-in", "next"].includes(entry))) {
-    throw new Error(`Image viewer focus escaped the dialog: ${JSON.stringify(modalFocusPath)}`);
+  const centralMediaState = await motionPage.evaluate(() => {
+    const viewer = document.querySelector<HTMLElement>(".image-viewer")!;
+    const terminalPanel = document.querySelector<HTMLElement>(".terminal-panel")!;
+    const runtime = document.querySelector<HTMLElement>("#terminal-runtime")!;
+    const viewerBounds = viewer.getBoundingClientRect();
+    const panelBounds = terminalPanel.getBoundingClientRect();
+    return {
+      parentIsTerminal: viewer.parentElement === terminalPanel,
+      role: viewer.getAttribute("role"),
+      ariaModal: viewer.getAttribute("aria-modal"),
+      runtimeInert: runtime.inert,
+      runtimeAriaHidden: runtime.getAttribute("aria-hidden"),
+      commandDeckInertChildren: document.querySelectorAll("#command-deck > [inert]").length,
+      activeElement: (document.activeElement as HTMLElement | null)?.dataset.viewerAction,
+      insideTerminal: viewerBounds.left >= panelBounds.left && viewerBounds.top >= panelBounds.top
+        && viewerBounds.right <= panelBounds.right && viewerBounds.bottom <= panelBounds.bottom
+    };
+  });
+  if (!centralMediaState.parentIsTerminal || centralMediaState.role !== "region" || centralMediaState.ariaModal !== null
+    || !centralMediaState.runtimeInert || centralMediaState.runtimeAriaHidden !== "true"
+    || centralMediaState.commandDeckInertChildren !== 0 || centralMediaState.activeElement !== "close"
+    || !centralMediaState.insideTerminal) {
+    throw new Error(`Image viewer did not use the central content surface: ${JSON.stringify(centralMediaState)}`);
   }
   if (await motionPage.locator(".image-viewer__counter").textContent() !== "1 / 2 · image/svg+xml") throw new Error("Image viewer did not expose media sequence metadata");
   await motionPage.locator('[data-viewer-action="zoom-in"]').click();
@@ -709,28 +714,6 @@ try {
     image.addEventListener("load", () => resolve(), { once: true });
     image.addEventListener("error", () => reject(new Error("Image viewer asset failed to load")), { once: true });
   }));
-  const viewerHeader = motionPage.locator(".image-viewer__header");
-  const viewerHeaderBounds = await viewerHeader.boundingBox();
-  if (!viewerHeaderBounds) throw new Error("Image viewer header could not be measured for dragging");
-  const viewerTranslateBefore = await motionPage.locator(".image-viewer__dialog").evaluate((node) => getComputedStyle(node).translate);
-  await motionPage.mouse.move(viewerHeaderBounds.x + 80, viewerHeaderBounds.y + viewerHeaderBounds.height / 2);
-  await motionPage.mouse.down();
-  await motionPage.mouse.move(1915, 1075);
-  await motionPage.mouse.up();
-  const viewerTranslateAfter = await motionPage.locator(".image-viewer__dialog").evaluate((node) => getComputedStyle(node).translate);
-  if (viewerTranslateAfter === viewerTranslateBefore) throw new Error("Image viewer title bar did not drag the modal");
-  const constrainedViewer = await motionPage.evaluate(() => {
-    const overlay = document.querySelector<HTMLElement>(".image-viewer")!.getBoundingClientRect();
-    const dialog = document.querySelector<HTMLElement>(".image-viewer__dialog")!.getBoundingClientRect();
-    const close = document.querySelector<HTMLElement>('[data-viewer-action="close"]')!.getBoundingClientRect();
-    return {
-      dialogInside: dialog.left >= overlay.left - 1 && dialog.top >= overlay.top - 1 && dialog.right <= overlay.right + 1 && dialog.bottom <= overlay.bottom + 1,
-      closeInside: close.left >= overlay.left && close.top >= overlay.top && close.right <= overlay.right && close.bottom <= overlay.bottom
-    };
-  });
-  if (!constrainedViewer.dialogInside || !constrainedViewer.closeInside) {
-    throw new Error(`Image viewer escaped the logical canvas: ${JSON.stringify(constrainedViewer)}`);
-  }
   await motionPage.screenshot({ path: path.join(artifactDirectory, "image-viewer.png"), animations: "disabled", omitBackground: true });
   await motionPage.goBack({ waitUntil: "networkidle" });
   if (await motionPage.locator("#image-viewer-title").textContent() !== "command-deck.svg") throw new Error("Browser back did not restore the previous media selection");
@@ -751,8 +734,11 @@ try {
   if (await motionPage.locator("#content-reader").isVisible() || !motionPage.url().endsWith("#/blog/posts/building-edex-web")) {
     throw new Error(`Closing media did not restore its directory state: ${motionPage.url()}`);
   }
-  if (!await motionPage.evaluate(() => Array.from(document.querySelectorAll<HTMLElement>("#command-deck > :not(.image-viewer)")).every((element) => !element.inert && element.getAttribute("aria-hidden") === null))) {
-    throw new Error("Image viewer did not restore the command deck after dismissal");
+  if (!await motionPage.evaluate(() => {
+    const runtime = document.querySelector<HTMLElement>("#terminal-runtime")!;
+    return !runtime.inert && runtime.getAttribute("aria-hidden") === null;
+  })) {
+    throw new Error("Image viewer did not restore the central terminal after dismissal");
   }
   await motionPage.evaluate(() => {
     window.location.hash = "#/blog/%2e%2e/%2e%2e/secret";
