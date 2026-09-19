@@ -1,24 +1,18 @@
 import type { BrowserFileEntry, BrowserImagePreview } from "./browser-filesystem.js";
-import { ModalFocusBoundary } from "./modal-focus-boundary.js";
 
 export class ImageViewer {
-  private readonly overlay: HTMLDivElement;
-  private readonly dialog: HTMLDivElement;
+  private readonly surface: HTMLElement;
   private readonly image: HTMLImageElement;
   private readonly title: HTMLElement;
   private readonly caption: HTMLElement;
   private readonly counter: HTMLElement;
   private readonly zoomLabel: HTMLElement;
-  private readonly focusBoundary: ModalFocusBoundary;
   private items: BrowserFileEntry[] = [];
   private index = 0;
   private zoom = 1;
   private readonly descriptions = new Map<string, { alt: string; caption?: string }>();
-  private dragOrigin: { pointerX: number; pointerY: number; x: number; y: number } | null = null;
-  private x = 0;
-  private y = 0;
   private readonly handleKeydown = (event: KeyboardEvent): void => {
-    if (this.overlay.hidden) return;
+    if (this.surface.hidden) return;
     if (event.key === "Escape") this.close();
     else if (event.key === "ArrowLeft") this.move(-1);
     else if (event.key === "ArrowRight") this.move(1);
@@ -28,37 +22,33 @@ export class ImageViewer {
   };
 
   constructor(
-    host: HTMLElement,
+    private readonly host: HTMLElement,
+    private readonly background: HTMLElement,
     private readonly onClose?: () => void,
     private readonly onSelectionChange?: (
       entry: Readonly<BrowserFileEntry>,
       description?: Readonly<{ alt: string; caption?: string }>
     ) => void
   ) {
-    this.overlay = document.createElement("div");
-    this.overlay.className = "image-viewer";
-    this.overlay.hidden = true;
-    this.overlay.innerHTML = `<div class="image-viewer__dialog" role="dialog" aria-modal="true" aria-labelledby="image-viewer-title">
+    this.surface = document.createElement("section");
+    this.surface.className = "image-viewer";
+    this.surface.hidden = true;
+    this.surface.setAttribute("role", "region");
+    this.surface.setAttribute("aria-labelledby", "image-viewer-title");
+    this.surface.innerHTML = `
       <header class="image-viewer__header"><span id="image-viewer-title"></span><button type="button" data-viewer-action="close" aria-label="Close image viewer">CLOSE</button></header>
       <div class="image-viewer__stage"><img alt=""></div>
       <p class="image-viewer__caption"></p>
       <footer><button type="button" data-viewer-action="previous" aria-label="Previous image">← PREV</button><span class="image-viewer__counter"></span><button type="button" data-viewer-action="zoom-out" aria-label="Zoom out">−</button><span class="image-viewer__zoom"></span><button type="button" data-viewer-action="zoom-in" aria-label="Zoom in">+</button><button type="button" data-viewer-action="next" aria-label="Next image">NEXT →</button></footer>
-    </div>`;
-    host.append(this.overlay);
-    this.dialog = this.overlay.querySelector(".image-viewer__dialog")!;
-    this.image = this.overlay.querySelector("img")!;
-    this.title = this.overlay.querySelector("#image-viewer-title")!;
-    this.caption = this.overlay.querySelector(".image-viewer__caption")!;
-    this.counter = this.overlay.querySelector(".image-viewer__counter")!;
-    this.zoomLabel = this.overlay.querySelector(".image-viewer__zoom")!;
-    this.dialog.tabIndex = -1;
-    this.focusBoundary = new ModalFocusBoundary(
-      this.dialog,
-      Array.from(host.children).filter((element): element is HTMLElement => element instanceof HTMLElement && element !== this.overlay)
-    );
+    `;
+    host.append(this.surface);
+    this.image = this.surface.querySelector("img")!;
+    this.title = this.surface.querySelector("#image-viewer-title")!;
+    this.caption = this.surface.querySelector(".image-viewer__caption")!;
+    this.counter = this.surface.querySelector(".image-viewer__counter")!;
+    this.zoomLabel = this.surface.querySelector(".image-viewer__zoom")!;
 
-    this.overlay.addEventListener("click", (event) => {
-      if (event.target === this.overlay) this.close();
+    this.surface.addEventListener("click", (event) => {
       const button = (event.target as Element | null)?.closest<HTMLButtonElement>("[data-viewer-action]");
       if (!button) return;
       const action = button.dataset.viewerAction;
@@ -69,26 +59,6 @@ export class ImageViewer {
       else if (action === "zoom-in") this.setZoom(this.zoom + 0.25);
     });
     document.addEventListener("keydown", this.handleKeydown, { capture: true });
-    const header = this.overlay.querySelector<HTMLElement>(".image-viewer__header")!;
-    header.addEventListener("pointerdown", (event) => {
-      if ((event.target as Element).closest("button")) return;
-      this.dragOrigin = { pointerX: event.clientX, pointerY: event.clientY, x: this.x, y: this.y };
-      header.setPointerCapture(event.pointerId);
-    });
-    header.addEventListener("pointermove", (event) => {
-      if (!this.dragOrigin) return;
-      const overlayBounds = this.overlay.getBoundingClientRect();
-      const scaleX = this.overlay.clientWidth / overlayBounds.width;
-      const scaleY = this.overlay.clientHeight / overlayBounds.height;
-      this.x = this.dragOrigin.x + (event.clientX - this.dragOrigin.pointerX) * scaleX;
-      this.y = this.dragOrigin.y + (event.clientY - this.dragOrigin.pointerY) * scaleY;
-      this.position();
-    });
-    const finishDrag = (): void => { this.dragOrigin = null; };
-    header.addEventListener("pointerup", finishDrag);
-    header.addEventListener("pointercancel", finishDrag);
-    header.addEventListener("lostpointercapture", finishDrag);
-    window.addEventListener("resize", this.handleResize);
   }
 
   open(items: readonly BrowserFileEntry[], selectedPath: string, description?: { alt: string; caption?: string }): void {
@@ -97,25 +67,27 @@ export class ImageViewer {
     this.descriptions.clear();
     if (description) this.descriptions.set(selectedPath, { ...description });
     this.index = Math.max(0, this.items.findIndex((entry) => entry.path === selectedPath));
-    this.x = 0;
-    this.y = 0;
-    this.overlay.hidden = false;
+    this.surface.hidden = false;
+    this.host.classList.add("content-open");
+    this.background.inert = true;
+    this.background.setAttribute("aria-hidden", "true");
     this.render(false);
-    this.focusBoundary.activate(this.overlay.querySelector<HTMLButtonElement>('[data-viewer-action="close"]')!);
+    this.surface.querySelector<HTMLButtonElement>('[data-viewer-action="close"]')!.focus();
   }
 
   close(options: { notify?: boolean } = {}): void {
-    if (this.overlay.hidden) return;
-    this.overlay.hidden = true;
-    this.focusBoundary.deactivate();
+    if (this.surface.hidden) return;
+    this.surface.hidden = true;
+    this.host.classList.remove("content-open");
+    this.background.inert = false;
+    this.background.removeAttribute("aria-hidden");
     if (options.notify !== false) this.onClose?.();
   }
 
   dispose(): void {
+    this.close({ notify: false });
     document.removeEventListener("keydown", this.handleKeydown, { capture: true });
-    window.removeEventListener("resize", this.handleResize);
-    this.focusBoundary.dispose();
-    this.overlay.remove();
+    this.surface.remove();
   }
 
   private move(direction: -1 | 1): void {
@@ -129,16 +101,6 @@ export class ImageViewer {
     this.zoomLabel.textContent = `${Math.round(this.zoom * 100)}%`;
   }
 
-  private position(): void {
-    const maxX = Math.max(0, (this.overlay.clientWidth - this.dialog.offsetWidth) / 2);
-    const maxY = Math.max(0, (this.overlay.clientHeight - this.dialog.offsetHeight) / 2);
-    this.x = Math.min(maxX, Math.max(-maxX, this.x));
-    this.y = Math.min(maxY, Math.max(-maxY, this.y));
-    this.dialog.style.translate = `${this.x}px ${this.y}px`;
-  }
-
-  private readonly handleResize = (): void => this.position();
-
   private render(notifySelection: boolean): void {
     const entry = this.items[this.index]!;
     const preview = entry.preview as BrowserImagePreview;
@@ -149,7 +111,6 @@ export class ImageViewer {
     this.caption.textContent = description?.caption ?? description?.alt ?? preview.caption ?? preview.alt;
     this.counter.textContent = `${this.index + 1} / ${this.items.length} · ${preview.mediaType}`;
     this.setZoom(1);
-    this.position();
     if (notifySelection) this.onSelectionChange?.(entry, description);
   }
 }

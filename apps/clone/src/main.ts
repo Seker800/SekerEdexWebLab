@@ -239,7 +239,7 @@ const browserFilesystem = createSandboxFilesystem({
 });
 const commandDeck = new CommandDeckController(browserFilesystem);
 let lastContentHash = "";
-const imageViewer = new ImageViewer(commandDeckElement, () => {
+const imageViewer = new ImageViewer(terminalPanel, terminalRuntime, () => {
   audioDeck.play("denied");
   syncLocationToDeck();
 }, (entry, description) => {
