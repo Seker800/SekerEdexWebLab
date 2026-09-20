@@ -97,11 +97,20 @@ try {
   await page.locator("#terminal-input").fill("status");
   await page.locator("#terminal-input").press("Enter");
   await page.getByText("CORE ONLINE", { exact: false }).waitFor();
+  await page.locator("#mobile-files-view").click();
+  if (!await page.locator(".filesystem-panel").isVisible()) throw new Error("WebKit mobile FILES control did not reveal the filesystem panel");
+  if (await page.locator(".terminal-panel").isVisible()) throw new Error("WebKit mobile FILES view retained the terminal panel");
+  await page.locator('.file-grid button[data-file-name="themes"]').click();
+  await page.locator('.file-grid button[data-file-name="tron.json"]').waitFor();
+  await page.locator("#mobile-terminal-view").click();
+  if (await page.locator(".terminal-prompt .terminal-powerline").textContent() !== "~/.c/eDEX-UI/themes") {
+    throw new Error("WebKit mobile terminal did not retain the directory selected through FILES");
+  }
 
   const report = {
     status: consoleErrors.length === 0 && pageErrors.length === 0 ? "passed" : "failed",
     browser: `WebKit ${browser.version()}`,
-    checks: ["required desktop regions", "1920x1080 logical canvas", "global physical terminal typing", "terminal focus recovery", "bounded long terminal draft", "1440x900 letterbox", "typed terminal and filesystem feedback", "390x844 touch-usable mobile terminal"],
+    checks: ["required desktop regions", "1920x1080 logical canvas", "global physical terminal typing", "terminal focus recovery", "bounded long terminal draft", "1440x900 letterbox", "typed terminal and filesystem feedback", "390x844 touch-usable mobile terminal", "390x844 shared mobile filesystem navigation"],
     consoleErrors,
     pageErrors
   };

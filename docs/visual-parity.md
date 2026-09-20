@@ -72,7 +72,7 @@
 - [x] `prefers-reduced-motion` 下仍能理解状态变化。
 - [x] 音频由用户手势解锁，并可通过持续可见的控制开关声音。
 - [x] 桌面目标视口在验证设备上交互阶段保持稳定帧率；测量方法和数字写入报告。
-- [x] 移动端提供专门的终端模式，不把桌面三栏和完整键盘等比缩小。
+- [x] 移动端提供共享 cwd 的终端/文件双视图，不把桌面三栏和完整键盘等比缩小。
 
 ## 明确不算完成
 
@@ -95,9 +95,10 @@
 
 当前交互证据由 `npm run app:verify` 生成到 `artifacts/app-verification/report.json`。2026-09-20
 的 Chromium 门禁除桌面交互与性能采样外，还在 390×844、2× DPR 的真实触控上下文验证移动
-终端提交命令、44px 控件、16px 输入、无横向裁切、动态高度收缩和安全区布局，并在 844×390
-粗指针横屏继续使用同一专用终端模式。`npm run app:verify:webkit` 独立验证 WebKit 的移动输入、
-尺寸和无溢出条件；对应截图为 `command-deck-mobile.png`、`command-deck-mobile-touch.png` 与
+终端提交命令、终端/文件切换、文件网格导航与共享 cwd、44px 控件、16px 输入、无横向裁切、
+动态高度收缩和安全区布局，并在 844×390 粗指针横屏继续使用同一双视图模式。
+`npm run app:verify:webkit` 独立验证 WebKit 的移动输入、尺寸和无溢出条件；对应截图为
+`command-deck-mobile.png`、`command-deck-mobile-touch.png`、`command-deck-mobile-files.png` 与
 `command-deck-mobile-landscape.png`。
 
 ## 有意扩展：媒体显现

@@ -567,7 +567,7 @@ try {
   await mobileTouchInput.fill("status");
   await mobileTouchInput.press("Enter");
   await mobileTouchPage.getByText("CORE ONLINE", { exact: false }).waitFor();
-  for (const controlName of ["REBOOT", "SOUND ON"]) {
+  for (const controlName of ["TERMINAL", "FILES", "REBOOT", "SOUND ON"]) {
     const bounds = await mobileTouchPage.getByRole("button", { name: controlName }).boundingBox();
     if (!bounds || bounds.height < 44 || bounds.width < 44) throw new Error(`Mobile ${controlName} control is not touch-sized: ${JSON.stringify(bounds)}`);
   }
@@ -577,6 +577,8 @@ try {
   if (!await mobileTouchPage.locator(".filesystem-panel").isVisible()) throw new Error("Mobile FILES control did not reveal the shared filesystem panel");
   if (await mobileTouchPage.locator(".terminal-panel").isVisible()) throw new Error("Mobile FILES view retained the terminal panel");
   if (await mobileFilesControl.getAttribute("aria-pressed") !== "true") throw new Error("Mobile FILES control did not expose its selected state");
+  const mobileHomeBounds = await mobileTouchPage.locator("#mobile-files-home").boundingBox();
+  if (!mobileHomeBounds || mobileHomeBounds.height < 44 || mobileHomeBounds.width < 44) throw new Error(`Mobile HOME control is not touch-sized: ${JSON.stringify(mobileHomeBounds)}`);
   await mobileTouchPage.locator('.file-grid button[data-file-name="themes"]').tap();
   await mobileTouchPage.locator('.file-grid button[data-file-name="tron.json"]').waitFor();
   const mobileFilesystemPath = await mobileTouchPage.locator(".filesystem-panel .section-label small").textContent();
@@ -586,7 +588,7 @@ try {
   await mobileTerminalControl.tap();
   if (!await mobileTouchPage.locator(".terminal-panel").isVisible()) throw new Error("Mobile TERMINAL control did not restore the terminal panel");
   if (await mobileTouchPage.locator(".filesystem-panel").isVisible()) throw new Error("Mobile TERMINAL view retained the filesystem panel");
-  if (await mobileTouchPage.locator(".terminal-prompt .terminal-powerline__path").textContent() !== "~/.c/eDEX-UI/themes") {
+  if (await mobileTouchPage.locator(".terminal-prompt .terminal-powerline").textContent() !== "~/.c/eDEX-UI/themes") {
     throw new Error("Mobile terminal did not retain the directory selected through the shared filesystem panel");
   }
   await mobileTouchPage.setViewportSize({ width: 844, height: 390 });
@@ -605,6 +607,13 @@ try {
   if (mobileLandscapeState.desktopPanelVisible || mobileLandscapeState.terminalLeft < 0 || mobileLandscapeState.terminalRight > 844 || mobileLandscapeState.terminalInputFontSize < 16 || mobileLandscapeState.terminalPromptHeight < 44) {
     throw new Error(`Mobile landscape did not retain the dedicated touch terminal mode: ${JSON.stringify(mobileLandscapeState)}`);
   }
+  await mobileTouchPage.locator("#mobile-files-view").tap();
+  const mobileLandscapeFiles = await mobileTouchPage.locator(".filesystem-panel").boundingBox();
+  const mobileLandscapeFileButton = await mobileTouchPage.locator(".file-grid button").first().boundingBox();
+  if (!mobileLandscapeFiles || mobileLandscapeFiles.x < 0 || mobileLandscapeFiles.x + mobileLandscapeFiles.width > 844 || !mobileLandscapeFileButton || mobileLandscapeFileButton.height < 44) {
+    throw new Error(`Mobile landscape filesystem is not touch-usable: ${JSON.stringify({ panel: mobileLandscapeFiles, fileButton: mobileLandscapeFileButton })}`);
+  }
+  await mobileTouchPage.locator("#mobile-terminal-view").tap();
   await mobileTouchPage.screenshot({ path: path.join(artifactDirectory, "command-deck-mobile-landscape.png"), animations: "disabled", omitBackground: true });
   await mobileTouchContext.close();
   const motionContext = await browser.newContext({

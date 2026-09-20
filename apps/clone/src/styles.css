@@ -288,6 +288,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 1px solid 
 .deck-controls button:last-child { border-right: 1px solid var(--faint); }
 .deck-controls button:hover, .deck-controls button:focus-visible { color: var(--surface); background: var(--signal); outline: 0; }
 html[data-static-mode] .deck-controls { visibility: hidden; }
+.mobile-view-control, .mobile-files-home { display: none; }
 html[data-static-mode] .telemetry-source { display: none; }
 html[data-static-mode] .command-deck *,
 html[data-static-mode] .command-deck *::before,
@@ -679,8 +680,9 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
     background: var(--surface);
     -webkit-mask-image: none;
   }
-  .system-panel, .network-panel, .filesystem-panel, .keyboard-panel,
+  .system-panel, .network-panel, .keyboard-panel,
   .global-line--left, .global-line--right { display: none !important; }
+  .filesystem-panel { display: none !important; }
   .terminal-panel {
     --terminal-prompt-bottom: 32px;
     --terminal-prompt-height: 48px;
@@ -690,6 +692,88 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
     margin: 0;
     min-width: 0;
   }
+  .command-deck[data-mobile-view="files"] .terminal-panel { display: none !important; }
+  .command-deck[data-mobile-view="files"] .filesystem-panel {
+    position: relative;
+    display: flex !important;
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    margin: 0;
+    padding: 52px 8px 40px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .filesystem-panel .section-label {
+    position: absolute;
+    top: 0;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    min-height: 52px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) 64px;
+    gap: 8px;
+    align-items: center;
+    padding: 0;
+    font-size: 11px;
+  }
+  .filesystem-panel .section-label::after { left: 0; right: 0; top: auto; bottom: 0; }
+  .filesystem-panel .section-label > span { margin: 0; translate: none; transform: none; }
+  .filesystem-panel .section-label > small {
+    position: static;
+    min-width: 0;
+    overflow: hidden;
+    translate: none;
+    transform: none;
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mobile-files-home {
+    display: block;
+    min-width: 64px;
+    min-height: 44px;
+    border: 1px solid var(--faint);
+    background: transparent;
+    color: var(--signal);
+    font: 600 11px var(--font-mono);
+    touch-action: manipulation;
+  }
+  .mobile-files-home:hover, .mobile-files-home:focus-visible { color: var(--surface); background: var(--signal); outline: 0; }
+  .file-grid {
+    position: static;
+    width: 100%;
+    height: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-rows: minmax(88px, max-content);
+    gap: 8px;
+    padding: 8px 0 16px;
+    clip-path: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    transform: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  .file-grid button { width: 100%; height: auto; min-width: 0; min-height: 88px; padding: 6px 2px; touch-action: manipulation; }
+  .file-grid button b { width: 42px; height: 42px; }
+  .file-grid button span { max-width: 100%; font-size: 11px; overflow-wrap: anywhere; }
+  .filesystem-source-scrollbar { display: none; }
+  .filesystem-panel footer {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 0;
+    top: auto;
+    width: auto;
+    height: 40px;
+    grid-template-columns: minmax(0, 1fr) minmax(120px, 45%);
+    font-size: 11px;
+    transform: none;
+  }
+  .filesystem-panel footer > span { min-width: 0; overflow: hidden; transform: none; text-overflow: ellipsis; white-space: nowrap; }
   .content-overlay__close { top: 8px; right: 8px; }
   .content-reader > header { padding: 58px 18px 16px; }
   .content-reader__body { padding: 20px 18px 48px; }
@@ -709,7 +793,8 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
   .global-line--center > span:first-child,
   .global-line--center > span:last-child { display: none; }
   .deck-controls { position: static; width: 100%; justify-content: space-between; opacity: 1; transform: none; }
-  .deck-controls button { min-width: 96px; min-height: 44px; padding: 0 14px; font-size: 11px; }
+  .deck-controls button { flex: 1; min-width: 0; min-height: 44px; padding: 0 4px; font-size: 10px; }
+  .mobile-view-control { display: block; }
   html[data-static-mode] .deck-controls { visibility: visible; }
   .terminal-tabs { height: 44px; overflow-x: auto; scrollbar-width: none; }
   .terminal-tabs button { flex: 1 0 64px; min-height: 44px; font-size: 10px; touch-action: manipulation; }
@@ -731,6 +816,10 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
   .boot-gate__actions { flex-direction: column; width: min(320px, 90cqw); }
   .boot-gate__actions button { width: 100%; min-width: 0; min-height: 48px; padding: 14px; font-size: 16px; touch-action: manipulation; }
   .boot-skip { min-width: 44px; min-height: 44px; right: max(8px, env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom)); font-size: 12px; }
+}
+
+@media (max-height: 720px) and (pointer: coarse) and (orientation: landscape) {
+  .file-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 
 @media (prefers-reduced-motion: reduce) {

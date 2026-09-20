@@ -51,9 +51,9 @@ app.innerHTML = `
     <button class="boot-skip" id="boot-skip" type="button" hidden>Skip intro</button>
   </section>
   <div class="canvas-stage">
-  <main class="command-deck" id="command-deck" data-boot-phase="gate">
+  <main class="command-deck" id="command-deck" data-boot-phase="gate" data-mobile-view="terminal">
     <div class="global-line global-line--left"><span>PANEL</span><span>SYSTEM</span></div>
-    <div class="global-line global-line--center"><span>TERMINAL</span><span class="deck-controls"><button type="button" id="reboot-system">REBOOT</button><button type="button" id="sound-toggle">SOUND ON</button></span><span>MAIN SHELL</span></div>
+    <div class="global-line global-line--center"><span>TERMINAL</span><span class="deck-controls"><button class="mobile-view-control" type="button" id="mobile-terminal-view" aria-pressed="true">TERMINAL</button><button class="mobile-view-control" type="button" id="mobile-files-view" aria-pressed="false">FILES</button><button type="button" id="reboot-system">REBOOT</button><button type="button" id="sound-toggle">SOUND ON</button></span><span>MAIN SHELL</span></div>
     <div class="global-line global-line--right"><span>PANEL</span><span>NETWORK</span></div>
 
     <aside class="panel system-panel" aria-label="System telemetry">
@@ -135,7 +135,7 @@ app.innerHTML = `
     </aside>
 
     <section class="panel filesystem-panel" aria-label="Filesystem">
-      <header class="section-label"><span>FILESYSTEM</span><small>/home/squared/.config/eDEX-UI</small></header>
+      <header class="section-label"><span>FILESYSTEM</span><small>/home/squared/.config/eDEX-UI</small><button class="mobile-files-home" id="mobile-files-home" type="button">HOME</button></header>
       <div class="file-grid">
         ${canonicalFileEntries.map(({ icon, name, category }) => `<button type="button" data-icon="${icon}" data-category="${category}"><b>${renderFileIcon(edexIcons, icon)}</b><span>${name}</span></button>`).join("")}
       </div>
@@ -173,6 +173,9 @@ const filesystemTitle = document.querySelector<HTMLElement>(".filesystem-panel .
 const prompt = document.querySelector<HTMLElement>(".terminal-prompt .terminal-powerline")!;
 const terminalTabs = [...document.querySelectorAll<HTMLButtonElement>(".terminal-tabs button")];
 const commandDeckElement = document.querySelector<HTMLElement>("#command-deck")!;
+const mobileTerminalView = document.querySelector<HTMLButtonElement>("#mobile-terminal-view")!;
+const mobileFilesView = document.querySelector<HTMLButtonElement>("#mobile-files-view")!;
+const mobileFilesHome = document.querySelector<HTMLButtonElement>("#mobile-files-home")!;
 const contentOverlayElement = document.querySelector<HTMLElement>("#content-overlay")!;
 const contentOverlayViewport = document.querySelector<HTMLElement>("#content-overlay-viewport")!;
 const contentOverlayClose = document.querySelector<HTMLButtonElement>("#content-overlay-close")!;
@@ -242,6 +245,26 @@ const browserFilesystem = createSandboxFilesystem({
   startInContent: !staticMode
 });
 const commandDeck = new CommandDeckController(browserFilesystem);
+
+function setMobileView(view: "terminal" | "files"): void {
+  commandDeckElement.dataset.mobileView = view;
+  mobileTerminalView.setAttribute("aria-pressed", String(view === "terminal"));
+  mobileFilesView.setAttribute("aria-pressed", String(view === "files"));
+  if (view === "terminal") input.focus();
+  else fileGrid.querySelector<HTMLButtonElement>("button")?.focus();
+}
+
+lifecycle.listen<MouseEvent>(mobileTerminalView, "click", () => setMobileView("terminal"));
+lifecycle.listen<MouseEvent>(mobileFilesView, "click", () => setMobileView("files"));
+lifecycle.listen<MouseEvent>(mobileFilesHome, "click", () => {
+  const home = commandDeck.snapshot().filesystem.root;
+  commandDeck.dispatch({ type: "activate-filesystem-path", path: home });
+  renderTerminal();
+  renderSessionChrome();
+  syncLocationToDeck();
+  fileGrid.querySelector<HTMLButtonElement>("button")?.focus();
+});
+
 let lastContentHash = "";
 const contentOverlay = new FullscreenContentOverlay(
   contentOverlayElement,
@@ -800,7 +823,7 @@ lifecycle.listen<MouseEvent>(fileGrid, "click", (event) => {
   }
   if (result.kind === "insert") audioDeck.play("folder");
   else if (result.kind !== "image") playFeedback(result.feedback);
-  if (!["document", "image"].includes(result.kind)) input.focus();
+  if (!["document", "image"].includes(result.kind) && commandDeckElement.dataset.mobileView !== "files") input.focus();
 });
 
 function renderTelemetry(tick: number): void {
