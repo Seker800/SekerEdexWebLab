@@ -529,6 +529,13 @@ try {
   await motionPage.bringToFront();
   motionPage.on("console", (message) => { if (message.type() === "error") consoleErrors.push(`motion: ${message.text()}`); });
   motionPage.on("pageerror", (error) => pageErrors.push(`motion: ${error.message}`));
+  await motionPage.addInitScript(() => {
+    const state = window as typeof window & { __motionSoundCues?: string[] };
+    state.__motionSoundCues = [];
+    document.addEventListener("edex:sound", (event) => {
+      state.__motionSoundCues?.push((event as CustomEvent<{ cue: string }>).detail.cue);
+    });
+  });
   await motionPage.goto("http://127.0.0.1:4174/?fastboot=1", { waitUntil: "networkidle" });
   await motionPage.getByRole("button", { name: "Initialize system" }).click();
   await motionPage.locator('html[data-boot-phase="complete"]').waitFor({ timeout: 10_000 });
@@ -710,6 +717,7 @@ try {
     image.addEventListener("load", () => resolve(), { once: true });
     image.addEventListener("error", () => reject(new Error("Relative Markdown image failed to load")), { once: true });
   }));
+  const revealSoundOffset = await motionPage.evaluate(() => (window as typeof window & { __motionSoundCues?: string[] }).__motionSoundCues?.length ?? 0);
   const revealStartedAt = Date.now();
   await inlineImage.click();
   if (!await motionPage.locator(".image-viewer").isVisible()) throw new Error("Image file did not open the media viewer");
@@ -765,6 +773,14 @@ try {
   }
   await motionPage.screenshot({ path: path.join(artifactDirectory, "image-reveal-jpeg-glitch-resolving.png"), omitBackground: true });
   await motionPage.locator('.image-viewer__stage[data-reveal-state="ready"]').waitFor({ timeout: 8_000 });
+  const revealSoundCues = await motionPage.evaluate((offset) => (
+    (window as typeof window & { __motionSoundCues?: string[] }).__motionSoundCues ?? []
+  ).slice(offset), revealSoundOffset);
+  const revealPulseCues = revealSoundCues.filter((cue) => cue === "stdout");
+  if (revealSoundCues[0] !== "expand" || revealPulseCues.length < 4 || revealPulseCues.length > 10
+    || revealSoundCues.some((cue, index) => index > 0 && cue !== "stdout")) {
+    throw new Error(`JPEG corruption pulses did not emit one short cue per glitch phase: ${JSON.stringify(revealSoundCues)}`);
+  }
   const revealElapsedMs = Date.now() - revealStartedAt;
   if (revealElapsedMs < 1_000) throw new Error(`Media reveal completed too quickly: ${revealElapsedMs}ms`);
   const completedRevealLabel = await motionPage.locator(".image-viewer__reveal-label").evaluate((label) => {
