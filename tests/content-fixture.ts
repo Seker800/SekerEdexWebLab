@@ -14,9 +14,9 @@ function filesBelow(directory: string): string[] {
 const files = filesBelow(contentRoot);
 const markdownSources = Object.fromEntries(files
   .filter((file) => file.endsWith(".md"))
-  .map((file) => [file, readFileSync(file, "utf8")]));
+  .map((file) => [path.relative(contentRoot, file).replaceAll(path.sep, "/"), readFileSync(file, "utf8")]));
 const mediaSources = Object.fromEntries(files
   .filter((file) => supportedContentMediaExtensions.includes(path.extname(file).slice(1).toLocaleLowerCase()))
-  .map((file) => [file, `/test-content/${path.relative(contentRoot, file)}`]));
+  .map((file) => [path.relative(contentRoot, file).replaceAll(path.sep, "/"), `/test-content/${path.relative(contentRoot, file)}`]));
 
 export const fixtureContentManifest = createContentManifest({ markdownSources, mediaSources });

@@ -30,11 +30,7 @@ export interface ContentSources {
 }
 
 function sourceRelativePath(sourcePath: string): string {
-  const normalizedSource = sourcePath.replaceAll("\\", "/");
-  const marker = "/content/blog/";
-  const markerIndex = normalizedSource.indexOf(marker);
-  if (markerIndex < 0) throw new Error(`Invalid content path outside content/blog: ${sourcePath}`);
-  return normalizeContentPath(normalizedSource.slice(markerIndex + marker.length));
+  return normalizeContentPath(sourcePath);
 }
 
 function parseDocument(sourcePath: string, source: string): ContentDocument {

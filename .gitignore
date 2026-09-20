@@ -16,5 +16,9 @@ test-results/
 *.log
 *.local
 
+# Optional author-owned content selected through SEKER_CONTENT_ROOT.
+# Repository content under content/blog remains public and tracked.
+/content/private/
+
 .reference-assets/*
 !.reference-assets/README.md
