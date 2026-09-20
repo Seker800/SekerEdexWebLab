@@ -713,6 +713,9 @@ try {
   const revealStartedAt = Date.now();
   await inlineImage.click();
   if (!await motionPage.locator(".image-viewer").isVisible()) throw new Error("Image file did not open the media viewer");
+  if (await motionPage.locator("html").getAttribute("data-last-sound") !== "expand") {
+    throw new Error("Opening the media viewer did not play its shared open cue");
+  }
   const initialRevealState = await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-state");
   if (initialRevealState === "ready") throw new Error("Cached image skipped the minimum media reveal animation");
   await motionPage.locator('.image-viewer__stage[data-reveal-engine="jpeg-glitch"][data-reveal-state="revealing"][data-reveal-phase="0"]').waitFor({ timeout: 5_000 });
@@ -830,8 +833,14 @@ try {
   if (await motionPage.locator(".image-viewer__counter").textContent() !== "1 / 2 · image/svg+xml") throw new Error("Image viewer did not expose media sequence metadata");
   await motionPage.locator('[data-viewer-action="zoom-in"]').click();
   if (await motionPage.locator(".image-viewer__zoom").textContent() !== "125%") throw new Error("Image viewer zoom control did not update");
+  if (await motionPage.locator("html").getAttribute("data-last-sound") !== "stdin") {
+    throw new Error("Image viewer zoom control did not play an interaction cue");
+  }
   await motionPage.locator('[data-viewer-action="next"]').click();
   if (await motionPage.locator("#image-viewer-title").textContent() !== "content-flow.svg") throw new Error("Image viewer did not navigate to the next image");
+  if (await motionPage.locator("html").getAttribute("data-last-sound") !== "folder") {
+    throw new Error("Image viewer navigation control did not play a navigation cue");
+  }
   if (await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-state") === "ready") {
     throw new Error("Image sequence navigation skipped the media reveal animation");
   }
@@ -902,6 +911,9 @@ try {
     throw new Error("Direct image route covered the first fully booted desktop frame");
   }
   await directImagePage.locator('.image-viewer__stage[data-reveal-engine="jpeg-glitch"][data-reveal-state="revealing"]').waitFor({ timeout: 5_000 });
+  if (await directImagePage.locator("html").getAttribute("data-last-sound") !== "expand") {
+    throw new Error("Direct image route did not play the media viewer open cue after boot");
+  }
   const directReveal = await directImagePage.evaluate(() => {
     const image = document.querySelector<HTMLImageElement>(".image-viewer__stage > img:not(.image-viewer__jpeg-glitch-source)")!;
     const stage = document.querySelector<HTMLElement>(".image-viewer__stage")!;
