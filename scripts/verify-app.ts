@@ -725,11 +725,12 @@ try {
       canvasVisible: getComputedStyle(canvas).visibility === "visible",
       phase: stage.dataset.revealPhase,
       quality: Number(stage.dataset.revealQuality),
+      seed: Number(stage.dataset.revealSeed),
       producedFrames: Number(stage.dataset.revealFrames)
     };
   });
   if (revealVisual.imageOpacity !== "0" || !revealVisual.canvasVisible || revealVisual.phase !== "0"
-    || revealVisual.quality !== 0.17 || revealVisual.producedFrames < 1) {
+    || revealVisual.quality !== 0.17 || !Number.isFinite(revealVisual.seed) || revealVisual.producedFrames < 1) {
     throw new Error(`Media reveal did not begin with the selected JPEG corruption preset: ${JSON.stringify(revealVisual)}`);
   }
   await motionPage.screenshot({ path: path.join(artifactDirectory, "image-reveal-jpeg-glitch-start.png"), omitBackground: true });
@@ -744,7 +745,11 @@ try {
     throw new Error(`JPEG corruption reveal stalled: ${JSON.stringify(stalledReveal)}`, { cause: error });
   }
   const finalGlitchQuality = Number(await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-quality"));
+  const laterGlitchSeed = Number(await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-seed"));
   if (finalGlitchQuality <= revealVisual.quality) throw new Error("JPEG corruption did not progressively resolve toward the source image");
+  if (!Number.isFinite(laterGlitchSeed) || laterGlitchSeed === revealVisual.seed) {
+    throw new Error("JPEG corruption reused a fixed seed instead of varying its tear pattern");
+  }
   await motionPage.screenshot({ path: path.join(artifactDirectory, "image-reveal-jpeg-glitch-resolving.png"), omitBackground: true });
   await motionPage.locator('.image-viewer__stage[data-reveal-state="ready"]').waitFor({ timeout: 8_000 });
   const revealElapsedMs = Date.now() - revealStartedAt;
