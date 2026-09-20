@@ -572,6 +572,23 @@ try {
     if (!bounds || bounds.height < 44 || bounds.width < 44) throw new Error(`Mobile ${controlName} control is not touch-sized: ${JSON.stringify(bounds)}`);
   }
   await mobileTouchPage.screenshot({ path: path.join(artifactDirectory, "command-deck-mobile-touch.png"), animations: "disabled", omitBackground: true });
+  const mobileFilesControl = mobileTouchPage.locator("#mobile-files-view");
+  await mobileFilesControl.tap();
+  if (!await mobileTouchPage.locator(".filesystem-panel").isVisible()) throw new Error("Mobile FILES control did not reveal the shared filesystem panel");
+  if (await mobileTouchPage.locator(".terminal-panel").isVisible()) throw new Error("Mobile FILES view retained the terminal panel");
+  if (await mobileFilesControl.getAttribute("aria-pressed") !== "true") throw new Error("Mobile FILES control did not expose its selected state");
+  await mobileTouchPage.locator('.file-grid button[data-file-name="themes"]').tap();
+  await mobileTouchPage.locator('.file-grid button[data-file-name="tron.json"]').waitFor();
+  const mobileFilesystemPath = await mobileTouchPage.locator(".filesystem-panel .section-label small").textContent();
+  if (mobileFilesystemPath !== "/home/squared/.config/eDEX-UI/themes") throw new Error(`Mobile filesystem navigation did not preserve the shared cwd: ${mobileFilesystemPath}`);
+  await mobileTouchPage.screenshot({ path: path.join(artifactDirectory, "command-deck-mobile-files.png"), animations: "disabled", omitBackground: true });
+  const mobileTerminalControl = mobileTouchPage.locator("#mobile-terminal-view");
+  await mobileTerminalControl.tap();
+  if (!await mobileTouchPage.locator(".terminal-panel").isVisible()) throw new Error("Mobile TERMINAL control did not restore the terminal panel");
+  if (await mobileTouchPage.locator(".filesystem-panel").isVisible()) throw new Error("Mobile TERMINAL view retained the filesystem panel");
+  if (await mobileTouchPage.locator(".terminal-prompt .terminal-powerline__path").textContent() !== "~/.c/eDEX-UI/themes") {
+    throw new Error("Mobile terminal did not retain the directory selected through the shared filesystem panel");
+  }
   await mobileTouchPage.setViewportSize({ width: 844, height: 390 });
   await mobileTouchPage.reload({ waitUntil: "networkidle" });
   await mobileTouchPage.locator("[data-ready]").waitFor();
@@ -1106,7 +1123,7 @@ try {
       "touch keyboard command",
       "normal-motion idle cadence"
     ],
-    responsiveChecks: ["1934x1094 frozen Electron container", "1920x1080 logical canvas", "1440x900 with 1440x810 centered stage", "1280x800 with 1280x720 centered stage", "390x844 terminal mode", "390x844 touch terminal interaction", "844x390 touch terminal landscape", "reduced-motion static feedback"],
+    responsiveChecks: ["1934x1094 frozen Electron container", "1920x1080 logical canvas", "1440x900 with 1440x810 centered stage", "1280x800 with 1280x720 centered stage", "390x844 terminal mode", "390x844 touch terminal interaction", "390x844 terminal/files shared navigation", "844x390 touch terminal landscape", "reduced-motion static feedback"],
     performanceCheck: frameSample,
     mediaRevealCheck: {
       engine: "@vfx-js/effects JPEGGlitchEffect",
@@ -1120,7 +1137,7 @@ try {
       directRouteProducedFrames: directReveal.producedFrames
     },
     sourceDrivenChecks: sourceDrivenState,
-    screenshots: ["boot-gate.png", "boot-log.png", "boot-title-outline.png", "boot-title-filled.png", "boot-title-framed.png", "boot-title-glitch.png", "boot-reveal.png", "boot-greeting.png", "boot-greeting-fading.png", "boot-terminal-ready.png", "blog-reader.png", "image-reveal-jpeg-glitch-start.png", "image-reveal-jpeg-glitch-resolving.png", "image-viewer.png", "command-deck.png", "command-deck-1920x1080.png", "command-deck-1440x900.png", "command-deck-1280x800.png", "command-deck-mobile.png", "command-deck-mobile-touch.png", "command-deck-mobile-landscape.png"],
+    screenshots: ["boot-gate.png", "boot-log.png", "boot-title-outline.png", "boot-title-filled.png", "boot-title-framed.png", "boot-title-glitch.png", "boot-reveal.png", "boot-greeting.png", "boot-greeting-fading.png", "boot-terminal-ready.png", "blog-reader.png", "image-reveal-jpeg-glitch-start.png", "image-reveal-jpeg-glitch-resolving.png", "image-viewer.png", "command-deck.png", "command-deck-1920x1080.png", "command-deck-1440x900.png", "command-deck-1280x800.png", "command-deck-mobile.png", "command-deck-mobile-touch.png", "command-deck-mobile-files.png", "command-deck-mobile-landscape.png"],
     consoleErrors,
     pageErrors,
     upstreamVisualMetrics: metrics,
