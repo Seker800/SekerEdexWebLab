@@ -14,6 +14,18 @@ tags:
 ![Ridge at sunrise](./ridge.webp)`;
 
 describe("content registry", () => {
+  it("accepts content-root-relative source paths without knowing the repository layout", () => {
+    const manifest = createContentManifest({
+      markdownSources: { "posts/mountain/index.md": article },
+      mediaSources: { "posts/mountain/ridge.webp": "/assets/ridge-HASH.webp" }
+    });
+
+    expect(manifest.entries.map((entry) => entry.relativePath)).toEqual([
+      "posts/mountain/index.md",
+      "posts/mountain/ridge.webp"
+    ]);
+  });
+
   it("discovers nested documents and colocated media without source-specific wiring", () => {
     const manifest = createContentManifest({
       markdownSources: { "../../../content/blog/posts/mountain/index.md": article },
