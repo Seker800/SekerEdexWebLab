@@ -764,6 +764,13 @@ try {
   await motionPage.locator('.image-viewer__stage[data-reveal-state="ready"]').waitFor({ timeout: 8_000 });
   const revealElapsedMs = Date.now() - revealStartedAt;
   if (revealElapsedMs < 1_000) throw new Error(`Media reveal completed too quickly: ${revealElapsedMs}ms`);
+  const completedRevealLabel = await motionPage.locator(".image-viewer__reveal-label").evaluate((label) => {
+    const bounds = label.getBoundingClientRect();
+    return { display: getComputedStyle(label).display, width: bounds.width, height: bounds.height };
+  });
+  if (completedRevealLabel.display !== "none" || completedRevealLabel.width !== 0 || completedRevealLabel.height !== 0) {
+    throw new Error(`Completed image reveal left its empty status label visible: ${JSON.stringify(completedRevealLabel)}`);
+  }
   if (await motionPage.locator(".image-viewer__jpeg-glitch-canvas").count() !== 0
     || await motionPage.locator(".image-viewer__stage > img:not(.image-viewer__jpeg-glitch-source)").evaluate((image) => getComputedStyle(image).opacity) !== "1") {
     throw new Error("JPEG reveal did not hand off cleanly to the original image");
