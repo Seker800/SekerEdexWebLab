@@ -10,7 +10,15 @@ describe("JPEG glitch reveal plan", () => {
     };
   };
 
-  it("builds a denser irregular pulse sequence that still resolves monotonically", () => {
+  it("randomizes each reveal to between four and ten glitch pulses", () => {
+    const minimum = createJpegGlitchRevealPlan({ random: () => 0 });
+    const maximum = createJpegGlitchRevealPlan({ random: () => 0.999_999 });
+
+    expect(minimum.phases.slice(0, -1)).toHaveLength(4);
+    expect(maximum.phases.slice(0, -1)).toHaveLength(10);
+  });
+
+  it("builds an irregular pulse sequence that still resolves monotonically", () => {
     const plan = createJpegGlitchRevealPlan({ random: seededRandom(42) });
     const glitchPhases = plan.phases.slice(0, -1);
 
@@ -21,14 +29,15 @@ describe("JPEG glitch reveal plan", () => {
         resolutionScale: 0.63
       }
     });
-    expect(glitchPhases).toHaveLength(10);
-    expect(new Set(glitchPhases.map((phase) => phase.holdMs)).size).toBeGreaterThan(3);
+    expect(glitchPhases.length).toBeGreaterThanOrEqual(4);
+    expect(glitchPhases.length).toBeLessThanOrEqual(10);
+    expect(new Set(glitchPhases.map((phase) => phase.holdMs)).size).toBeGreaterThan(2);
     expect(glitchPhases.every((phase) => phase.holdMs >= 90 && phase.holdMs <= 210)).toBe(true);
     expect(glitchPhases.every((phase, index, phases) => index === 0
       || (phase.params.quality >= phases[index - 1]!.params.quality
         && phase.params.iterations <= phases[index - 1]!.params.iterations
         && phase.params.resolutionScale >= phases[index - 1]!.params.resolutionScale))).toBe(true);
-    expect(plan.minimumVisibleMs).toBeGreaterThanOrEqual(1_400);
+    expect(plan.minimumVisibleMs).toBeGreaterThanOrEqual(860);
     expect(plan.minimumVisibleMs).toBeLessThanOrEqual(2_600);
   });
 

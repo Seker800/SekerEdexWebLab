@@ -869,6 +869,16 @@ try {
   await directImagePage.bringToFront();
   directImagePage.on("console", (message) => { if (message.type() === "error") consoleErrors.push(`direct-image: ${message.text()}`); });
   directImagePage.on("pageerror", (error) => pageErrors.push(`direct-image: ${error.message}`));
+  await directImagePage.addInitScript(() => {
+    document.addEventListener("edex:boot-phase", (event) => {
+      if ((event as CustomEvent<{ phase: string }>).detail.phase !== "complete") return;
+      requestAnimationFrame(() => {
+        const viewer = document.querySelector<HTMLElement>(".image-viewer");
+        (window as typeof window & { __directImageVisibleOnFirstDesktopFrame?: boolean })
+          .__directImageVisibleOnFirstDesktopFrame = viewer ? !viewer.hidden : false;
+      });
+    });
+  });
   await directImagePage.goto("http://127.0.0.1:4174/?fastboot=1#/blog/posts/night-routes/tokyo-night.jpg", { waitUntil: "networkidle" });
   await directImagePage.locator("[data-ready]").waitFor();
   if (await directImagePage.locator(".image-viewer").isVisible()) {
@@ -876,6 +886,14 @@ try {
   }
   await directImagePage.getByRole("button", { name: "Initialize system" }).click();
   await directImagePage.locator('html[data-boot-phase="complete"]').waitFor({ timeout: 10_000 });
+  await directImagePage.waitForFunction(() => typeof (window as typeof window & { __directImageVisibleOnFirstDesktopFrame?: boolean })
+    .__directImageVisibleOnFirstDesktopFrame === "boolean");
+  const imageVisibleOnFirstDesktopFrame = await directImagePage.evaluate(() => (window as typeof window & {
+    __directImageVisibleOnFirstDesktopFrame?: boolean;
+  }).__directImageVisibleOnFirstDesktopFrame);
+  if (imageVisibleOnFirstDesktopFrame) {
+    throw new Error("Direct image route covered the first fully booted desktop frame");
+  }
   await directImagePage.locator('.image-viewer__stage[data-reveal-engine="jpeg-glitch"][data-reveal-state="revealing"]').waitFor({ timeout: 5_000 });
   const directReveal = await directImagePage.evaluate(() => {
     const image = document.querySelector<HTMLImageElement>(".image-viewer__stage > img:not(.image-viewer__jpeg-glitch-source)")!;
