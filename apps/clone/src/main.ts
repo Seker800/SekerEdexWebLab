@@ -262,8 +262,12 @@ lifecycle.add(() => contentOverlay.dispose());
 const imageViewer = new ImageViewer(contentOverlay, {
   now: () => performance.now(),
   runAnimation: (callback) => runtimeScheduler?.eachFrame(callback) ?? (() => undefined)
-}, (entry, description) => {
-  if (entry.contentPath) writeContentLocation(entry.contentPath, "push", description);
+}, {
+  onOpen: () => audioDeck.play("expand"),
+  onAction: (action) => audioDeck.play(action === "previous" || action === "next" ? "folder" : "stdin"),
+  onSelectionChange: (entry, description) => {
+    if (entry.contentPath) writeContentLocation(entry.contentPath, "push", description);
+  }
 });
 lifecycle.add(() => imageViewer.dispose());
 let pendingImageOpen: (() => void) | undefined;
@@ -796,7 +800,7 @@ lifecycle.listen<MouseEvent>(fileGrid, "click", (event) => {
     imageViewer.open(images, result.entry.path);
   }
   if (result.kind === "insert") audioDeck.play("folder");
-  else playFeedback(result.feedback);
+  else if (result.kind !== "image") playFeedback(result.feedback);
   if (!["document", "image"].includes(result.kind)) input.focus();
 });
 

@@ -3,6 +3,23 @@ import type { FullscreenContentOverlay } from "./fullscreen-content-overlay.js";
 import { calculateContainedImageBounds, createImageRevealPlan, type ImageRevealPlan } from "./image-reveal.js";
 import { JpegGlitchRevealRenderer, type JpegGlitchRevealRuntime } from "./jpeg-glitch-reveal-renderer.js";
 
+export type ImageViewerAction = "previous" | "next" | "zoom-out" | "zoom-in";
+
+const imageViewerActions = new Set<ImageViewerAction>(["previous", "next", "zoom-out", "zoom-in"]);
+
+function isImageViewerAction(value: string | undefined): value is ImageViewerAction {
+  return value !== undefined && imageViewerActions.has(value as ImageViewerAction);
+}
+
+export interface ImageViewerEvents {
+  readonly onOpen?: () => void;
+  readonly onAction?: (action: ImageViewerAction) => void;
+  readonly onSelectionChange?: (
+    entry: Readonly<BrowserFileEntry>,
+    description?: Readonly<{ alt: string; caption?: string }>
+  ) => void;
+}
+
 export class ImageViewer {
   private readonly surface: HTMLElement;
   private readonly stage: HTMLElement;
@@ -24,8 +41,8 @@ export class ImageViewer {
   private readonly descriptions = new Map<string, { alt: string; caption?: string }>();
   private readonly handleKeydown = (event: KeyboardEvent): void => {
     if (this.surface.hidden) return;
-    if (event.key === "ArrowLeft") this.move(-1);
-    else if (event.key === "ArrowRight") this.move(1);
+    if (event.key === "ArrowLeft") this.activate("previous");
+    else if (event.key === "ArrowRight") this.activate("next");
     else return;
     event.preventDefault();
     event.stopPropagation();
@@ -34,10 +51,7 @@ export class ImageViewer {
   constructor(
     private readonly overlay: FullscreenContentOverlay,
     revealRuntime: JpegGlitchRevealRuntime,
-    private readonly onSelectionChange?: (
-      entry: Readonly<BrowserFileEntry>,
-      description?: Readonly<{ alt: string; caption?: string }>
-    ) => void
+    private readonly events: ImageViewerEvents = {}
   ) {
     this.surface = document.createElement("section");
     this.surface.className = "image-viewer";
@@ -82,10 +96,7 @@ export class ImageViewer {
       const button = (event.target as Element | null)?.closest<HTMLButtonElement>("[data-viewer-action]");
       if (!button) return;
       const action = button.dataset.viewerAction;
-      if (action === "previous") this.move(-1);
-      else if (action === "next") this.move(1);
-      else if (action === "zoom-out") this.setZoom(this.zoom - 0.25);
-      else if (action === "zoom-in") this.setZoom(this.zoom + 0.25);
+      if (isImageViewerAction(action)) this.activate(action);
     });
     document.addEventListener("keydown", this.handleKeydown, { capture: true });
   }
@@ -93,11 +104,13 @@ export class ImageViewer {
   open(items: readonly BrowserFileEntry[], selectedPath: string, description?: { alt: string; caption?: string }): void {
     this.items = items.filter((entry) => entry.preview?.kind === "image");
     if (this.items.length === 0) return;
+    const wasOpen = this.overlay.isActive("image");
     this.descriptions.clear();
     if (description) this.descriptions.set(selectedPath, { ...description });
     this.index = Math.max(0, this.items.findIndex((entry) => entry.path === selectedPath));
     this.render(false);
     this.overlay.open("image");
+    if (!wasOpen) this.events.onOpen?.();
   }
 
   close(options: { notify?: boolean } = {}): void {
@@ -119,6 +132,14 @@ export class ImageViewer {
     this.render(true);
   }
 
+  private activate(action: ImageViewerAction): void {
+    if (action === "previous") this.move(-1);
+    else if (action === "next") this.move(1);
+    else if (action === "zoom-out") this.setZoom(this.zoom - 0.25);
+    else this.setZoom(this.zoom + 0.25);
+    this.events.onAction?.(action);
+  }
+
   private setZoom(value: number): void {
     this.zoom = Math.min(3, Math.max(0.5, value));
     this.image.style.scale = String(this.zoom);
@@ -137,7 +158,7 @@ export class ImageViewer {
     this.counter.textContent = `${this.index + 1} / ${this.items.length} · ${preview.mediaType}`;
     this.setZoom(1);
     void this.revealImage(preview.src);
-    if (notifySelection) this.onSelectionChange?.(entry, description);
+    if (notifySelection) this.events.onSelectionChange?.(entry, description);
   }
 
   private async revealImage(source: string): Promise<void> {
