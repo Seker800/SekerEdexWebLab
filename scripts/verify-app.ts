@@ -714,40 +714,33 @@ try {
   if (!await motionPage.locator(".image-viewer").isVisible()) throw new Error("Image file did not open the media viewer");
   const initialRevealState = await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-state");
   if (initialRevealState === "ready") throw new Error("Cached image skipped the minimum media reveal animation");
-  await motionPage.locator('.image-viewer__stage[data-reveal-state="revealing"]').waitFor({ timeout: 3_000 });
-  await motionPage.waitForTimeout(240);
+  await motionPage.locator('.image-viewer__stage[data-reveal-engine="jpeg-glitch"][data-reveal-state="revealing"][data-reveal-phase="0"]').waitFor({ timeout: 5_000 });
   const revealVisual = await motionPage.evaluate(() => {
     const stage = document.querySelector<HTMLElement>(".image-viewer__stage")!;
     const image = stage.querySelector<HTMLImageElement>("img")!;
-    const reveal = stage.querySelector<HTMLElement>(".image-viewer__reveal")!;
-    const tiles = [...reveal.querySelectorAll<HTMLElement>(".image-viewer__reveal-tile")];
-    const stageBounds = stage.getBoundingClientRect();
-    const revealBounds = reveal.getBoundingClientRect();
-    const containScale = Math.min(stageBounds.width / image.naturalWidth, stageBounds.height / image.naturalHeight);
-    const expectedWidth = image.naturalWidth * containScale;
-    const expectedHeight = image.naturalHeight * containScale;
-    const tileStyles = tiles.map((tile) => getComputedStyle(tile));
+    const canvas = stage.querySelector<HTMLCanvasElement>(".image-viewer__jpeg-glitch-canvas")!;
     return {
       imageOpacity: getComputedStyle(image).opacity,
-      tilesWithImage: tileStyles.filter((style) => style.backgroundImage.includes("url(")).length,
-      hiddenTiles: tileStyles.filter((style) => Number.parseFloat(style.opacity) < 0.05).length,
-      visibleTiles: tileStyles.filter((style) => Number.parseFloat(style.opacity) > 0.05).length,
-      filterVariants: new Set(tileStyles.filter((style) => Number.parseFloat(style.opacity) > 0.05).map((style) => style.filter)).size,
-      leftDelta: Math.abs(revealBounds.left - (stageBounds.left + (stageBounds.width - expectedWidth) / 2)),
-      topDelta: Math.abs(revealBounds.top - (stageBounds.top + (stageBounds.height - expectedHeight) / 2)),
-      widthDelta: Math.abs(revealBounds.width - expectedWidth),
-      heightDelta: Math.abs(revealBounds.height - expectedHeight)
+      canvasVisible: getComputedStyle(canvas).visibility === "visible",
+      phase: stage.dataset.revealPhase,
+      quality: Number(stage.dataset.revealQuality),
+      producedFrames: Number(stage.dataset.revealFrames)
     };
   });
-  if (revealVisual.imageOpacity !== "0" || revealVisual.tilesWithImage !== 60
-    || revealVisual.hiddenTiles === 0 || revealVisual.visibleTiles === 0 || revealVisual.filterVariants < 2
-    || revealVisual.leftDelta > 1 || revealVisual.topDelta > 1
-    || revealVisual.widthDelta > 1 || revealVisual.heightDelta > 1) {
-    throw new Error(`Media reveal was not reconstructed from image-bound tiles: ${JSON.stringify(revealVisual)}`);
+  if (revealVisual.imageOpacity !== "0" || !revealVisual.canvasVisible || revealVisual.phase !== "0"
+    || revealVisual.quality !== 0.17 || revealVisual.producedFrames < 1) {
+    throw new Error(`Media reveal did not begin with the selected JPEG corruption preset: ${JSON.stringify(revealVisual)}`);
   }
-  await motionPage.locator('.image-viewer__stage[data-reveal-state="ready"]').waitFor({ timeout: 3_000 });
+  await motionPage.locator('.image-viewer__stage[data-reveal-phase="4"]').waitFor({ timeout: 8_000 });
+  const finalGlitchQuality = Number(await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-quality"));
+  if (finalGlitchQuality <= revealVisual.quality) throw new Error("JPEG corruption did not progressively resolve toward the source image");
+  await motionPage.locator('.image-viewer__stage[data-reveal-state="ready"]').waitFor({ timeout: 8_000 });
   const revealElapsedMs = Date.now() - revealStartedAt;
-  if (revealElapsedMs < 480) throw new Error(`Media reveal completed too quickly: ${revealElapsedMs}ms`);
+  if (revealElapsedMs < 1_000) throw new Error(`Media reveal completed too quickly: ${revealElapsedMs}ms`);
+  if (await motionPage.locator(".image-viewer__jpeg-glitch-canvas").count() !== 0
+    || await motionPage.locator(".image-viewer__stage img").evaluate((image) => getComputedStyle(image).opacity) !== "1") {
+    throw new Error("JPEG reveal did not hand off cleanly to the original image");
+  }
   if (await motionPage.locator(".image-viewer__stage img").getAttribute("alt") !== "The command deck regions") {
     throw new Error("Image viewer did not preserve the author's Markdown alt text");
   }
@@ -856,18 +849,18 @@ try {
   }
   await directImagePage.getByRole("button", { name: "Initialize system" }).click();
   await directImagePage.locator('html[data-boot-phase="complete"]').waitFor({ timeout: 10_000 });
-  await directImagePage.locator('.image-viewer__stage[data-reveal-state="revealing"]').waitFor({ timeout: 3_000 });
+  await directImagePage.locator('.image-viewer__stage[data-reveal-engine="jpeg-glitch"][data-reveal-state="revealing"]').waitFor({ timeout: 5_000 });
   const directReveal = await directImagePage.evaluate(() => {
     const image = document.querySelector<HTMLImageElement>(".image-viewer__stage img")!;
-    const tile = document.querySelector<HTMLElement>(".image-viewer__reveal-tile")!;
-    const tileStyle = getComputedStyle(tile);
+    const stage = document.querySelector<HTMLElement>(".image-viewer__stage")!;
+    const canvas = stage.querySelector<HTMLCanvasElement>(".image-viewer__jpeg-glitch-canvas")!;
     return {
       imageOpacity: getComputedStyle(image).opacity,
-      tileAnimation: tileStyle.animationName,
-      tileBackground: tileStyle.backgroundImage
+      canvasVisible: getComputedStyle(canvas).visibility === "visible",
+      producedFrames: Number(stage.dataset.revealFrames)
     };
   });
-  if (directReveal.imageOpacity !== "0" || directReveal.tileAnimation !== "image-viewer-tile-colorize" || directReveal.tileBackground === "none") {
+  if (directReveal.imageOpacity !== "0" || !directReveal.canvasVisible || directReveal.producedFrames < 1) {
     throw new Error(`Direct image route did not enter the staged reveal after boot: ${JSON.stringify(directReveal)}`);
   }
   await directImagePage.close();
