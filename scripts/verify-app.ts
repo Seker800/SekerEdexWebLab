@@ -493,10 +493,31 @@ try {
   const mobileState = await page.evaluate(() => ({
     horizontalOverflow: document.documentElement.scrollWidth > innerWidth,
     verticalOverflow: document.documentElement.scrollHeight > innerHeight,
-    cursorAnimation: getComputedStyle(document.querySelector(".cursor")!).animationName
+    cursorAnimation: getComputedStyle(document.querySelector(".cursor")!).animationName,
+    terminalOutputFits: document.querySelector<HTMLElement>("#terminal-output")!.scrollWidth <= document.querySelector<HTMLElement>("#terminal-output")!.clientWidth,
+    terminalInputFontSize: Number.parseFloat(getComputedStyle(document.querySelector<HTMLInputElement>("#terminal-input")!).fontSize),
+    terminalPromptHeight: document.querySelector<HTMLElement>(".terminal-prompt")!.getBoundingClientRect().height
   }));
   if (mobileState.horizontalOverflow || mobileState.verticalOverflow) throw new Error(`Mobile terminal mode overflowed: ${JSON.stringify(mobileState)}`);
   if (mobileState.cursorAnimation !== "none") throw new Error(`Reduced motion left cursor animation active: ${mobileState.cursorAnimation}`);
+  if (!mobileState.terminalOutputFits) throw new Error(`Mobile terminal content is horizontally clipped: ${JSON.stringify(mobileState)}`);
+  if (mobileState.terminalInputFontSize < 16) throw new Error(`Mobile terminal input font is too small for iOS focus without zoom: ${JSON.stringify(mobileState)}`);
+  if (mobileState.terminalPromptHeight < 44) throw new Error(`Mobile terminal prompt is smaller than a reliable touch target: ${JSON.stringify(mobileState)}`);
+  await page.locator("#terminal-input").fill("help");
+  await page.locator("#terminal-input").press("Enter");
+  await page.getByText("AVAILABLE COMMANDS", { exact: false }).waitFor();
+  await page.setViewportSize({ width: 390, height: 500 });
+  const mobileKeyboardViewportState = await page.evaluate(() => {
+    const prompt = document.querySelector<HTMLElement>(".terminal-prompt")!.getBoundingClientRect();
+    return {
+      viewportHeight: innerHeight,
+      promptTop: prompt.top,
+      promptBottom: prompt.bottom,
+      visible: prompt.top >= 0 && prompt.bottom <= innerHeight
+    };
+  });
+  if (!mobileKeyboardViewportState.visible) throw new Error(`Mobile terminal prompt left the resized visual viewport: ${JSON.stringify(mobileKeyboardViewportState)}`);
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: path.join(artifactDirectory, "command-deck-mobile.png"), animations: "disabled", omitBackground: true });
   await page.setViewportSize({ width: 1934, height: 1094 });
   await page.reload({ waitUntil: "networkidle" });
