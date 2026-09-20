@@ -4,7 +4,7 @@
 
 **一个真正像系统一样运行，而不只是一张终端截图的浏览器 eDEX-UI 指挥舱。**
 
-[English](README.md) · [快速开始](#快速开始) · [你可以做什么](#你可以做什么) · [验证体系](#验证体系)
+[在线实例](https://www.seker.wang) · [English](README.md) · [快速开始](#快速开始) · [你可以做什么](#你可以做什么) · [验证体系](#验证体系)
 
 [![CI](https://github.com/Seker800/SekerEdexWebLab/actions/workflows/ci.yml/badge.svg)](https://github.com/Seker800/SekerEdexWebLab/actions/workflows/ci.yml)
 [![许可证：GPL v3](https://img.shields.io/badge/license-GPLv3-8ab4b6.svg)](LICENSE)
@@ -16,6 +16,8 @@
 ![SekerEdexWebLab 在 1920×1080 画布中的浏览器指挥舱](.github/assets/readme-command-deck.png)
 
 <p align="center"><sub>本项目浏览器实现的标准 1920×1080 桌面运行画面。</sub></p>
+
+<p align="center"><strong><a href="https://www.seker.wang">打开在线实例 →</a></strong></p>
 
 SekerEdexWebLab 在浏览器中重现 eDEX-UI 2.2 的 `tron` 体验：中央终端、实时遥测、文件系统、
 地球、声音与屏幕键盘由同一个会话驱动。仓库还包含一套确定性的采集与对比系统，用可执行证据

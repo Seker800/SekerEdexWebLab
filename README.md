@@ -4,7 +4,7 @@
 
 **A browser-native eDEX-UI command deck that behaves like a system—not a screenshot.**
 
-[简体中文](README.zh-CN.md) · [Quick start](#quick-start) · [Experience](#what-you-can-do) · [Verification](#verification)
+[Live demo](https://www.seker.wang) · [简体中文](README.zh-CN.md) · [Quick start](#quick-start) · [Experience](#what-you-can-do) · [Verification](#verification)
 
 [![CI](https://github.com/Seker800/SekerEdexWebLab/actions/workflows/ci.yml/badge.svg)](https://github.com/Seker800/SekerEdexWebLab/actions/workflows/ci.yml)
 [![License: GPL v3](https://img.shields.io/badge/license-GPLv3-8ab4b6.svg)](LICENSE)
@@ -16,6 +16,8 @@
 ![SekerEdexWebLab browser command deck at 1920 by 1080](.github/assets/readme-command-deck.png)
 
 <p align="center"><sub>The browser implementation at its canonical 1920×1080 desktop viewport.</sub></p>
+
+<p align="center"><strong><a href="https://www.seker.wang">Launch the live demo →</a></strong></p>
 
 SekerEdexWebLab recreates the eDEX-UI 2.2 `tron` experience in the browser: a central terminal, live
 telemetry, filesystem, globe, sound, and an on-screen keyboard all respond through one shared session.
