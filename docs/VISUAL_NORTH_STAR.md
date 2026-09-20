@@ -173,15 +173,11 @@ The screenshot remains binding for the exact captured state. It resolves details
 
 ## Responsive behavior
 
-Desktop fullscreen is the canonical presentation. Adaptation should follow this order:
-
-1. preserve the central terminal;
-2. preserve critical system status;
-3. retain direct access to secondary telemetry;
-4. resize or collapse peripheral panels coherently;
-5. retain the keyboard when touch input is part of the active scenario.
-
-Each supported viewport receives its own reference screenshot and acceptance threshold. Layouts should recompose by region instead of scaling the entire desktop canvas as one bitmap.
+Desktop fullscreen is the canonical presentation. Every non-mobile desktop viewport preserves the complete 1920×1080
+composition and scales it uniformly into a centered 16:9 stage. Letterboxing is expected when the viewport aspect ratio
+differs from 16:9; desktop aspect ratio alone must never hide, reorder, stretch or resize individual regions. Supported
+desktop viewports receive reference screenshots and geometry checks that verify the same normalized system, terminal,
+network, filesystem and keyboard bounds.
 
 The mobile fallback is a dedicated two-surface workbench rather than a scaled desktop deck. Portrait phones and
 coarse-pointer landscape devices retain terminal and filesystem views, session tabs, sound, reboot, terminal history

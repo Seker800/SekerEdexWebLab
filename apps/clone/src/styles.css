@@ -175,8 +175,6 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 1px solid 
 .command-deck {
   width: 100cqw;
   height: 100cqh;
-  min-width: 960px;
-  min-height: 600px;
   padding: 4.05cqh 0.45cqw 0.55cqh;
   display: grid;
   grid-template-columns: 16.8% 26.7% 39.3% 17.2%;
@@ -651,20 +649,6 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 @keyframes file-feedback-blink {
   0%, 100% { background-color: rgba(var(--signal-rgb), 0); }
   50% { background-color: rgb(var(--signal-rgb)); }
-}
-
-@media (max-aspect-ratio: 4/3) {
-  .command-deck { min-width: 0; grid-template-columns: 25% 75%; grid-template-rows: 64% 36%; }
-  .network-panel { display: none; }
-  .terminal-panel { grid-column: 2; }
-  .filesystem-panel { grid-column: 1; }
-  .keyboard-panel { grid-column: 2; }
-  .file-grid { grid-template-columns: repeat(4, 1fr); }
-  .global-line--right { display: none; }
-  .global-line--center { left: 26%; width: 73%; }
-  .global-line--left { width: 24%; }
-  .terminal-entry { font-size: 1.05cqw; }
-  .key { font-size: 1.45cqw; }
 }
 
 @media (max-width: 720px), (max-height: 720px) and (pointer: coarse) {

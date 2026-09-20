@@ -481,6 +481,12 @@ try {
   const fullHdStageBounds = await page.locator(".canvas-stage").boundingBox();
   if (!fullHdStageBounds) throw new Error("Could not measure the 1920x1080 canvas stage");
   assertBounds("1920x1080 canvas stage", fullHdStageBounds, { x: 0, y: 0, width: 1920, height: 1080 }, 1);
+  const fullHdRegionBounds: Record<string, ScreenshotRegion> = {};
+  for (const [name, definition] of Object.entries(canonicalRegionDefinitions)) {
+    const box = await page.locator(definition.selector).boundingBox();
+    if (!box) throw new Error(`1920x1080 desktop viewport dropped canonical region: ${name}`);
+    fullHdRegionBounds[name] = box;
+  }
   await page.screenshot({ path: path.join(artifactDirectory, "command-deck-1920x1080.png"), animations: "disabled", omitBackground: true });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.reload({ waitUntil: "networkidle" });
@@ -501,11 +507,13 @@ try {
   for (const [name, definition] of Object.entries(canonicalRegionDefinitions)) {
     const box = await page.locator(definition.selector).boundingBox();
     if (!box) throw new Error(`1024x1024 desktop viewport dropped canonical region: ${name}`);
+    const fullHdBounds = fullHdRegionBounds[name];
+    if (!fullHdBounds) throw new Error(`1920x1080 desktop baseline is missing canonical region: ${name}`);
     assertBounds(`1024x1024 ${name}`, box, {
-      x: definition.expectedBounds.x * squareDesktopScale,
-      y: 224 + definition.expectedBounds.y * squareDesktopScale,
-      width: definition.expectedBounds.width * squareDesktopScale,
-      height: definition.expectedBounds.height * squareDesktopScale
+      x: fullHdBounds.x * squareDesktopScale,
+      y: 224 + fullHdBounds.y * squareDesktopScale,
+      width: fullHdBounds.width * squareDesktopScale,
+      height: fullHdBounds.height * squareDesktopScale
     }, 3);
   }
   await page.screenshot({ path: path.join(artifactDirectory, "command-deck-1024x1024.png"), animations: "disabled", omitBackground: true });
