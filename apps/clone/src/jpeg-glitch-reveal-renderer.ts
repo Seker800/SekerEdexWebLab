@@ -21,6 +21,7 @@ export interface JpegGlitchRevealFrame {
 
 interface JpegGlitchRevealCallbacks {
   readonly onFrame: (frame: JpegGlitchRevealFrame) => void;
+  readonly onPulse: () => void;
   readonly onComplete: () => void;
   readonly onFailure: () => void;
 }
@@ -137,6 +138,11 @@ export class JpegGlitchRevealRenderer {
       });
       publishedFrames = effect.producedFrames;
     };
+    const enterPhase = (): void => {
+      applyPresentation();
+      publishPhase();
+      if (!plan.phases[phase]!.params.bypass) callbacks.onPulse();
+    };
     this.stopAnimation = this.runtime.runAnimation(() => {
       if (generation !== this.generation || !this.vfx || !this.effect || !this.canvas) return;
       try {
@@ -165,8 +171,7 @@ export class JpegGlitchRevealRenderer {
           frameWaitElapsedMs = 0;
           frameRetries = 0;
           canvas.style.visibility = "visible";
-          applyPresentation();
-          publishPhase();
+          enterPhase();
           return;
         }
 
@@ -184,8 +189,7 @@ export class JpegGlitchRevealRenderer {
         phaseElapsedMs = 0;
         activeSeed = plan.phases[phase]!.params.seed;
         this.effect.setParams(plan.phases[phase]!.params);
-        applyPresentation();
-        publishPhase();
+        enterPhase();
       } catch {
         this.fail(generation, callbacks);
       }

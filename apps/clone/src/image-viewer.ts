@@ -14,6 +14,7 @@ function isImageViewerAction(value: string | undefined): value is ImageViewerAct
 export interface ImageViewerEvents {
   readonly onOpen?: () => void;
   readonly onAction?: (action: ImageViewerAction) => void;
+  readonly onRevealPulse?: () => void;
   readonly onSelectionChange?: (
     entry: Readonly<BrowserFileEntry>,
     description?: Readonly<{ alt: string; caption?: string }>
@@ -205,6 +206,9 @@ export class ImageViewer {
         this.stage.dataset.revealSpeed = String(frame.speed);
         this.stage.dataset.revealFrames = String(frame.producedFrames);
         this.revealLabel.textContent = "";
+      },
+      onPulse: () => {
+        if (revision === this.revealRevision) this.events.onRevealPulse?.();
       },
       onComplete: () => this.finishReveal(revision),
       onFailure: () => {

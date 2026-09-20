@@ -902,12 +902,20 @@ try {
   directImagePage.on("console", (message) => { if (message.type() === "error") consoleErrors.push(`direct-image: ${message.text()}`); });
   directImagePage.on("pageerror", (error) => pageErrors.push(`direct-image: ${error.message}`));
   await directImagePage.addInitScript(() => {
+    const state = window as typeof window & {
+      __directImageVisibleOnFirstDesktopFrame?: boolean;
+      __directImageSoundCues?: string[];
+    };
+    state.__directImageSoundCues = [];
+    document.addEventListener("edex:sound", (event) => {
+      state.__directImageSoundCues?.push((event as CustomEvent<{ cue: string }>).detail.cue);
+    });
     document.addEventListener("edex:boot-phase", (event) => {
       if ((event as CustomEvent<{ phase: string }>).detail.phase !== "complete") return;
+      state.__directImageSoundCues = [];
       requestAnimationFrame(() => {
         const viewer = document.querySelector<HTMLElement>(".image-viewer");
-        (window as typeof window & { __directImageVisibleOnFirstDesktopFrame?: boolean })
-          .__directImageVisibleOnFirstDesktopFrame = viewer ? !viewer.hidden : false;
+        state.__directImageVisibleOnFirstDesktopFrame = viewer ? !viewer.hidden : false;
       });
     });
   });
@@ -927,8 +935,11 @@ try {
     throw new Error("Direct image route covered the first fully booted desktop frame");
   }
   await directImagePage.locator('.image-viewer__stage[data-reveal-engine="jpeg-glitch"][data-reveal-state="revealing"]').waitFor({ timeout: 5_000 });
-  if (await directImagePage.locator("html").getAttribute("data-last-sound") !== "expand") {
-    throw new Error("Direct image route did not play the media viewer open cue after boot");
+  const directImageSoundCues = await directImagePage.evaluate(() => (window as typeof window & {
+    __directImageSoundCues?: string[];
+  }).__directImageSoundCues ?? []);
+  if (directImageSoundCues[0] !== "expand" || directImageSoundCues[1] !== "stdout") {
+    throw new Error(`Direct image route did not sequence its open and first pulse cues after boot: ${JSON.stringify(directImageSoundCues)}`);
   }
   const directReveal = await directImagePage.evaluate(() => {
     const image = document.querySelector<HTMLImageElement>(".image-viewer__stage > img:not(.image-viewer__jpeg-glitch-source)")!;
