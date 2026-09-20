@@ -2,45 +2,54 @@
 
 # SekerEdexWebLab
 
-**A browser-native, source-driven port of the eDEX-UI command deck.**
+**A browser-native eDEX-UI command deck that behaves like a system—not a screenshot.**
 
-[English](README.md) · [简体中文](README.zh-CN.md)
+[简体中文](README.zh-CN.md) · [Quick start](#quick-start) · [Experience](#what-you-can-do) · [Verification](#verification)
 
 [![CI](https://github.com/Seker800/SekerEdexWebLab/actions/workflows/ci.yml/badge.svg)](https://github.com/Seker800/SekerEdexWebLab/actions/workflows/ci.yml)
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-8ab4b6.svg)](LICENSE)
-[![Project status: Phase 0](https://img.shields.io/badge/status-Phase%200-8ab4b6.svg)](#project-status)
+[![License: GPL v3](https://img.shields.io/badge/license-GPLv3-8ab4b6.svg)](LICENSE)
+[![Node.js 22](https://img.shields.io/badge/node-22-8ab4b6.svg)](package.json)
+[![Status: Phase 0](https://img.shields.io/badge/status-Phase%200-8ab4b6.svg)](#project-status)
 
 </div>
+
+![SekerEdexWebLab browser command deck at 1920 by 1080](.github/assets/readme-command-deck.png)
+
+<p align="center"><sub>The browser implementation at its canonical 1920×1080 desktop viewport.</sub></p>
+
+SekerEdexWebLab recreates the eDEX-UI 2.2 `tron` experience in the browser: a central terminal, live
+telemetry, filesystem, globe, sound, and an on-screen keyboard all respond through one shared session.
+The repository also contains the deterministic capture and comparison system used to prove that the
+port still matches its frozen visual target.
 
 > [!IMPORTANT]
 > SekerEdexWebLab is an unofficial browser port derived from GitSquared's
 > [eDEX-UI](https://github.com/GitSquared/edex-ui). It is not maintained or endorsed by GitSquared or
 > the upstream contributors.
 
-![The upstream eDEX-UI 2.2 tron interface used as the project's frozen visual reference](references/edex-ui-v2.2.8/screenshot_default.png)
+## Why this project
 
-<p align="center"><sub>Frozen upstream visual reference — eDEX-UI 2.2, <code>tron</code>, <code>neofetch</code>, QWERTY. The browser port is measured against this image; this is not a screenshot of the port.</sub></p>
+| Product experience | Engineering discipline |
+| --- | --- |
+| A full-screen command deck rather than a static terminal-themed page | Source-driven reconstruction from the screenshot-era eDEX-UI code |
+| Terminal, files, content, telemetry, keyboard, motion, and sound share state | Immutable reference evidence and deterministic browser captures |
+| Desktop fidelity with a deliberate mobile fallback | Regional pixel/perceptual budgets and executable acceptance gates |
+| Mouse, physical keyboard, on-screen keyboard, and touch paths | Bounded repair attempts that cannot weaken the target or judge |
 
-## About
+## What you can do
 
-SekerEdexWebLab brings the original eDEX-UI 2.2 interface to the browser while preserving its
-full-screen command-deck experience: a central terminal, live panels, filesystem, globe, sound, and
-on-screen keyboard sharing one session.
-
-This repository contains both the browser application and the evidence-driven toolchain used to
-reproduce it. The toolchain pins the upstream source, captures deterministic browser states, measures
-regional visual differences, verifies interaction and audio behavior, and can run bounded Codex repair
-attempts without weakening the acceptance gates.
-
-## Highlights
-
-- Source-driven port based on the exact eDEX-UI screenshot-era code.
-- Deterministic Chromium capture with immutable target evidence.
-- Startup, sound, terminal, keyboard, tab, mouse, and touch interaction checks.
-- Regional pixel and perceptual comparison with durable reports and diff images.
-- Finite repair state machine with clean-worktree and allowed-path guards.
-- Fixed 1920×1080 desktop canvas with proportional scaling and a mobile fallback.
-- Upstream provenance, copied-asset hashes, and license inventory checked in CI.
+- Run the complete boot sequence with staged panels, original upstream cues, replay, and persistent
+  sound controls.
+- Use the terminal from a physical keyboard, the QWERTY screen keyboard, mouse, or touch, with visible
+  feedback across the deck.
+- Navigate the browser-safe filesystem and open repository-backed articles and image galleries from
+  either terminal commands or direct manipulation.
+- Watch the clock, process activity, CPU, memory, network traffic, and globe update without turning
+  renderers into hidden application state.
+- Use the fixed 1920×1080 desktop composition at any desktop viewport, or enter the explicit mobile
+  fallback on smaller screens.
+- Reproduce the canonical state, inspect regional differences, and generate durable evidence for each
+  verification run.
 
 ## Quick start
 
@@ -49,63 +58,85 @@ Requires Node.js 22 and npm.
 ```bash
 git clone https://github.com/Seker800/SekerEdexWebLab.git
 cd SekerEdexWebLab
-npm install
-npm run install:browsers
-npm run upstream:sync
+npm ci
 npm run app:dev
 ```
 
-Open the printed local URL, keep sound enabled, and select **Initialize system**. Use **REBOOT** to
-replay the startup sequence and **SOUND ON/OFF** to control audio.
+Open the printed local URL and choose **Initialize system**. Use **REBOOT** to replay the startup
+sequence and **SOUND ON/OFF** to control audio.
 
-## Verification
-
-Run the complete local gate:
+To install the browser engines and run the complete local acceptance gate:
 
 ```bash
+npm run install:browsers
 npm run verify
 ```
 
-It verifies the locked gate policy, upstream asset integrity, type checking, unit tests, the production
-build, demo workflow, startup and interaction behavior, Chromium and WebKit coverage, formal and
-perceptual regional visual budgets, and the deterministic replication workflow.
+## How it works
 
-Useful focused commands:
+```text
+physical / screen / mouse / touch input
+                    │
+                    ▼
+          typed commands and intents
+                    │
+                    ▼
+        session controller + event bus
+           ┌────────┼─────────┐
+           ▼        ▼         ▼
+       terminal  telemetry  content / files
+           └────────┼─────────┘
+                    ▼
+           visual and audio feedback
+```
+
+React owns declarative UI state. Imperative systems—terminal rendering, globe, JPEG effects, audio,
+and scheduled animation—sit behind disposable adapters. Browser observation, comparison, verdicts,
+and optional source repair remain separate process boundaries; only executable gates decide whether a
+scenario passes.
+
+### Repository map
+
+| Path | Responsibility |
+| --- | --- |
+| [`apps/clone`](apps/clone) | Browser application and copied-asset provenance |
+| [`content/blog`](content/blog) | Repository-backed articles and media |
+| [`src`](src) | Scenario configuration, capture orchestration, judging, and repair contracts |
+| [`scripts`](scripts) | App, asset, gate, and replication verification entry points |
+| [`specs`](specs) / [`schemas`](schemas) | Scenario contracts and typed process-boundary data |
+| [`references`](references) | Pinned upstream source and frozen visual evidence |
+
+Start with [NORTH_STAR.md](NORTH_STAR.md), [ARCHITECTURE.md](ARCHITECTURE.md), and the
+[visual north star](docs/VISUAL_NORTH_STAR.md). The module-level upstream lookup table lives in
+[docs/SOURCE_PORT_MAP.md](docs/SOURCE_PORT_MAP.md).
+
+## Verification
+
+`npm run verify` checks gate integrity, upstream asset hashes, types, tests, coverage, the production
+build, the demo workflow, Chromium and WebKit behavior, regional visual budgets, and deterministic
+replication.
 
 | Command | Purpose |
 | --- | --- |
-| `npm run gate:verify` | Verify canonical evidence, visual ceilings, asset manifest, and repair roots |
-| `npm run app:verify` | Verify startup, audio, interactions, layouts, and browser errors |
-| `npm run app:verify:webkit` | Verify core interactions, fixed-canvas geometry, mobile fallback, and browser errors in WebKit |
+| `npm run app:verify` | Startup, audio, interactions, layouts, and browser error gates in Chromium |
+| `npm run app:verify:webkit` | Core interactions, canvas geometry, mobile fallback, and browser errors in WebKit |
 | `npm run app:hotspots` | Rank the most visible 64×64 difference regions |
-| `npm run assets:verify` | Verify copied upstream assets and their SHA-256 manifest |
+| `npm run assets:verify` | Check copied upstream assets against the SHA-256 manifest |
 | `npm run replicate:verify` | Run the frozen visual replication state machine |
 | `npm run replicate:repair` | Run up to three guarded, source-first repair attempts |
 
-Reports and screenshots are written under `artifacts/` and are intentionally excluded from releases.
+Reports and screenshots are written to `artifacts/` and intentionally excluded from releases.
 
-## How it fits together
+## Project status
 
-```text
-Pinned upstream source + frozen screenshot
-                    │
-                    ▼
-      Browser application in apps/clone
-                    │
-             deterministic capture
-                    │
-                    ▼
-    comparison ──► verdict ──► durable report
-                       │
-                       └──► bounded repair (opt in)
-```
+Version 0.1 is a Phase 0 feasibility build. The startup and sound sequence, core interaction paths,
+desktop and mobile viewports, content browser, media viewer, and browser error gates are implemented
+and covered by the repository's acceptance workflow.
 
-Browser observation, comparison, verdicts, and source modification remain separate process boundaries.
-Codex may propose a repair, but only executable gates decide whether a scenario passes.
-
-Read [NORTH_STAR.md](NORTH_STAR.md), [ARCHITECTURE.md](ARCHITECTURE.md), and
-[the visual north star](docs/VISUAL_NORTH_STAR.md) before extending the system. The module-by-module
-upstream lookup table lives in [docs/SOURCE_PORT_MAP.md](docs/SOURCE_PORT_MAP.md).
+The terminal and telemetry use explicit, browser-safe simulations; this is not a remote shell or real
+host monitor. Authenticated sessions, route crawling, network contract comparison, and host telemetry
+remain future extension points. The project does not claim to be a drop-in replacement for the
+original desktop application.
 
 ## Source and provenance
 
@@ -113,29 +144,18 @@ The original application was created by [GitSquared](https://github.com/GitSquar
 GPLv3. The canonical interface source for this port is commit
 [`66ba190`](https://github.com/GitSquared/edex-ui/commit/66ba190ee5369523195c4012d0a798fbe4d43391),
 immediately after the `v2.2.0` tag. The later
-[`v2.2.8`](https://github.com/GitSquared/edex-ui/releases/tag/v2.2.8) release is only a secondary
-implementation and asset reference.
+[`v2.2.8`](https://github.com/GitSquared/edex-ui/releases/tag/v2.2.8) release is a secondary code and
+asset reference. The frozen target is documented in [the visual parity contract](docs/visual-parity.md).
 
 See [NOTICE.md](NOTICE.md) for authorship and third-party credits, and
 [apps/clone/UPSTREAM_ASSETS.md](apps/clone/UPSTREAM_ASSETS.md) for the file-level copied-asset inventory.
 
-## Project status
-
-Version 0.1 is a Phase 0 feasibility build. It verifies the startup and sound sequence, core
-interactions, desktop and mobile viewports, completed deck appearance, and browser error gates. The
-terminal and telemetry currently use safe browser simulations.
-
-Authenticated sessions, route crawling, network contract comparison, and real host telemetry remain
-future extension points. This project does not claim to be a drop-in replacement for the original
-desktop application.
-
 ## Contributing
 
 Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before changing the source;
-the project requires provenance checks and deterministic visual gates in addition to ordinary tests.
+this project requires provenance checks and deterministic visual gates in addition to ordinary tests.
 
 ## License
 
 SekerEdexWebLab is distributed under the [GNU General Public License v3.0](LICENSE), matching the
-original eDEX-UI project. Copyright in upstream code and assets remains with the respective authors, and
-third-party materials retain the notices documented in [NOTICE.md](NOTICE.md).
+original eDEX-UI project. Copyright in upstream code and assets remains with their respective authors.
