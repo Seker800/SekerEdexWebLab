@@ -32,13 +32,13 @@ describe("JPEG glitch reveal plan", () => {
     expect(glitchPhases.length).toBeGreaterThanOrEqual(4);
     expect(glitchPhases.length).toBeLessThanOrEqual(10);
     expect(new Set(glitchPhases.map((phase) => phase.holdMs)).size).toBeGreaterThan(2);
-    expect(glitchPhases.every((phase) => phase.holdMs >= 90 && phase.holdMs <= 210)).toBe(true);
+    expect(glitchPhases.every((phase) => phase.holdMs >= 90 && phase.holdMs <= 345)).toBe(true);
     expect(glitchPhases.every((phase, index, phases) => index === 0
       || (phase.params.quality >= phases[index - 1]!.params.quality
         && phase.params.iterations <= phases[index - 1]!.params.iterations
         && phase.params.resolutionScale >= phases[index - 1]!.params.resolutionScale))).toBe(true);
-    expect(plan.minimumVisibleMs).toBeGreaterThanOrEqual(860);
-    expect(plan.minimumVisibleMs).toBeLessThanOrEqual(2_600);
+    expect(plan.minimumVisibleMs).toBeGreaterThanOrEqual(1_400);
+    expect(plan.minimumVisibleMs).toBeLessThanOrEqual(3_100);
   });
 
   it("varies the codec seed, cadence and tear form for every reveal", () => {

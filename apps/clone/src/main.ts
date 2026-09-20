@@ -919,6 +919,29 @@ function toggleSound(): void {
 let bootAbortController: AbortController | undefined;
 lifecycle.add(() => bootAbortController?.abort());
 
+function waitForDesktopPaint(signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let observedFrames = 0;
+    let stopAnimation = (): void => undefined;
+    const cleanup = (): void => {
+      stopAnimation();
+      signal.removeEventListener("abort", handleAbort);
+    };
+    const handleAbort = (): void => {
+      cleanup();
+      reject(new DOMException("Boot sequence aborted", "AbortError"));
+    };
+    stopAnimation = runtimeScheduler!.eachFrame(() => {
+      observedFrames += 1;
+      if (observedFrames < 2) return;
+      cleanup();
+      resolve();
+    });
+    signal.addEventListener("abort", handleAbort, { once: true });
+    if (signal.aborted) handleAbort();
+  });
+}
+
 async function startBoot(): Promise<void> {
   bootAbortController?.abort();
   const controller = new AbortController();
@@ -929,6 +952,7 @@ async function startBoot(): Promise<void> {
   try {
     await runBootSequence(bootElements, audioDeck, speed, controller.signal);
     input.focus();
+    if (pendingImageOpen) await waitForDesktopPaint(controller.signal);
     const openPendingImage = pendingImageOpen;
     pendingImageOpen = undefined;
     openPendingImage?.();
