@@ -259,7 +259,10 @@ const contentOverlay = new FullscreenContentOverlay(
 );
 contentOverlay.register("document", contentReader);
 lifecycle.add(() => contentOverlay.dispose());
-const imageViewer = new ImageViewer(contentOverlay, (entry, description) => {
+const imageViewer = new ImageViewer(contentOverlay, {
+  now: () => performance.now(),
+  runAnimation: (callback) => runtimeScheduler?.eachFrame(callback) ?? (() => undefined)
+}, (entry, description) => {
   if (entry.contentPath) writeContentLocation(entry.contentPath, "push", description);
 });
 lifecycle.add(() => imageViewer.dispose());

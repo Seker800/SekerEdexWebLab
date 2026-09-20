@@ -26,6 +26,7 @@ The complete file mapping and integrity hashes are maintained in [`apps/clone/UP
 | Fira Mono | Mozilla Fira project and its designers | SIL Open Font License 1.1 |
 | United Sans Light and Medium | Copied unmodified from the pinned eDEX-UI source | United Sans is third-party font software. This project claims no ownership of it and does not grant rights beyond those supplied with the upstream distribution |
 | Selected file icon SVG data | The icon projects named in the embedded metadata of `edex-file-icons.json` | Per-icon attribution is preserved in that file |
+| VFX-JS (`@vfx-js/core` 1.1.0 and `@vfx-js/effects` 1.3.0) | [amagi.dev/vfx-js](https://github.com/fand/vfx-js), JPEG Glitch effect used by the media reveal adapter | MIT License; packages are consumed through npm without copying their source into this repository |
 
 “TRON” and related marks belong to their respective owners. References describe the visual inspiration cited by eDEX-UI and do not imply affiliation or endorsement.
 

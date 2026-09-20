@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createJpegGlitchRevealPlan } from "../apps/clone/src/jpeg-glitch-reveal.js";
+import { createJpegGlitchRevealPlan, jpegGlitchRetrySeed } from "../apps/clone/src/jpeg-glitch-reveal.js";
 
 describe("JPEG glitch reveal plan", () => {
   it("starts from the selected destructive preset and resolves monotonically", () => {
@@ -29,6 +29,8 @@ describe("JPEG glitch reveal plan", () => {
     expect(plan.phases.every((phase) => phase.params.seed === 0.35)).toBe(true);
     expect(plan.phases.every((phase) => phase.params.speed === 0)).toBe(true);
     expect(plan.phases.every((phase) => phase.params.randomFlip && !phase.params.vertical)).toBe(true);
+    expect(plan.phases.slice(0, -1).every((phase) => !phase.params.bypass)).toBe(true);
+    expect(plan.phases.at(-1)?.params.bypass).toBe(true);
   });
 
   it("removes the effect entirely for reduced motion", () => {
@@ -36,5 +38,12 @@ describe("JPEG glitch reveal plan", () => {
 
     expect(plan.phases).toEqual([]);
     expect(plan.minimumVisibleMs).toBe(0);
+  });
+
+  it("uses bounded deterministic retry seeds when a corrupted JPEG cannot decode", () => {
+    expect(jpegGlitchRetrySeed(0.35, 0)).toBe(0.35);
+    expect(jpegGlitchRetrySeed(0.35, 1)).toBeCloseTo(0.523, 6);
+    expect(jpegGlitchRetrySeed(0.35, 2)).toBeCloseTo(0.696, 6);
+    expect(jpegGlitchRetrySeed(0.35, 1)).toBe(jpegGlitchRetrySeed(0.35, 1));
   });
 });

@@ -1,6 +1,7 @@
 import type { BrowserFileEntry, BrowserImagePreview } from "./browser-filesystem.js";
 import type { FullscreenContentOverlay } from "./fullscreen-content-overlay.js";
 import { calculateContainedImageBounds, createImageRevealPlan, type ImageRevealPlan } from "./image-reveal.js";
+import { JpegGlitchRevealRenderer, type JpegGlitchRevealRuntime } from "./jpeg-glitch-reveal-renderer.js";
 
 export class ImageViewer {
   private readonly surface: HTMLElement;
@@ -10,6 +11,7 @@ export class ImageViewer {
   private readonly revealTiles: HTMLElement[] = [];
   private readonly revealLabel: HTMLElement;
   private readonly revealPlan: ImageRevealPlan;
+  private readonly jpegGlitchReveal: JpegGlitchRevealRenderer;
   private readonly title: HTMLElement;
   private readonly caption: HTMLElement;
   private readonly counter: HTMLElement;
@@ -31,6 +33,7 @@ export class ImageViewer {
 
   constructor(
     private readonly overlay: FullscreenContentOverlay,
+    revealRuntime: JpegGlitchRevealRuntime,
     private readonly onSelectionChange?: (
       entry: Readonly<BrowserFileEntry>,
       description?: Readonly<{ alt: string; caption?: string }>
@@ -56,9 +59,9 @@ export class ImageViewer {
     this.image = this.surface.querySelector("img")!;
     this.reveal = this.surface.querySelector(".image-viewer__reveal")!;
     this.revealLabel = this.surface.querySelector(".image-viewer__reveal-label")!;
-    this.revealPlan = createImageRevealPlan({
-      reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    });
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    this.revealPlan = createImageRevealPlan({ reducedMotion });
+    this.jpegGlitchReveal = new JpegGlitchRevealRenderer(this.stage, revealRuntime, reducedMotion);
     this.reveal.style.setProperty("--image-reveal-columns", String(this.revealPlan.columns));
     this.reveal.style.setProperty("--image-reveal-rows", String(this.revealPlan.rows));
     this.reveal.style.setProperty("--image-reveal-tile-duration", `${this.revealPlan.tileDurationMs}ms`);
@@ -106,6 +109,7 @@ export class ImageViewer {
   dispose(): void {
     this.close({ notify: false });
     this.cancelReveal();
+    this.jpegGlitchReveal.dispose();
     document.removeEventListener("keydown", this.handleKeydown, { capture: true });
     this.surface.remove();
   }
@@ -119,6 +123,7 @@ export class ImageViewer {
     this.zoom = Math.min(3, Math.max(0.5, value));
     this.image.style.scale = String(this.zoom);
     this.reveal.style.scale = String(this.zoom);
+    this.jpegGlitchReveal.setZoom(this.zoom);
     this.zoomLabel.textContent = `${Math.round(this.zoom * 100)}%`;
   }
 
@@ -139,6 +144,10 @@ export class ImageViewer {
     this.cancelReveal();
     const revision = this.revealRevision;
     this.stage.dataset.revealState = "loading";
+    delete this.stage.dataset.revealEngine;
+    delete this.stage.dataset.revealPhase;
+    delete this.stage.dataset.revealQuality;
+    delete this.stage.dataset.revealFrames;
     this.stage.setAttribute("aria-busy", "true");
     this.revealLabel.textContent = "DECODING MEDIA";
     this.clearRevealTiles();
@@ -160,12 +169,26 @@ export class ImageViewer {
       return;
     }
 
-    this.prepareRevealTiles(source);
-    this.revealLabel.textContent = "RASTER ACQUISITION";
-    this.stage.dataset.revealState = "revealing";
-    this.revealTimer = window.setTimeout(() => {
-      this.finishReveal(revision);
-    }, this.revealPlan.minimumVisibleMs);
+    const bounds = this.containedImageBounds();
+    this.revealLabel.textContent = "CORRUPTING SIGNAL";
+    const jpegRevealStarted = await this.jpegGlitchReveal.start(source, bounds, {
+      onFrame: (frame) => {
+        if (revision !== this.revealRevision) return;
+        this.stage.dataset.revealEngine = "jpeg-glitch";
+        this.stage.dataset.revealState = "revealing";
+        this.stage.dataset.revealPhase = String(frame.phase);
+        this.stage.dataset.revealQuality = String(frame.quality);
+        this.stage.dataset.revealFrames = String(frame.producedFrames);
+        this.revealLabel.textContent = "";
+      },
+      onComplete: () => this.finishReveal(revision),
+      onFailure: () => {
+        if (revision === this.revealRevision) this.startTileReveal(source, bounds, revision);
+      }
+    });
+    if (!jpegRevealStarted && revision === this.revealRevision && this.stage.dataset.revealState === "loading") {
+      this.startTileReveal(source, bounds, revision);
+    }
   }
 
   private async decodeImage(): Promise<void> {
@@ -190,19 +213,26 @@ export class ImageViewer {
     this.revealLabel.textContent = "";
   }
 
-  private prepareRevealTiles(source: string): void {
-    const bounds = calculateContainedImageBounds(
+  private containedImageBounds() {
+    return calculateContainedImageBounds(
       this.stage.clientWidth,
       this.stage.clientHeight,
       this.image.naturalWidth,
       this.image.naturalHeight
     );
+  }
+
+  private startTileReveal(source: string, bounds: ReturnType<typeof calculateContainedImageBounds>, revision: number): void {
+    this.stage.dataset.revealEngine = "tiles";
     this.reveal.style.left = `${bounds.left}px`;
     this.reveal.style.top = `${bounds.top}px`;
     this.reveal.style.width = `${bounds.width}px`;
     this.reveal.style.height = `${bounds.height}px`;
     const sourceUrl = new URL(source, document.baseURI).href;
     for (const tile of this.revealTiles) tile.style.backgroundImage = `url(${JSON.stringify(sourceUrl)})`;
+    this.revealLabel.textContent = "RASTER ACQUISITION";
+    this.stage.dataset.revealState = "revealing";
+    this.revealTimer = window.setTimeout(() => this.finishReveal(revision), this.revealPlan.minimumVisibleMs);
   }
 
   private clearRevealTiles(): void {
@@ -211,6 +241,7 @@ export class ImageViewer {
 
   private cancelReveal(): void {
     this.revealRevision += 1;
+    this.jpegGlitchReveal.cancel();
     if (this.revealTimer !== undefined) window.clearTimeout(this.revealTimer);
     this.revealTimer = undefined;
   }

@@ -526,6 +526,7 @@ try {
     deviceScaleFactor: 1
   });
   const motionPage = await motionContext.newPage();
+  await motionPage.bringToFront();
   motionPage.on("console", (message) => { if (message.type() === "error") consoleErrors.push(`motion: ${message.text()}`); });
   motionPage.on("pageerror", (error) => pageErrors.push(`motion: ${error.message}`));
   await motionPage.goto("http://127.0.0.1:4174/?fastboot=1", { waitUntil: "networkidle" });
@@ -731,17 +732,28 @@ try {
     || revealVisual.quality !== 0.17 || revealVisual.producedFrames < 1) {
     throw new Error(`Media reveal did not begin with the selected JPEG corruption preset: ${JSON.stringify(revealVisual)}`);
   }
-  await motionPage.locator('.image-viewer__stage[data-reveal-phase="4"]').waitFor({ timeout: 8_000 });
+  await motionPage.screenshot({ path: path.join(artifactDirectory, "image-reveal-jpeg-glitch-start.png"), omitBackground: true });
+  try {
+    await motionPage.locator('.image-viewer__stage[data-reveal-state="revealing"][data-reveal-phase="4"]').waitFor({ timeout: 8_000 });
+  } catch (error) {
+    const stalledReveal = await motionPage.locator(".image-viewer__stage").evaluate((stage: HTMLElement) => ({
+      ...stage.dataset,
+      canvasCount: stage.querySelectorAll(".image-viewer__jpeg-glitch-canvas").length,
+      sourceCount: stage.querySelectorAll(".image-viewer__jpeg-glitch-source").length
+    }));
+    throw new Error(`JPEG corruption reveal stalled: ${JSON.stringify(stalledReveal)}`, { cause: error });
+  }
   const finalGlitchQuality = Number(await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-quality"));
   if (finalGlitchQuality <= revealVisual.quality) throw new Error("JPEG corruption did not progressively resolve toward the source image");
+  await motionPage.screenshot({ path: path.join(artifactDirectory, "image-reveal-jpeg-glitch-resolving.png"), omitBackground: true });
   await motionPage.locator('.image-viewer__stage[data-reveal-state="ready"]').waitFor({ timeout: 8_000 });
   const revealElapsedMs = Date.now() - revealStartedAt;
   if (revealElapsedMs < 1_000) throw new Error(`Media reveal completed too quickly: ${revealElapsedMs}ms`);
   if (await motionPage.locator(".image-viewer__jpeg-glitch-canvas").count() !== 0
-    || await motionPage.locator(".image-viewer__stage img").evaluate((image) => getComputedStyle(image).opacity) !== "1") {
+    || await motionPage.locator(".image-viewer__stage > img:not(.image-viewer__jpeg-glitch-source)").evaluate((image) => getComputedStyle(image).opacity) !== "1") {
     throw new Error("JPEG reveal did not hand off cleanly to the original image");
   }
-  if (await motionPage.locator(".image-viewer__stage img").getAttribute("alt") !== "The command deck regions") {
+  if (await motionPage.locator(".image-viewer__stage > img:not(.image-viewer__jpeg-glitch-source)").getAttribute("alt") !== "The command deck regions") {
     throw new Error("Image viewer did not preserve the author's Markdown alt text");
   }
   if (!motionPage.url().endsWith("#/blog/posts/building-edex-web/command-deck.svg")) throw new Error(`Image navigation did not update the content hash: ${motionPage.url()}`);
@@ -801,14 +813,14 @@ try {
   if (await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-state") === "ready") {
     throw new Error("Image sequence navigation skipped the media reveal animation");
   }
-  await motionPage.locator(".image-viewer__stage img").evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0 ? undefined : new Promise<void>((resolve, reject) => {
+  await motionPage.locator(".image-viewer__stage > img:not(.image-viewer__jpeg-glitch-source)").evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0 ? undefined : new Promise<void>((resolve, reject) => {
     image.addEventListener("load", () => resolve(), { once: true });
     image.addEventListener("error", () => reject(new Error("Image viewer asset failed to load")), { once: true });
   }));
   await motionPage.screenshot({ path: path.join(artifactDirectory, "image-viewer.png"), animations: "disabled", omitBackground: true });
   await motionPage.goBack({ waitUntil: "networkidle" });
   if (await motionPage.locator("#image-viewer-title").textContent() !== "command-deck.svg") throw new Error("Browser back did not restore the previous media selection");
-  if (await motionPage.locator(".image-viewer__stage img").getAttribute("alt") !== "The command deck regions") {
+  if (await motionPage.locator(".image-viewer__stage > img:not(.image-viewer__jpeg-glitch-source)").getAttribute("alt") !== "The command deck regions") {
     throw new Error("Browser back did not preserve the author's Markdown alt text");
   }
   await motionPage.goBack({ waitUntil: "networkidle" });
@@ -851,7 +863,7 @@ try {
   await directImagePage.locator('html[data-boot-phase="complete"]').waitFor({ timeout: 10_000 });
   await directImagePage.locator('.image-viewer__stage[data-reveal-engine="jpeg-glitch"][data-reveal-state="revealing"]').waitFor({ timeout: 5_000 });
   const directReveal = await directImagePage.evaluate(() => {
-    const image = document.querySelector<HTMLImageElement>(".image-viewer__stage img")!;
+    const image = document.querySelector<HTMLImageElement>(".image-viewer__stage > img:not(.image-viewer__jpeg-glitch-source)")!;
     const stage = document.querySelector<HTMLElement>(".image-viewer__stage")!;
     const canvas = stage.querySelector<HTMLCanvasElement>(".image-viewer__jpeg-glitch-canvas")!;
     return {
@@ -946,8 +958,16 @@ try {
     ],
     responsiveChecks: ["1934x1094 frozen Electron container", "1920x1080 logical canvas", "1440x900 with 1440x810 centered stage", "1280x800 with 1280x720 centered stage", "390x844 terminal mode", "reduced-motion static feedback"],
     performanceCheck: frameSample,
+    mediaRevealCheck: {
+      engine: "@vfx-js/effects JPEGGlitchEffect",
+      viewport: { width: 1920, height: 1080 },
+      initialPreset: { quality: revealVisual.quality, seed: 0.35, iterations: 10, resolutionScale: 0.63 },
+      finalQuality: finalGlitchQuality,
+      elapsedMs: revealElapsedMs,
+      directRouteProducedFrames: directReveal.producedFrames
+    },
     sourceDrivenChecks: sourceDrivenState,
-    screenshots: ["boot-gate.png", "boot-log.png", "boot-title-outline.png", "boot-title-filled.png", "boot-title-framed.png", "boot-title-glitch.png", "boot-reveal.png", "boot-greeting.png", "boot-greeting-fading.png", "boot-terminal-ready.png", "blog-reader.png", "image-viewer.png", "command-deck.png", "command-deck-1920x1080.png", "command-deck-1440x900.png", "command-deck-1280x800.png", "command-deck-mobile.png"],
+    screenshots: ["boot-gate.png", "boot-log.png", "boot-title-outline.png", "boot-title-filled.png", "boot-title-framed.png", "boot-title-glitch.png", "boot-reveal.png", "boot-greeting.png", "boot-greeting-fading.png", "boot-terminal-ready.png", "blog-reader.png", "image-reveal-jpeg-glitch-start.png", "image-reveal-jpeg-glitch-resolving.png", "image-viewer.png", "command-deck.png", "command-deck-1920x1080.png", "command-deck-1440x900.png", "command-deck-1280x800.png", "command-deck-mobile.png"],
     consoleErrors,
     pageErrors,
     upstreamVisualMetrics: metrics,
