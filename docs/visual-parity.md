@@ -93,10 +93,12 @@
 5. 性能采样环境与数据。
 6. 是否继续、调整或终止该方向的结论。
 
-当前交互证据由 `npm run app:verify` 生成到 `artifacts/app-verification/report.json`。2026-09-18
-的 Chromium 无头采样在完整动态工作台上记录 30 帧、约 489 ms、约 61.3 FPS；同一门禁执行
-实体键盘、鼠标、桌面触摸键盘、声音开关、主题拒绝、文件系统联动、减少动态效果与
-390×844 移动终端模式。
+当前交互证据由 `npm run app:verify` 生成到 `artifacts/app-verification/report.json`。2026-09-20
+的 Chromium 门禁除桌面交互与性能采样外，还在 390×844、2× DPR 的真实触控上下文验证移动
+终端提交命令、44px 控件、16px 输入、无横向裁切、动态高度收缩和安全区布局，并在 844×390
+粗指针横屏继续使用同一专用终端模式。`npm run app:verify:webkit` 独立验证 WebKit 的移动输入、
+尺寸和无溢出条件；对应截图为 `command-deck-mobile.png`、`command-deck-mobile-touch.png` 与
+`command-deck-mobile-landscape.png`。
 
 ## 有意扩展：媒体显现
 

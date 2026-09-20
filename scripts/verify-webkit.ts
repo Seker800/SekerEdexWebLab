@@ -85,14 +85,23 @@ try {
   if (await page.locator(".keyboard-panel").isVisible()) throw new Error("WebKit mobile mode retained the desktop keyboard");
   const mobileOverflow = await page.evaluate(() => ({
     horizontal: document.documentElement.scrollWidth > innerWidth,
-    vertical: document.documentElement.scrollHeight > innerHeight
+    vertical: document.documentElement.scrollHeight > innerHeight,
+    terminalOutputFits: document.querySelector<HTMLElement>("#terminal-output")!.scrollWidth <= document.querySelector<HTMLElement>("#terminal-output")!.clientWidth,
+    terminalInputFontSize: Number.parseFloat(getComputedStyle(document.querySelector<HTMLInputElement>("#terminal-input")!).fontSize),
+    terminalPromptHeight: document.querySelector<HTMLElement>(".terminal-prompt")!.getBoundingClientRect().height
   }));
   if (mobileOverflow.horizontal || mobileOverflow.vertical) throw new Error(`WebKit mobile mode overflowed: ${JSON.stringify(mobileOverflow)}`);
+  if (!mobileOverflow.terminalOutputFits || mobileOverflow.terminalInputFontSize < 16 || mobileOverflow.terminalPromptHeight < 44) {
+    throw new Error(`WebKit mobile terminal is not touch-usable: ${JSON.stringify(mobileOverflow)}`);
+  }
+  await page.locator("#terminal-input").fill("status");
+  await page.locator("#terminal-input").press("Enter");
+  await page.getByText("CORE ONLINE", { exact: false }).waitFor();
 
   const report = {
     status: consoleErrors.length === 0 && pageErrors.length === 0 ? "passed" : "failed",
     browser: `WebKit ${browser.version()}`,
-    checks: ["required desktop regions", "1920x1080 logical canvas", "global physical terminal typing", "terminal focus recovery", "bounded long terminal draft", "1440x900 letterbox", "typed terminal and filesystem feedback", "390x844 mobile terminal"],
+    checks: ["required desktop regions", "1920x1080 logical canvas", "global physical terminal typing", "terminal focus recovery", "bounded long terminal draft", "1440x900 letterbox", "typed terminal and filesystem feedback", "390x844 touch-usable mobile terminal"],
     consoleErrors,
     pageErrors
   };

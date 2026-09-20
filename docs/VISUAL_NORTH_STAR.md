@@ -183,6 +183,12 @@ Desktop fullscreen is the canonical presentation. Adaptation should follow this 
 
 Each supported viewport receives its own reference screenshot and acceptance threshold. Layouts should recompose by region instead of scaling the entire desktop canvas as one bitmap.
 
+The mobile fallback is a dedicated terminal surface rather than a scaled desktop deck. Portrait phones and
+coarse-pointer landscape devices retain session tabs, sound, reboot, terminal history and native-keyboard input;
+desktop telemetry, filesystem chrome and the on-screen QWERTY keyboard are removed from that constrained surface.
+Mobile acceptance requires safe-area and dynamic-viewport support, 44px touch targets, an input font that does not
+trigger iOS focus zoom, command submission through a touch context, and terminal output without horizontal clipping.
+
 ## Acceptance criteria
 
 A screen satisfies this visual direction when:

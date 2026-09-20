@@ -7,7 +7,7 @@ import { canonicalFileEntries } from "./filesystem-model.js";
 import { bindPhysicalKeyboardFeedback, bindPointerKeyboardFeedback, bindPointerKeyRepeat, keyboardKeysForEvent } from "./keyboard-feedback.js";
 import { loadKeyboardLayout, resolveKeyboardCommand } from "./keyboard-layout.js";
 import { CommandDeckController, type TerminalFeedback } from "./command-deck-controller.js";
-import { neofetchText } from "./terminal-model.js";
+import { compactPromptPath, mobileNeofetchText, neofetchText } from "./terminal-model.js";
 import { createTelemetrySnapshot, sparklinePoints } from "./telemetry.js";
 import { documentVisibilitySource, RuntimeScheduler } from "./runtime-scheduler.js";
 import { DisposableRegistry } from "./disposable-registry.js";
@@ -103,9 +103,9 @@ app.innerHTML = `
         <span class="terminal-times"><span id="terminal-time">SESSION // READY</span><span id="terminal-time-secondary"></span></span>
         <div class="terminal-output" id="terminal-output" role="log" aria-live="polite"></div>
         <form class="terminal-prompt" id="terminal-form">
-          <label class="terminal-powerline" for="terminal-input"><span>~/.c/</span><strong>eDEX-UI</strong><span class="terminal-powerline__chevron"> ❯</span></label>
+          <label class="terminal-powerline" for="terminal-input">~/.c/eDEX-UI</label>
           <span class="terminal-editor">
-            <input id="terminal-input" autocomplete="off" spellcheck="false" aria-label="Terminal command" />
+            <input id="terminal-input" autocomplete="off" autocapitalize="none" autocorrect="off" enterkeyhint="send" inputmode="text" spellcheck="false" aria-label="Terminal command" />
             <span class="cursor" aria-hidden="true"></span>
           </span>
         </form>
@@ -170,8 +170,7 @@ const input = document.querySelector<HTMLInputElement>("#terminal-input")!;
 const form = document.querySelector<HTMLFormElement>("#terminal-form")!;
 const fileGrid = document.querySelector<HTMLDivElement>(".file-grid")!;
 const filesystemTitle = document.querySelector<HTMLElement>(".filesystem-panel .section-label small")!;
-const promptPrefix = document.querySelector<HTMLElement>(".terminal-prompt .terminal-powerline > span:first-child")!;
-const promptDirectory = document.querySelector<HTMLElement>(".terminal-prompt .terminal-powerline > strong")!;
+const prompt = document.querySelector<HTMLElement>(".terminal-prompt .terminal-powerline")!;
 const terminalTabs = [...document.querySelectorAll<HTMLButtonElement>(".terminal-tabs button")];
 const commandDeckElement = document.querySelector<HTMLElement>("#command-deck")!;
 const contentOverlayElement = document.querySelector<HTMLElement>("#content-overlay")!;
@@ -280,8 +279,14 @@ function renderTerminal(): void {
       `<span class="neofetch-swatches" aria-label="terminal color palette">${Array.from({ length: 8 }, () => "<i></i>").join("")}</span>`
     ).replace(
       "~/.c/eDEX-UI ❯ neofetch",
-      `<span class="terminal-powerline"><span>~/.c/</span><strong>eDEX-UI</strong><span class="terminal-powerline__chevron"> ❯</span></span>  <span class="terminal-command-name">neofetch</span>`
+      `<span class="terminal-powerline">~/.c/eDEX-UI</span>  <span class="terminal-command-name">neofetch</span>`
     );
+    if (entry.text === neofetchText) {
+      return [
+        `<pre class="terminal-entry terminal-entry--${entry.kind} terminal-entry--desktop-neofetch">${content}</pre>`,
+        `<pre class="terminal-entry terminal-entry--${entry.kind} terminal-entry--mobile-neofetch">${renderTerminalText(mobileNeofetchText)}</pre>`
+      ].join("");
+    }
     return `<pre class="terminal-entry terminal-entry--${entry.kind}">${content}</pre>`;
   }).join("");
   output.scrollTop = output.scrollHeight;
@@ -336,14 +341,7 @@ function renderFilesystem(): void {
 
 function renderPrompt(): void {
   const { current: { cwd }, filesystem: { canonicalRoot, root } } = commandDeck.snapshot();
-  if (cwd === canonicalRoot || cwd.startsWith(`${canonicalRoot}/`)) {
-    const suffix = cwd === canonicalRoot ? "" : `/${cwd.slice(canonicalRoot.length + 1)}`;
-    promptPrefix.textContent = "~/.c/";
-    promptDirectory.textContent = `eDEX-UI${suffix}`;
-    return;
-  }
-  promptPrefix.textContent = "~/";
-  promptDirectory.textContent = cwd === root ? "" : cwd.slice(root.length + 1);
+  prompt.textContent = compactPromptPath(cwd, root, canonicalRoot);
 }
 
 function renderSessionChrome(): void {

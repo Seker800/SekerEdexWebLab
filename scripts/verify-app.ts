@@ -239,6 +239,11 @@ try {
       memoryPoints: document.querySelectorAll("#memory-grid > i").length,
       originalFileIcons: document.querySelectorAll(".file-grid button svg").length,
       powerlinePrompts: document.querySelectorAll(".terminal-powerline").length,
+      plainTextPowerlinePrompts: [...document.querySelectorAll(".terminal-powerline")].filter((element) =>
+        element.childElementCount === 0
+        && element.childNodes.length === 1
+        && element.firstChild?.nodeType === Node.TEXT_NODE
+      ).length,
       sourceFilesystemScrollbars: document.querySelectorAll(".filesystem-source-scrollbar").length,
       globeCanvas: document.querySelectorAll("#edex-globe canvas").length,
       leftBootModules: document.querySelectorAll(".system-panel [data-boot-module]").length,
@@ -251,6 +256,9 @@ try {
   if (sourceDrivenState.memoryPoints !== 440) throw new Error(`Expected 440 canonical memory points; observed ${sourceDrivenState.memoryPoints}`);
   if (sourceDrivenState.originalFileIcons !== 22) throw new Error(`Expected 22 upstream file icons; observed ${sourceDrivenState.originalFileIcons}`);
   if (sourceDrivenState.powerlinePrompts !== 2) throw new Error(`Expected two source Powerline prompt segments; observed ${sourceDrivenState.powerlinePrompts}`);
+  if (sourceDrivenState.plainTextPowerlinePrompts !== 2) {
+    throw new Error(`Expected both Powerline prompts to contain one direct path text node; observed ${sourceDrivenState.plainTextPowerlinePrompts}`);
+  }
   if (sourceDrivenState.sourceFilesystemScrollbars !== 1) throw new Error(`Expected the Electron source filesystem scrollbar compatibility layer; observed ${sourceDrivenState.sourceFilesystemScrollbars}`);
   if (sourceDrivenState.globeCanvas !== 1) throw new Error(`Expected one upstream ENCOM globe canvas; observed ${sourceDrivenState.globeCanvas}`);
   if (sourceDrivenState.leftBootModules !== 6) throw new Error(`Expected six upstream left boot modules; observed ${sourceDrivenState.leftBootModules}`);
@@ -507,6 +515,7 @@ try {
   await page.locator("#terminal-input").press("Enter");
   await page.getByText("AVAILABLE COMMANDS", { exact: false }).waitFor();
   await page.setViewportSize({ width: 390, height: 500 });
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
   const mobileKeyboardViewportState = await page.evaluate(() => {
     const prompt = document.querySelector<HTMLElement>(".terminal-prompt")!.getBoundingClientRect();
     return {
@@ -540,6 +549,47 @@ try {
   await touchPage.locator('[data-key="ENTER"]').tap();
   await touchPage.getByText("AVAILABLE COMMANDS", { exact: false }).waitFor();
   await touchContext.close();
+  const mobileTouchContext = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    colorScheme: "dark",
+    reducedMotion: "reduce",
+    hasTouch: true,
+    isMobile: true,
+    deviceScaleFactor: 2
+  });
+  const mobileTouchPage = await mobileTouchContext.newPage();
+  mobileTouchPage.on("console", (message) => { if (message.type() === "error") consoleErrors.push(`mobile-touch: ${message.text()}`); });
+  mobileTouchPage.on("pageerror", (error) => pageErrors.push(`mobile-touch: ${error.message}`));
+  await mobileTouchPage.goto("http://127.0.0.1:4174/?static=1", { waitUntil: "networkidle" });
+  await mobileTouchPage.locator("[data-ready]").waitFor();
+  const mobileTouchInput = mobileTouchPage.locator("#terminal-input");
+  await mobileTouchInput.tap();
+  await mobileTouchInput.fill("status");
+  await mobileTouchInput.press("Enter");
+  await mobileTouchPage.getByText("CORE ONLINE", { exact: false }).waitFor();
+  for (const controlName of ["REBOOT", "SOUND ON"]) {
+    const bounds = await mobileTouchPage.getByRole("button", { name: controlName }).boundingBox();
+    if (!bounds || bounds.height < 44 || bounds.width < 44) throw new Error(`Mobile ${controlName} control is not touch-sized: ${JSON.stringify(bounds)}`);
+  }
+  await mobileTouchPage.screenshot({ path: path.join(artifactDirectory, "command-deck-mobile-touch.png"), animations: "disabled", omitBackground: true });
+  await mobileTouchPage.setViewportSize({ width: 844, height: 390 });
+  await mobileTouchPage.reload({ waitUntil: "networkidle" });
+  await mobileTouchPage.locator("[data-ready]").waitFor();
+  const mobileLandscapeState = await mobileTouchPage.evaluate(() => {
+    const terminal = document.querySelector<HTMLElement>(".terminal-panel")!.getBoundingClientRect();
+    return {
+      terminalLeft: terminal.left,
+      terminalRight: terminal.right,
+      terminalInputFontSize: Number.parseFloat(getComputedStyle(document.querySelector<HTMLInputElement>("#terminal-input")!).fontSize),
+      terminalPromptHeight: document.querySelector<HTMLElement>(".terminal-prompt")!.getBoundingClientRect().height,
+      desktopPanelVisible: getComputedStyle(document.querySelector<HTMLElement>(".system-panel")!).display !== "none"
+    };
+  });
+  if (mobileLandscapeState.desktopPanelVisible || mobileLandscapeState.terminalLeft < 0 || mobileLandscapeState.terminalRight > 844 || mobileLandscapeState.terminalInputFontSize < 16 || mobileLandscapeState.terminalPromptHeight < 44) {
+    throw new Error(`Mobile landscape did not retain the dedicated touch terminal mode: ${JSON.stringify(mobileLandscapeState)}`);
+  }
+  await mobileTouchPage.screenshot({ path: path.join(artifactDirectory, "command-deck-mobile-landscape.png"), animations: "disabled", omitBackground: true });
+  await mobileTouchContext.close();
   const motionContext = await browser.newContext({
     viewport: { width: 1920, height: 1080 },
     colorScheme: "dark",
@@ -1056,7 +1106,7 @@ try {
       "touch keyboard command",
       "normal-motion idle cadence"
     ],
-    responsiveChecks: ["1934x1094 frozen Electron container", "1920x1080 logical canvas", "1440x900 with 1440x810 centered stage", "1280x800 with 1280x720 centered stage", "390x844 terminal mode", "reduced-motion static feedback"],
+    responsiveChecks: ["1934x1094 frozen Electron container", "1920x1080 logical canvas", "1440x900 with 1440x810 centered stage", "1280x800 with 1280x720 centered stage", "390x844 terminal mode", "390x844 touch terminal interaction", "844x390 touch terminal landscape", "reduced-motion static feedback"],
     performanceCheck: frameSample,
     mediaRevealCheck: {
       engine: "@vfx-js/effects JPEGGlitchEffect",
@@ -1070,7 +1120,7 @@ try {
       directRouteProducedFrames: directReveal.producedFrames
     },
     sourceDrivenChecks: sourceDrivenState,
-    screenshots: ["boot-gate.png", "boot-log.png", "boot-title-outline.png", "boot-title-filled.png", "boot-title-framed.png", "boot-title-glitch.png", "boot-reveal.png", "boot-greeting.png", "boot-greeting-fading.png", "boot-terminal-ready.png", "blog-reader.png", "image-reveal-jpeg-glitch-start.png", "image-reveal-jpeg-glitch-resolving.png", "image-viewer.png", "command-deck.png", "command-deck-1920x1080.png", "command-deck-1440x900.png", "command-deck-1280x800.png", "command-deck-mobile.png"],
+    screenshots: ["boot-gate.png", "boot-log.png", "boot-title-outline.png", "boot-title-filled.png", "boot-title-framed.png", "boot-title-glitch.png", "boot-reveal.png", "boot-greeting.png", "boot-greeting-fading.png", "boot-terminal-ready.png", "blog-reader.png", "image-reveal-jpeg-glitch-start.png", "image-reveal-jpeg-glitch-resolving.png", "image-viewer.png", "command-deck.png", "command-deck-1920x1080.png", "command-deck-1440x900.png", "command-deck-1280x800.png", "command-deck-mobile.png", "command-deck-mobile-touch.png", "command-deck-mobile-landscape.png"],
     consoleErrors,
     pageErrors,
     upstreamVisualMetrics: metrics,

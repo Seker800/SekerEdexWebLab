@@ -78,3 +78,19 @@ export const neofetchText = [
   "~/.c/eDEX-UI ❯ neofetch",
   ...neofetchRows.map(([logo, info]) => `${logo.padEnd(30)}${info}`)
 ].join("\n");
+
+export const mobileNeofetchText = [
+  "cd ..",
+  "~/.c/eDEX-UI ❯ neofetch",
+  ...neofetchRows.map(([, info]) => info).filter(Boolean)
+].join("\n");
+
+export function compactPromptPath(cwd: string, root: string, canonicalRoot: string): string {
+  if (cwd === canonicalRoot || cwd.startsWith(`${canonicalRoot}/`)) {
+    const suffix = cwd === canonicalRoot ? "" : cwd.slice(canonicalRoot.length);
+    return `~/.c/eDEX-UI${suffix}`;
+  }
+  if (cwd === root) return "~";
+  if (cwd.startsWith(`${root}/`)) return `~/${cwd.slice(root.length + 1)}`;
+  return cwd;
+}
