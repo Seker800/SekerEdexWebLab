@@ -490,6 +490,25 @@ try {
   if (!letterboxStageBounds) throw new Error("Could not measure the 1440x900 canvas stage");
   assertBounds("1440x900 canvas stage", letterboxStageBounds, { x: 0, y: 45, width: 1440, height: 810 }, 1);
   await page.screenshot({ path: path.join(artifactDirectory, "command-deck-1440x900.png"), animations: "disabled", omitBackground: true });
+  await page.setViewportSize({ width: 1024, height: 1024 });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.locator("[data-ready]").waitFor();
+  await page.locator("#boot-overlay").waitFor({ state: "hidden" });
+  const squareDesktopStageBounds = await page.locator(".canvas-stage").boundingBox();
+  if (!squareDesktopStageBounds) throw new Error("Could not measure the 1024x1024 desktop canvas stage");
+  assertBounds("1024x1024 desktop canvas stage", squareDesktopStageBounds, { x: 0, y: 224, width: 1024, height: 576 }, 1);
+  const squareDesktopScale = 1024 / 1920;
+  for (const [name, definition] of Object.entries(canonicalRegionDefinitions)) {
+    const box = await page.locator(definition.selector).boundingBox();
+    if (!box) throw new Error(`1024x1024 desktop viewport dropped canonical region: ${name}`);
+    assertBounds(`1024x1024 ${name}`, box, {
+      x: definition.expectedBounds.x * squareDesktopScale,
+      y: 224 + definition.expectedBounds.y * squareDesktopScale,
+      width: definition.expectedBounds.width * squareDesktopScale,
+      height: definition.expectedBounds.height * squareDesktopScale
+    }, 3);
+  }
+  await page.screenshot({ path: path.join(artifactDirectory, "command-deck-1024x1024.png"), animations: "disabled", omitBackground: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload({ waitUntil: "networkidle" });
   await page.locator("[data-ready]").waitFor();
@@ -1132,7 +1151,7 @@ try {
       "touch keyboard command",
       "normal-motion idle cadence"
     ],
-    responsiveChecks: ["1934x1094 frozen Electron container", "1920x1080 logical canvas", "1440x900 with 1440x810 centered stage", "1280x800 with 1280x720 centered stage", "390x844 terminal mode", "390x844 touch terminal interaction", "390x844 terminal/files shared navigation", "844x390 touch terminal landscape", "reduced-motion static feedback"],
+    responsiveChecks: ["1934x1094 frozen Electron container", "1920x1080 logical canvas", "1440x900 with 1440x810 centered stage", "1280x800 with 1280x720 centered stage", "1024x1024 with canonical 1024x576 centered stage", "390x844 terminal mode", "390x844 touch terminal interaction", "390x844 terminal/files shared navigation", "844x390 touch terminal landscape", "reduced-motion static feedback"],
     performanceCheck: frameSample,
     mediaRevealCheck: {
       engine: "@vfx-js/effects JPEGGlitchEffect",
@@ -1146,7 +1165,7 @@ try {
       directRouteProducedFrames: directReveal.producedFrames
     },
     sourceDrivenChecks: sourceDrivenState,
-    screenshots: ["boot-gate.png", "boot-log.png", "boot-title-outline.png", "boot-title-filled.png", "boot-title-framed.png", "boot-title-glitch.png", "boot-reveal.png", "boot-greeting.png", "boot-greeting-fading.png", "boot-terminal-ready.png", "blog-reader.png", "image-reveal-jpeg-glitch-start.png", "image-reveal-jpeg-glitch-resolving.png", "image-viewer.png", "command-deck.png", "command-deck-1920x1080.png", "command-deck-1440x900.png", "command-deck-1280x800.png", "command-deck-mobile.png", "command-deck-mobile-touch.png", "command-deck-mobile-files.png", "command-deck-mobile-landscape.png"],
+    screenshots: ["boot-gate.png", "boot-log.png", "boot-title-outline.png", "boot-title-filled.png", "boot-title-framed.png", "boot-title-glitch.png", "boot-reveal.png", "boot-greeting.png", "boot-greeting-fading.png", "boot-terminal-ready.png", "blog-reader.png", "image-reveal-jpeg-glitch-start.png", "image-reveal-jpeg-glitch-resolving.png", "image-viewer.png", "command-deck.png", "command-deck-1920x1080.png", "command-deck-1440x900.png", "command-deck-1280x800.png", "command-deck-1024x1024.png", "command-deck-mobile.png", "command-deck-mobile-touch.png", "command-deck-mobile-files.png", "command-deck-mobile-landscape.png"],
     consoleErrors,
     pageErrors,
     upstreamVisualMetrics: metrics,
