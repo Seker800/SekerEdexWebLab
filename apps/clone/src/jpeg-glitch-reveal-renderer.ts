@@ -3,8 +3,7 @@ import { JPEGGlitchEffect } from "@vfx-js/effects";
 import type { ContainedImageBounds } from "./image-reveal.js";
 import {
   createJpegGlitchRevealPlan,
-  jpegGlitchRetrySeed,
-  type JpegGlitchRevealPlan
+  jpegGlitchRetrySeed
 } from "./jpeg-glitch-reveal.js";
 
 export interface JpegGlitchRevealRuntime {
@@ -15,6 +14,8 @@ export interface JpegGlitchRevealRuntime {
 export interface JpegGlitchRevealFrame {
   readonly phase: number;
   readonly quality: number;
+  readonly seed: number;
+  readonly speed: number;
   readonly producedFrames: number;
 }
 
@@ -29,7 +30,6 @@ const FRAME_RETRY_AFTER_MS = 220;
 const MAX_FRAME_RETRIES = 3;
 
 export class JpegGlitchRevealRenderer {
-  private readonly plan: JpegGlitchRevealPlan;
   private generation = 0;
   private vfx: VFX | undefined;
   private canvas: HTMLCanvasElement | undefined;
@@ -41,13 +41,11 @@ export class JpegGlitchRevealRenderer {
   constructor(
     private readonly stage: HTMLElement,
     private readonly runtime: JpegGlitchRevealRuntime,
-    reducedMotion: boolean
-  ) {
-    this.plan = createJpegGlitchRevealPlan({ reducedMotion });
-  }
+    private readonly reducedMotion: boolean
+  ) {}
 
   canAnimate(): boolean {
-    return this.plan.phases.length > 0;
+    return !this.reducedMotion;
   }
 
   setZoom(zoom: number): void {
@@ -58,6 +56,7 @@ export class JpegGlitchRevealRenderer {
   async start(source: string, bounds: ContainedImageBounds, callbacks: JpegGlitchRevealCallbacks): Promise<boolean> {
     this.cancel();
     if (!this.canAnimate()) return false;
+    const plan = createJpegGlitchRevealPlan();
 
     const generation = this.generation;
     const sourceImage = document.createElement("img");
@@ -104,7 +103,7 @@ export class JpegGlitchRevealRenderer {
     canvas.classList.add("image-viewer__jpeg-glitch-canvas");
     canvas.style.visibility = "hidden";
 
-    const effect = new JPEGGlitchEffect(this.plan.phases[0]!.params);
+    const effect = new JPEGGlitchEffect(plan.phases[0]!.params);
     this.effect = effect;
     try {
       await vfx.add(sourceImage, { effect });
@@ -115,23 +114,28 @@ export class JpegGlitchRevealRenderer {
     if (generation !== this.generation) return false;
 
     let phase = 0;
-    let requestedAtFrame = effect.producedFrames;
+    const requestedAtFrame = effect.producedFrames;
     let phaseElapsedMs = 0;
     let frameWaitElapsedMs = 0;
     let frameRetries = 0;
+    let activeSeed = plan.phases[0]!.params.seed;
+    let publishedFrames = -1;
     let lastTick = this.runtime.now();
-    let waitingForFrame = true;
+    let waitingForFirstFrame = true;
+    const applyPresentation = (): void => {
+      const presentation = plan.phases[phase]!.presentation;
+      canvas.style.opacity = String(presentation.opacity);
+      canvas.style.filter = `brightness(${presentation.brightness})`;
+    };
     const publishPhase = (): void => {
-      waitingForFrame = false;
-      phaseElapsedMs = 0;
-      frameWaitElapsedMs = 0;
-      frameRetries = 0;
-      canvas.style.visibility = "visible";
       callbacks.onFrame({
         phase,
-        quality: this.plan.phases[phase]!.params.quality,
+        quality: plan.phases[phase]!.params.quality,
+        seed: activeSeed,
+        speed: plan.phases[phase]!.params.speed,
         producedFrames: effect.producedFrames
       });
+      publishedFrames = effect.producedFrames;
     };
     this.stopAnimation = this.runtime.runAnimation(() => {
       if (generation !== this.generation || !this.vfx || !this.effect || !this.canvas) return;
@@ -141,52 +145,47 @@ export class JpegGlitchRevealRenderer {
         lastTick = now;
         this.vfx.render();
 
-        if (waitingForFrame) {
-          if (this.plan.phases[phase]!.params.bypass) {
-            publishPhase();
-            return;
-          }
+        if (waitingForFirstFrame) {
           if (this.effect.producedFrames <= requestedAtFrame) {
             frameWaitElapsedMs += deltaMs;
             if (frameWaitElapsedMs < FRAME_RETRY_AFTER_MS) return;
             frameWaitElapsedMs = 0;
             frameRetries += 1;
             if (frameRetries > MAX_FRAME_RETRIES) {
-              if (phase === 0) {
-                this.fail(generation, callbacks);
-                return;
-              }
-              if (phase === this.plan.phases.length - 1) {
-                this.complete(generation, callbacks);
-                return;
-              }
-              phase += 1;
-              requestedAtFrame = this.effect.producedFrames;
-              frameRetries = 0;
-              this.effect.setParams(this.plan.phases[phase]!.params);
+              this.fail(generation, callbacks);
               return;
             }
-            const params = this.plan.phases[phase]!.params;
-            this.effect.setParams({ ...params, seed: jpegGlitchRetrySeed(params.seed, frameRetries) });
+            const params = plan.phases[phase]!.params;
+            activeSeed = jpegGlitchRetrySeed(params.seed, frameRetries);
+            this.effect.setParams({ ...params, seed: activeSeed });
             return;
           }
+          waitingForFirstFrame = false;
+          phaseElapsedMs = 0;
+          frameWaitElapsedMs = 0;
+          frameRetries = 0;
+          canvas.style.visibility = "visible";
+          applyPresentation();
           publishPhase();
           return;
         }
 
         phaseElapsedMs += deltaMs;
-        if (phaseElapsedMs < this.plan.phases[phase]!.holdMs) return;
-        if (phase === this.plan.phases.length - 1) {
+        if (this.effect.producedFrames > publishedFrames) {
+          publishPhase();
+        }
+        if (phaseElapsedMs < plan.phases[phase]!.holdMs) return;
+        if (phase === plan.phases.length - 1) {
           this.complete(generation, callbacks);
           return;
         }
 
         phase += 1;
-        requestedAtFrame = this.effect.producedFrames;
-        waitingForFrame = true;
-        frameWaitElapsedMs = 0;
-        frameRetries = 0;
-        this.effect.setParams(this.plan.phases[phase]!.params);
+        phaseElapsedMs = 0;
+        activeSeed = plan.phases[phase]!.params.seed;
+        this.effect.setParams(plan.phases[phase]!.params);
+        applyPresentation();
+        publishPhase();
       } catch {
         this.fail(generation, callbacks);
       }

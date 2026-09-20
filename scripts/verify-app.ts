@@ -735,7 +735,12 @@ try {
   }
   await motionPage.screenshot({ path: path.join(artifactDirectory, "image-reveal-jpeg-glitch-start.png"), omitBackground: true });
   try {
-    await motionPage.locator('.image-viewer__stage[data-reveal-state="revealing"][data-reveal-phase="4"]').waitFor({ timeout: 8_000 });
+    await motionPage.waitForFunction(({ initialSeed }) => {
+      const stage = document.querySelector<HTMLElement>(".image-viewer__stage");
+      return stage?.dataset.revealState === "revealing"
+        && Number(stage.dataset.revealSeed) !== initialSeed
+        && Number(stage.dataset.revealPhase) >= 2;
+    }, { initialSeed: revealVisual.seed }, { timeout: 8_000 });
   } catch (error) {
     const stalledReveal = await motionPage.locator(".image-viewer__stage").evaluate((stage: HTMLElement) => ({
       ...stage.dataset,
@@ -746,9 +751,14 @@ try {
   }
   const finalGlitchQuality = Number(await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-quality"));
   const laterGlitchSeed = Number(await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-seed"));
+  const laterGlitchFrames = Number(await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-frames"));
+  const laterGlitchPhase = Number(await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-phase"));
   if (finalGlitchQuality <= revealVisual.quality) throw new Error("JPEG corruption did not progressively resolve toward the source image");
   if (!Number.isFinite(laterGlitchSeed) || laterGlitchSeed === revealVisual.seed) {
     throw new Error("JPEG corruption reused a fixed seed instead of varying its tear pattern");
+  }
+  if (laterGlitchPhase < 2) {
+    throw new Error(`JPEG corruption did not produce enough randomized pulses: ${laterGlitchPhase}`);
   }
   await motionPage.screenshot({ path: path.join(artifactDirectory, "image-reveal-jpeg-glitch-resolving.png"), omitBackground: true });
   await motionPage.locator('.image-viewer__stage[data-reveal-state="ready"]').waitFor({ timeout: 8_000 });
@@ -966,8 +976,11 @@ try {
     mediaRevealCheck: {
       engine: "@vfx-js/effects JPEGGlitchEffect",
       viewport: { width: 1920, height: 1080 },
-      initialPreset: { quality: revealVisual.quality, seed: 0.35, iterations: 10, resolutionScale: 0.63 },
-      finalQuality: finalGlitchQuality,
+      initialPreset: { quality: revealVisual.quality, seed: revealVisual.seed, iterations: 10, resolutionScale: 0.63 },
+      resolvingQuality: finalGlitchQuality,
+      resolvingSeed: laterGlitchSeed,
+      resolvingPhase: laterGlitchPhase,
+      resolvingProducedFrames: laterGlitchFrames,
       elapsedMs: revealElapsedMs,
       directRouteProducedFrames: directReveal.producedFrames
     },

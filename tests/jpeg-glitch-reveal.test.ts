@@ -45,6 +45,9 @@ describe("JPEG glitch reveal plan", () => {
     expect(new Set(glitchPhases.map((phase) => phase.params.speed)).size).toBeGreaterThan(3);
     expect(glitchPhases.some((phase) => phase.params.vertical)).toBe(true);
     expect(glitchPhases.some((phase) => !phase.params.vertical)).toBe(true);
+    expect(new Set(glitchPhases.map((phase) => phase.presentation.opacity)).size).toBeGreaterThan(3);
+    expect(glitchPhases.every((phase) => phase.presentation.opacity >= 0.68 && phase.presentation.opacity <= 1)).toBe(true);
+    expect(glitchPhases.every((phase) => phase.presentation.brightness >= 0.82 && phase.presentation.brightness <= 1.2)).toBe(true);
     expect(glitchPhases.every((phase) => phase.params.randomFlip && !phase.params.bypass)).toBe(true);
     expect(first.phases.at(-1)?.params.bypass).toBe(true);
   });

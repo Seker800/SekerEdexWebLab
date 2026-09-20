@@ -147,6 +147,8 @@ export class ImageViewer {
     delete this.stage.dataset.revealEngine;
     delete this.stage.dataset.revealPhase;
     delete this.stage.dataset.revealQuality;
+    delete this.stage.dataset.revealSeed;
+    delete this.stage.dataset.revealSpeed;
     delete this.stage.dataset.revealFrames;
     this.stage.setAttribute("aria-busy", "true");
     this.revealLabel.textContent = "DECODING MEDIA";
@@ -178,6 +180,8 @@ export class ImageViewer {
         this.stage.dataset.revealState = "revealing";
         this.stage.dataset.revealPhase = String(frame.phase);
         this.stage.dataset.revealQuality = String(frame.quality);
+        this.stage.dataset.revealSeed = String(frame.seed);
+        this.stage.dataset.revealSpeed = String(frame.speed);
         this.stage.dataset.revealFrames = String(frame.producedFrames);
         this.revealLabel.textContent = "";
       },
