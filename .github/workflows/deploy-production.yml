@@ -145,6 +145,7 @@ jobs:
       - name: Refresh CDN
         run: >-
           "$HOME/.local/bin/aliyun" cdn RefreshObjectCaches
+          --region "$OSS_REGION"
           --ObjectPath "$PUBLIC_ORIGIN/"
           --ObjectType Directory
 
