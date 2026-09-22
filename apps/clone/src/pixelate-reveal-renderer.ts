@@ -1,30 +1,27 @@
 import { VFX } from "@vfx-js/core";
-import { GlitchEffect } from "@vfx-js/effects";
 import type { ContainedImageBounds } from "./image-reveal.js";
-import { createGpuGlitchRevealPlan } from "./gpu-glitch-reveal.js";
 
-export interface GpuGlitchRevealRuntime {
+export interface PixelateRevealRuntime {
   now(): number;
   runAnimation(callback: () => void): () => void;
 }
 
-export interface GpuGlitchRevealFrame {
-  readonly phase: number;
-  readonly intensity: number;
-  readonly speed: number;
+export interface PixelateRevealFrame {
+  readonly progress: number;
   readonly producedFrames: number;
 }
 
-interface GpuGlitchRevealCallbacks {
-  readonly onFrame: (frame: GpuGlitchRevealFrame) => void;
-  readonly onPulse: () => void;
+interface PixelateRevealCallbacks {
+  readonly onFrame: (frame: PixelateRevealFrame) => void;
   readonly onComplete: () => void;
   readonly onFailure: () => void;
 }
 
-const MAX_FRAME_DELTA_MS = 50;
+// The VFX-JS pixelateTransition preset uses a one-second entrance.
+const TRANSITION_MS = 1_000;
+const COMPLETION_GRACE_MS = 80;
 
-export class GpuGlitchRevealRenderer {
+export class PixelateRevealRenderer {
   private generation = 0;
   private vfx: VFX | undefined;
   private canvas: HTMLCanvasElement | undefined;
@@ -34,7 +31,7 @@ export class GpuGlitchRevealRenderer {
 
   constructor(
     private readonly stage: HTMLElement,
-    private readonly runtime: GpuGlitchRevealRuntime
+    private readonly runtime: PixelateRevealRuntime
   ) {}
 
   setZoom(zoom: number): void {
@@ -42,12 +39,11 @@ export class GpuGlitchRevealRenderer {
     if (this.sourceImage) this.sourceImage.style.scale = String(zoom);
   }
 
-  async start(source: string, bounds: ContainedImageBounds, callbacks: GpuGlitchRevealCallbacks): Promise<boolean> {
+  async start(source: string, bounds: ContainedImageBounds, callbacks: PixelateRevealCallbacks): Promise<boolean> {
     this.cancel();
-    const plan = createGpuGlitchRevealPlan();
     const generation = this.generation;
     const sourceImage = document.createElement("img");
-    sourceImage.className = "image-viewer__glitch-source";
+    sourceImage.className = "image-viewer__pixelate-source";
     sourceImage.alt = "";
     sourceImage.setAttribute("aria-hidden", "true");
     sourceImage.src = source;
@@ -84,59 +80,28 @@ export class GpuGlitchRevealRenderer {
       if (!vfx || !canvas) throw new Error("VFX canvas initialization failed");
       this.vfx = vfx;
       this.canvas = canvas;
-      canvas.classList.add("image-viewer__glitch-canvas");
+      canvas.classList.add("image-viewer__pixelate-canvas");
       canvas.style.visibility = "hidden";
+      this.alignCanvasToViewport();
 
-      const firstPhase = plan.phases[0]!;
-      const effect = new GlitchEffect({ intensity: firstPhase.params.intensity, speed: firstPhase.params.speed });
-      await vfx.add(sourceImage, { effect });
+      await vfx.add(sourceImage, { shader: "pixelateTransition" });
       if (generation !== this.generation) return false;
 
-      let phase = 0;
-      let phaseElapsedMs = 0;
+      const startedAt = this.runtime.now();
       let producedFrames = 0;
-      let lastTick = this.runtime.now();
-      const publishPhase = (): void => {
-        const current = plan.phases[phase]!;
-        callbacks.onFrame({
-          phase,
-          intensity: current.params.intensity,
-          speed: current.params.speed,
-          producedFrames
-        });
-      };
-      const enterPhase = (): void => {
-        const current = plan.phases[phase]!;
-        canvas.style.opacity = String(current.presentation.opacity);
-        canvas.style.filter = `brightness(${current.presentation.brightness})`;
-        effect.setParams(current.params);
-        publishPhase();
-        if (!current.params.bypass) callbacks.onPulse();
-      };
-
       this.stopAnimation = this.runtime.runAnimation(() => {
         if (generation !== this.generation || !this.vfx || !this.canvas) return;
         try {
-          const now = this.runtime.now();
-          const deltaMs = Math.min(MAX_FRAME_DELTA_MS, Math.max(0, now - lastTick));
-          lastTick = now;
+          this.alignCanvasToViewport();
           this.vfx.render();
           producedFrames += 1;
-          if (producedFrames === 1) {
-            canvas.style.visibility = "visible";
-            enterPhase();
-            return;
-          }
-
-          phaseElapsedMs += deltaMs;
-          if (phaseElapsedMs < plan.phases[phase]!.holdMs) return;
-          if (phase === plan.phases.length - 1) {
-            this.complete(generation, callbacks);
-            return;
-          }
-          phase += 1;
-          phaseElapsedMs = 0;
-          enterPhase();
+          canvas.style.visibility = "visible";
+          const elapsedMs = Math.max(0, this.runtime.now() - startedAt);
+          callbacks.onFrame({
+            progress: Math.min(1, elapsedMs / TRANSITION_MS),
+            producedFrames
+          });
+          if (elapsedMs >= TRANSITION_MS + COMPLETION_GRACE_MS) this.complete(generation, callbacks);
         } catch {
           this.fail(generation, callbacks);
         }
@@ -157,13 +122,24 @@ export class GpuGlitchRevealRenderer {
     this.cancel();
   }
 
-  private complete(generation: number, callbacks: GpuGlitchRevealCallbacks): void {
+  private alignCanvasToViewport(): void {
+    if (!this.canvas) return;
+    // VFX draws from viewport-relative bounds, while this fixed canvas is
+    // positioned relative to the centered stage in letterboxed viewports.
+    const stageBounds = this.stage.getBoundingClientRect();
+    const left = `${-stageBounds.left}px`;
+    const top = `${-stageBounds.top}px`;
+    if (this.canvas.style.left !== left) this.canvas.style.left = left;
+    if (this.canvas.style.top !== top) this.canvas.style.top = top;
+  }
+
+  private complete(generation: number, callbacks: PixelateRevealCallbacks): void {
     if (generation !== this.generation) return;
     this.release();
     callbacks.onComplete();
   }
 
-  private fail(generation: number, callbacks: GpuGlitchRevealCallbacks): void {
+  private fail(generation: number, callbacks: PixelateRevealCallbacks): void {
     if (generation !== this.generation) return;
     this.release();
     callbacks.onFailure();

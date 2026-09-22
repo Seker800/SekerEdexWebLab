@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>Pixelate Transition 本地预览</title>
+    <style>
+      :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+      body { margin: 0; min-height: 100vh; background: #061013; color: #d8ecec; }
+      main { width: min(92vw, 1100px); margin: 0 auto; padding: 28px 0 48px; }
+      header { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+      h1 { margin: 0 0 6px; font-size: clamp(20px, 3vw, 30px); }
+      p { margin: 0; color: #9cb7b9; }
+      button { border: 1px solid #7ebdc3; padding: 12px 20px; color: #d8ecec; background: #123039; cursor: pointer; font: inherit; }
+      button:hover, button:focus-visible { background: #20515d; }
+      .frame { display: grid; place-items: center; min-height: min(70vh, 760px); border: 1px solid #31585d; background: #02090b; }
+      img { display: block; max-width: 100%; max-height: min(70vh, 760px); object-fit: contain; }
+      #status { margin-top: 14px; min-height: 1.5em; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>Pixelate Transition 预览</h1>
+          <p>像素块在约 1 秒内逐渐变细，最后显示清晰原图。</p>
+        </div>
+        <button id="replay" type="button">重新播放</button>
+      </header>
+      <div class="frame"><img id="sample" alt="东京夜景照片" /></div>
+      <p id="status" role="status"></p>
+    </main>
+    <script type="module">
+      import { VFX } from "@vfx-js/core";
+      import photoUrl from "../../content/blog/posts/night-routes/tokyo-night.jpg";
+
+      const image = document.querySelector("#sample");
+      const status = document.querySelector("#status");
+      const replay = document.querySelector("#replay");
+      image.src = photoUrl;
+      let vfx;
+
+      async function play() {
+        replay.disabled = true;
+        vfx?.destroy();
+        vfx = undefined;
+        status.textContent = "正在播放像素化过渡…";
+        try {
+          await image.decode();
+          vfx = VFX.init({ pixelRatio: 1, scrollPadding: false });
+          if (!vfx) throw new Error("当前浏览器无法启动 WebGL");
+          await vfx.add(image, { shader: "pixelateTransition" });
+          window.setTimeout(() => { status.textContent = "播放完成，可点击重新播放。"; }, 1100);
+        } catch (error) {
+          status.textContent = `预览无法播放：${error instanceof Error ? error.message : String(error)}`;
+        } finally {
+          replay.disabled = false;
+        }
+      }
+
+      replay.addEventListener("click", play);
+      play();
+    </script>
+  </body>
+</html>

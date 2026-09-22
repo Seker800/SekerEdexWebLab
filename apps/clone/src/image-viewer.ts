@@ -1,7 +1,7 @@
 import type { BrowserFileEntry, BrowserImagePreview } from "./browser-filesystem.js";
 import type { FullscreenContentOverlay } from "./fullscreen-content-overlay.js";
 import { calculateContainedImageBounds, createImageRevealPlan, type ImageRevealPlan } from "./image-reveal.js";
-import { GpuGlitchRevealRenderer, type GpuGlitchRevealRuntime } from "./gpu-glitch-reveal-renderer.js";
+import { PixelateRevealRenderer, type PixelateRevealRuntime } from "./pixelate-reveal-renderer.js";
 
 export type ImageViewerAction = "previous" | "next" | "zoom-out" | "zoom-in";
 
@@ -14,7 +14,6 @@ function isImageViewerAction(value: string | undefined): value is ImageViewerAct
 export interface ImageViewerEvents {
   readonly onOpen?: () => void;
   readonly onAction?: (action: ImageViewerAction) => void;
-  readonly onRevealPulse?: () => void;
   readonly onSelectionChange?: (
     entry: Readonly<BrowserFileEntry>,
     description?: Readonly<{ alt: string; caption?: string }>
@@ -29,7 +28,7 @@ export class ImageViewer {
   private readonly revealTiles: HTMLElement[] = [];
   private readonly revealLabel: HTMLElement;
   private readonly revealPlan: ImageRevealPlan;
-  private readonly glitchReveal: GpuGlitchRevealRenderer;
+  private readonly pixelateReveal: PixelateRevealRenderer;
   private readonly title: HTMLElement;
   private readonly caption: HTMLElement;
   private readonly counter: HTMLElement;
@@ -51,7 +50,7 @@ export class ImageViewer {
 
   constructor(
     private readonly overlay: FullscreenContentOverlay,
-    revealRuntime: GpuGlitchRevealRuntime,
+    revealRuntime: PixelateRevealRuntime,
     private readonly events: ImageViewerEvents = {}
   ) {
     this.surface = document.createElement("section");
@@ -75,7 +74,7 @@ export class ImageViewer {
     this.reveal = this.surface.querySelector(".image-viewer__reveal")!;
     this.revealLabel = this.surface.querySelector(".image-viewer__reveal-label")!;
     this.revealPlan = createImageRevealPlan();
-    this.glitchReveal = new GpuGlitchRevealRenderer(this.stage, revealRuntime);
+    this.pixelateReveal = new PixelateRevealRenderer(this.stage, revealRuntime);
     this.reveal.style.setProperty("--image-reveal-columns", String(this.revealPlan.columns));
     this.reveal.style.setProperty("--image-reveal-rows", String(this.revealPlan.rows));
     this.reveal.style.setProperty("--image-reveal-tile-duration", `${this.revealPlan.tileDurationMs}ms`);
@@ -122,7 +121,7 @@ export class ImageViewer {
   dispose(): void {
     this.close({ notify: false });
     this.cancelReveal();
-    this.glitchReveal.dispose();
+    this.pixelateReveal.dispose();
     document.removeEventListener("keydown", this.handleKeydown, { capture: true });
     this.surface.remove();
   }
@@ -144,7 +143,7 @@ export class ImageViewer {
     this.zoom = Math.min(3, Math.max(0.5, value));
     this.image.style.scale = String(this.zoom);
     this.reveal.style.scale = String(this.zoom);
-    this.glitchReveal.setZoom(this.zoom);
+    this.pixelateReveal.setZoom(this.zoom);
     this.zoomLabel.textContent = `${Math.round(this.zoom * 100)}%`;
   }
 
@@ -166,10 +165,8 @@ export class ImageViewer {
     const revision = this.revealRevision;
     this.stage.dataset.revealState = "loading";
     delete this.stage.dataset.revealEngine;
-    delete this.stage.dataset.revealPhase;
-    delete this.stage.dataset.revealIntensity;
-    delete this.stage.dataset.revealSpeed;
     delete this.stage.dataset.revealFrames;
+    delete this.stage.dataset.revealProgress;
     this.stage.setAttribute("aria-busy", "true");
     this.revealLabel.textContent = "DECODING MEDIA";
     this.clearRevealTiles();
@@ -187,27 +184,22 @@ export class ImageViewer {
     if (revision !== this.revealRevision) return;
 
     const bounds = this.containedImageBounds();
-    this.revealLabel.textContent = "CORRUPTING SIGNAL";
-    const gpuRevealStarted = await this.glitchReveal.start(source, bounds, {
+    this.revealLabel.textContent = "RESOLVING IMAGE";
+    const pixelateStarted = await this.pixelateReveal.start(source, bounds, {
       onFrame: (frame) => {
         if (revision !== this.revealRevision) return;
-        this.stage.dataset.revealEngine = "gpu-glitch";
+        this.stage.dataset.revealEngine = "pixelate";
         this.stage.dataset.revealState = "revealing";
-        this.stage.dataset.revealPhase = String(frame.phase);
-        this.stage.dataset.revealIntensity = String(frame.intensity);
-        this.stage.dataset.revealSpeed = String(frame.speed);
+        this.stage.dataset.revealProgress = String(frame.progress);
         this.stage.dataset.revealFrames = String(frame.producedFrames);
         this.revealLabel.textContent = "";
-      },
-      onPulse: () => {
-        if (revision === this.revealRevision) this.events.onRevealPulse?.();
       },
       onComplete: () => this.finishReveal(revision),
       onFailure: () => {
         if (revision === this.revealRevision) this.startTileReveal(source, bounds, revision);
       }
     });
-    if (!gpuRevealStarted && revision === this.revealRevision && this.stage.dataset.revealState === "loading") {
+    if (!pixelateStarted && revision === this.revealRevision && this.stage.dataset.revealState === "loading") {
       this.startTileReveal(source, bounds, revision);
     }
   }
@@ -262,7 +254,7 @@ export class ImageViewer {
 
   private cancelReveal(): void {
     this.revealRevision += 1;
-    this.glitchReveal.cancel();
+    this.pixelateReveal.cancel();
     if (this.revealTimer !== undefined) window.clearTimeout(this.revealTimer);
     this.revealTimer = undefined;
   }

@@ -36,7 +36,6 @@
   },
   "dependencies": {
     "@vfx-js/core": "^1.1.0",
-    "@vfx-js/effects": "^1.3.0",
     "markdown-it": "^15.0.2",
     "pixelmatch": "^7.1.0",
     "playwright": "^1.55.0",

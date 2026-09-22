@@ -290,7 +290,6 @@ const imageViewer = new ImageViewer(contentOverlay, {
 }, {
   onOpen: () => audioDeck.play("expand"),
   onAction: (action) => audioDeck.play(action === "previous" || action === "next" ? "folder" : "stdin"),
-  onRevealPulse: () => audioDeck.play("stdout"),
   onSelectionChange: (entry, description) => {
     if (entry.contentPath) writeContentLocation(entry.contentPath, "push", description);
   }
