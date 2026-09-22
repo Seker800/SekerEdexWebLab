@@ -18,6 +18,7 @@
     "test": "vitest run",
     "content:coverage": "vitest run tests/content-registry.test.ts tests/content-tree.test.ts tests/content-location.test.ts tests/blog-content.test.ts --coverage --coverage.include='apps/clone/src/content/*.ts' --coverage.thresholds.lines=80 --coverage.thresholds.branches=80 --coverage.thresholds.functions=80 --coverage.thresholds.statements=80",
     "content:check": "npm run content:coverage && npm run app:build",
+    "deploy": "tsx scripts/deploy-production.ts",
     "run": "tsx src/cli.ts run",
     "demo": "tsx scripts/demo.ts",
     "app:dev": "vite apps/clone --host 127.0.0.1 --port 4174",

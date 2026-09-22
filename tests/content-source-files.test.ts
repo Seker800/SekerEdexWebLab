@@ -100,7 +100,6 @@ describe("content source discovery", () => {
     temporaryDirectories.push(projectRoot);
     const contentRoot = path.join(projectRoot, "content");
     await mkdir(contentRoot);
-    const article = path.join(contentRoot, "new.md");
     await writeFile(path.join(projectRoot, "index.html"), '<script type="module" src="/main.js"></script>');
     await writeFile(path.join(projectRoot, "main.js"), 'import "virtual:content-manifest";');
     const server = await createServer({
@@ -111,13 +110,14 @@ describe("content source discovery", () => {
       plugins: [contentManifestPlugin(contentRoot)]
     });
     developmentServers.push(server);
-    const observed: string[] = [];
-    const watcherReady = new Promise<void>((resolve) => { server.watcher.once("ready", resolve); });
-    server.watcher.on("add", (file) => { if (file.startsWith(contentRoot)) observed.push("create"); });
-    server.watcher.on("unlink", (file) => { if (file.startsWith(contentRoot)) observed.push("delete"); });
+    const watcherReady = new Promise<void>((resolve) => server.watcher.once("ready", resolve));
     await server.listen();
     await watcherReady;
+    const observed: string[] = [];
+    server.watcher.on("add", (file) => { if (file.startsWith(contentRoot)) observed.push("create"); });
+    server.watcher.on("unlink", (file) => { if (file.startsWith(contentRoot)) observed.push("delete"); });
 
+    const article = path.join(contentRoot, "new.md");
     await writeFile(article, "# New");
     await waitFor(() => observed.includes("create"), "Vite did not emit a create event for new content");
     await rm(article);

@@ -56,12 +56,11 @@ Commons 许可证。第三方材料仍必须记录作者、来源、许可证和
 程序仓库继续使用 GPL-3.0-only。外部私人内容不因被本项目构建就自动成为本仓库的源文件；发布者仍需
 确保站点上的软件声明、个人内容声明和第三方归属彼此清晰。
 
-## 自动部署
+## 本机发布
 
-生产构建在群晖上的 GitHub 自托管 Runner 中执行。Runner 检出公开程序仓库，但直接从群晖本地的
-`/volume1/homes/AI/SekerEdexContent/blog` 读取作者内容；内容源不经过 GitHub checkout、Artifact 或缓存。
-工作流只响应已经通过 CI 的 `main` 分支和仓库所有者主动发起的手动部署，不响应 Pull Request。
+生产构建由作者在 Mac 上执行。发布脚本从仓库外的 `SekerEdexContent/blog` 读取内容，在临时 Git
+worktree 中构建已推送的 `main` 提交，然后直接上传阿里云 OSS。GitHub 继续只运行公开默认内容的 CI，
+fork 和外部贡献者既无法访问生产内容，也无法取得生产部署身份。
 
-GitHub 只负责调度。Runner 通过 GitHub OIDC 与阿里云 STS 取得短期部署凭据，然后直接把本机构建产物
-上传 OSS。私人目录、文件名和正文不得写入工作流输出。当前公开 CI 仍只验证公开默认内容，因此 fork
-和外部贡献者可以运行门禁，却无法访问生产内容或部署身份。完整的运维边界见 `docs/deployment.md`。
+本机使用阿里云 CLI 的浏览器 OAuth 临时凭据；仓库和 GitHub 均不保存 AccessKey。完整流程、缓存策略、
+公网版本核验和回滚方式见 `docs/deployment.md`。
