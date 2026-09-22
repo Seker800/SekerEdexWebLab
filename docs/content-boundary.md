@@ -55,6 +55,10 @@ Commons 许可证。第三方材料仍必须记录作者、来源、许可证和
 
 ## 自动部署
 
-自动部署需要先以只读凭据检出公开程序仓库和私人内容仓库，再把 `SEKER_CONTENT_ROOT` 指向私人内容
-检出目录。私人仓库凭据只应存在于部署平台的 secret store，不能写入 `.env.example`、构建日志或产物。
-当前公开 CI 只验证公开默认内容，不依赖私人仓库，因此 fork 和外部贡献者仍可完整运行门禁。
+生产构建在群晖上的 GitHub 自托管 Runner 中执行。Runner 检出公开程序仓库，但直接从群晖本地的
+`/volume1/homes/AI/SekerEdexContent/blog` 读取作者内容；内容源不经过 GitHub checkout、Artifact 或缓存。
+工作流只响应已经通过 CI 的 `main` 分支和仓库所有者主动发起的手动部署，不响应 Pull Request。
+
+GitHub 只负责调度。Runner 通过 GitHub OIDC 与阿里云 STS 取得短期部署凭据，然后直接把本机构建产物
+上传 OSS。私人目录、文件名和正文不得写入工作流输出。当前公开 CI 仍只验证公开默认内容，因此 fork
+和外部贡献者可以运行门禁，却无法访问生产内容或部署身份。完整的运维边界见 `docs/deployment.md`。
