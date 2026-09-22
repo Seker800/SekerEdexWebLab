@@ -682,7 +682,11 @@ try {
     cursorDuration: getComputedStyle(document.querySelector(".cursor")!).animationDuration,
     transientKeys: document.querySelectorAll(".key.pressed, .key.blink").length
   }));
-  await motionPage.waitForTimeout(1_600);
+  await motionPage.waitForFunction(({ clock, telemetryTick }) => {
+    const currentClock = document.querySelector("#deck-clock")?.textContent;
+    const currentTelemetryTick = Number(document.documentElement.dataset.telemetryTick ?? 0);
+    return currentClock !== clock && currentTelemetryTick > telemetryTick;
+  }, { clock: motionBefore.clock, telemetryTick: motionBefore.telemetryTick }, { timeout: 5_000 });
   const motionAfter = await motionPage.evaluate(() => ({
     clock: document.querySelector("#deck-clock")?.textContent,
     telemetryTick: Number(document.documentElement.dataset.telemetryTick ?? 0),
