@@ -212,7 +212,10 @@ const initializeRuntimeGlobe = (speed = 1): Promise<EdexGlobeHandle | null> => {
     connectionLocations: canonicalNetworkConnectionLocations,
     layers: staticGlobeLayers,
     sourceTimingScale: speed,
-    runAnimation: (callback) => runtimeScheduler?.eachFrame(callback) ?? (() => undefined),
+    runAnimation: (callback) => runtimeScheduler?.eachFrame(callback, {
+      minimumIntervalMs: 1_000 / 30,
+      isActive: () => contentOverlayElement.hidden
+    }) ?? (() => undefined),
     signal: globeAbortController.signal
   }).then((handle) => {
     globeHandle = handle;

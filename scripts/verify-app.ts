@@ -618,10 +618,22 @@ try {
   if (await mobileTouchPage.locator(".terminal-prompt .terminal-powerline").textContent() !== "~/.c/eDEX-UI/themes") {
     throw new Error("Mobile terminal did not retain the directory selected through the shared filesystem panel");
   }
-  await mobileTouchPage.setViewportSize({ width: 844, height: 390 });
-  await mobileTouchPage.reload({ waitUntil: "networkidle" });
-  await mobileTouchPage.locator("[data-ready]").waitFor();
-  const mobileLandscapeState = await mobileTouchPage.evaluate(() => {
+  await mobileTouchContext.close();
+  const mobileLandscapeContext = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    screen: { width: 844, height: 390 },
+    colorScheme: "dark",
+    reducedMotion: "reduce",
+    hasTouch: true,
+    isMobile: true,
+    deviceScaleFactor: 2
+  });
+  const mobileLandscapePage = await mobileLandscapeContext.newPage();
+  mobileLandscapePage.on("console", (message) => { if (message.type() === "error") consoleErrors.push(`mobile-landscape: ${message.text()}`); });
+  mobileLandscapePage.on("pageerror", (error) => pageErrors.push(`mobile-landscape: ${error.message}`));
+  await mobileLandscapePage.goto("http://127.0.0.1:4174/?static=1", { waitUntil: "networkidle" });
+  await mobileLandscapePage.locator("[data-ready]").waitFor();
+  const mobileLandscapeState = await mobileLandscapePage.evaluate(() => {
     const terminal = document.querySelector<HTMLElement>(".terminal-panel")!.getBoundingClientRect();
     return {
       terminalLeft: terminal.left,
@@ -634,15 +646,15 @@ try {
   if (mobileLandscapeState.desktopPanelVisible || mobileLandscapeState.terminalLeft < 0 || mobileLandscapeState.terminalRight > 844 || mobileLandscapeState.terminalInputFontSize < 16 || mobileLandscapeState.terminalPromptHeight < 44) {
     throw new Error(`Mobile landscape did not retain the dedicated touch terminal mode: ${JSON.stringify(mobileLandscapeState)}`);
   }
-  await mobileTouchPage.locator("#mobile-files-view").tap();
-  const mobileLandscapeFiles = await mobileTouchPage.locator(".filesystem-panel").boundingBox();
-  const mobileLandscapeFileButton = await mobileTouchPage.locator(".file-grid button").first().boundingBox();
+  await mobileLandscapePage.locator("#mobile-files-view").tap();
+  const mobileLandscapeFiles = await mobileLandscapePage.locator(".filesystem-panel").boundingBox();
+  const mobileLandscapeFileButton = await mobileLandscapePage.locator(".file-grid button").first().boundingBox();
   if (!mobileLandscapeFiles || mobileLandscapeFiles.x < 0 || mobileLandscapeFiles.x + mobileLandscapeFiles.width > 844 || !mobileLandscapeFileButton || mobileLandscapeFileButton.height < 44) {
     throw new Error(`Mobile landscape filesystem is not touch-usable: ${JSON.stringify({ panel: mobileLandscapeFiles, fileButton: mobileLandscapeFileButton })}`);
   }
-  await mobileTouchPage.locator("#mobile-terminal-view").tap();
-  await mobileTouchPage.screenshot({ path: path.join(artifactDirectory, "command-deck-mobile-landscape.png"), animations: "disabled", omitBackground: true });
-  await mobileTouchContext.close();
+  await mobileLandscapePage.locator("#mobile-terminal-view").tap();
+  await mobileLandscapePage.screenshot({ path: path.join(artifactDirectory, "command-deck-mobile-landscape.png"), animations: "disabled", omitBackground: true });
+  await mobileLandscapeContext.close();
   const motionContext = await browser.newContext({
     viewport: { width: 1920, height: 1080 },
     colorScheme: "dark",
@@ -777,6 +789,21 @@ try {
     || !articleOverlayState.articleIsActive || !articleOverlayState.fillsStage) {
     throw new Error(`Article did not use the shared fullscreen content overlay: ${JSON.stringify(articleOverlayState)}`);
   }
+  await motionPage.setViewportSize({ width: 1440, height: 900 });
+  const letterboxedContentBounds = await motionPage.evaluate(() => {
+    const overlay = document.querySelector<HTMLElement>("#content-overlay")!.getBoundingClientRect();
+    const stage = document.querySelector<HTMLElement>(".canvas-stage")!.getBoundingClientRect();
+    return {
+      overlay: { x: overlay.x, y: overlay.y, width: overlay.width, height: overlay.height },
+      stage: { x: stage.x, y: stage.y, width: stage.width, height: stage.height }
+    };
+  });
+  if (JSON.stringify(letterboxedContentBounds.overlay) !== JSON.stringify(letterboxedContentBounds.stage)
+    || letterboxedContentBounds.overlay.width !== 1440 || letterboxedContentBounds.overlay.height !== 810
+    || letterboxedContentBounds.overlay.y !== 45) {
+    throw new Error(`Content overlay escaped the logical 16:9 desktop stage: ${JSON.stringify(letterboxedContentBounds)}`);
+  }
+  await motionPage.setViewportSize({ width: 1920, height: 1080 });
   await motionPage.locator("#content-overlay-close").focus();
   const articleAccessibility = await motionPage.evaluate(() => {
     const deck = document.querySelector<HTMLElement>("#command-deck")!;
@@ -850,52 +877,46 @@ try {
   }
   const initialRevealState = await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-state");
   if (initialRevealState === "ready") throw new Error("Cached image skipped the minimum media reveal animation");
-  await motionPage.locator('.image-viewer__stage[data-reveal-engine="jpeg-glitch"][data-reveal-state="revealing"][data-reveal-phase="0"]').waitFor({ timeout: 5_000 });
+  await motionPage.locator('.image-viewer__stage[data-reveal-engine="gpu-glitch"][data-reveal-state="revealing"][data-reveal-phase="0"]').waitFor({ timeout: 5_000 });
   const revealVisual = await motionPage.evaluate(() => {
     const stage = document.querySelector<HTMLElement>(".image-viewer__stage")!;
     const image = stage.querySelector<HTMLImageElement>("img")!;
-    const canvas = stage.querySelector<HTMLCanvasElement>(".image-viewer__jpeg-glitch-canvas")!;
+    const canvas = stage.querySelector<HTMLCanvasElement>(".image-viewer__glitch-canvas")!;
     return {
       imageOpacity: getComputedStyle(image).opacity,
       canvasVisible: getComputedStyle(canvas).visibility === "visible",
       phase: stage.dataset.revealPhase,
-      quality: Number(stage.dataset.revealQuality),
-      seed: Number(stage.dataset.revealSeed),
+      intensity: Number(stage.dataset.revealIntensity),
       producedFrames: Number(stage.dataset.revealFrames)
     };
   });
   if (revealVisual.imageOpacity !== "0" || !revealVisual.canvasVisible || revealVisual.phase !== "0"
-    || revealVisual.quality !== 0.17 || !Number.isFinite(revealVisual.seed) || revealVisual.producedFrames < 1) {
-    throw new Error(`Media reveal did not begin with the selected JPEG corruption preset: ${JSON.stringify(revealVisual)}`);
+    || revealVisual.intensity !== 1.25 || revealVisual.producedFrames < 1) {
+    throw new Error(`Media reveal did not begin with the selected GPU glitch preset: ${JSON.stringify(revealVisual)}`);
   }
-  await motionPage.screenshot({ path: path.join(artifactDirectory, "image-reveal-jpeg-glitch-start.png"), omitBackground: true });
+  await motionPage.screenshot({ path: path.join(artifactDirectory, "image-reveal-gpu-glitch-start.png"), omitBackground: true });
   try {
-    await motionPage.waitForFunction(({ initialSeed }) => {
+    await motionPage.waitForFunction(() => {
       const stage = document.querySelector<HTMLElement>(".image-viewer__stage");
       return stage?.dataset.revealState === "revealing"
-        && Number(stage.dataset.revealSeed) !== initialSeed
         && Number(stage.dataset.revealPhase) >= 2;
-    }, { initialSeed: revealVisual.seed }, { timeout: 8_000 });
+    }, undefined, { timeout: 8_000 });
   } catch (error) {
     const stalledReveal = await motionPage.locator(".image-viewer__stage").evaluate((stage: HTMLElement) => ({
       ...stage.dataset,
-      canvasCount: stage.querySelectorAll(".image-viewer__jpeg-glitch-canvas").length,
-      sourceCount: stage.querySelectorAll(".image-viewer__jpeg-glitch-source").length
+      canvasCount: stage.querySelectorAll(".image-viewer__glitch-canvas").length,
+      sourceCount: stage.querySelectorAll(".image-viewer__glitch-source").length
     }));
-    throw new Error(`JPEG corruption reveal stalled: ${JSON.stringify(stalledReveal)}`, { cause: error });
+    throw new Error(`GPU glitch reveal stalled: ${JSON.stringify(stalledReveal)}`, { cause: error });
   }
-  const finalGlitchQuality = Number(await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-quality"));
-  const laterGlitchSeed = Number(await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-seed"));
+  const laterGlitchIntensity = Number(await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-intensity"));
   const laterGlitchFrames = Number(await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-frames"));
   const laterGlitchPhase = Number(await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-phase"));
-  if (finalGlitchQuality <= revealVisual.quality) throw new Error("JPEG corruption did not progressively resolve toward the source image");
-  if (!Number.isFinite(laterGlitchSeed) || laterGlitchSeed === revealVisual.seed) {
-    throw new Error("JPEG corruption reused a fixed seed instead of varying its tear pattern");
-  }
+  if (laterGlitchIntensity >= revealVisual.intensity) throw new Error("GPU glitch did not progressively resolve toward the source image");
   if (laterGlitchPhase < 2) {
-    throw new Error(`JPEG corruption did not produce enough randomized pulses: ${laterGlitchPhase}`);
+    throw new Error(`GPU glitch did not produce enough randomized pulses: ${laterGlitchPhase}`);
   }
-  await motionPage.screenshot({ path: path.join(artifactDirectory, "image-reveal-jpeg-glitch-resolving.png"), omitBackground: true });
+  await motionPage.screenshot({ path: path.join(artifactDirectory, "image-reveal-gpu-glitch-resolving.png"), omitBackground: true });
   await motionPage.locator('.image-viewer__stage[data-reveal-state="ready"]').waitFor({ timeout: 8_000 });
   const revealSoundCues = await motionPage.evaluate((offset) => (
     (window as typeof window & { __motionSoundCues?: string[] }).__motionSoundCues ?? []
@@ -903,7 +924,7 @@ try {
   const revealPulseCues = revealSoundCues.filter((cue) => cue === "stdout");
   if (revealSoundCues[0] !== "expand" || revealPulseCues.length < 4 || revealPulseCues.length > 10
     || revealSoundCues.some((cue, index) => index > 0 && cue !== "stdout")) {
-    throw new Error(`JPEG corruption pulses did not emit one short cue per glitch phase: ${JSON.stringify(revealSoundCues)}`);
+    throw new Error(`GPU glitch pulses did not emit one short cue per phase: ${JSON.stringify(revealSoundCues)}`);
   }
   const revealElapsedMs = Date.now() - revealStartedAt;
   if (revealElapsedMs < 1_000) throw new Error(`Media reveal completed too quickly: ${revealElapsedMs}ms`);
@@ -914,11 +935,11 @@ try {
   if (completedRevealLabel.display !== "none" || completedRevealLabel.width !== 0 || completedRevealLabel.height !== 0) {
     throw new Error(`Completed image reveal left its empty status label visible: ${JSON.stringify(completedRevealLabel)}`);
   }
-  if (await motionPage.locator(".image-viewer__jpeg-glitch-canvas").count() !== 0
-    || await motionPage.locator(".image-viewer__stage > img:not(.image-viewer__jpeg-glitch-source)").evaluate((image) => getComputedStyle(image).opacity) !== "1") {
-    throw new Error("JPEG reveal did not hand off cleanly to the original image");
+  if (await motionPage.locator(".image-viewer__glitch-canvas").count() !== 0
+    || await motionPage.locator(".image-viewer__stage > img:not(.image-viewer__glitch-source)").evaluate((image) => getComputedStyle(image).opacity) !== "1") {
+    throw new Error("GPU reveal did not hand off cleanly to the original image");
   }
-  if (await motionPage.locator(".image-viewer__stage > img:not(.image-viewer__jpeg-glitch-source)").getAttribute("alt") !== "The command deck regions") {
+  if (await motionPage.locator(".image-viewer__stage > img:not(.image-viewer__glitch-source)").getAttribute("alt") !== "The command deck regions") {
     throw new Error("Image viewer did not preserve the author's Markdown alt text");
   }
   if (!motionPage.url().endsWith("#/blog/posts/building-edex-web/command-deck.svg")) throw new Error(`Image navigation did not update the content hash: ${motionPage.url()}`);
@@ -984,14 +1005,14 @@ try {
   if (await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-state") === "ready") {
     throw new Error("Image sequence navigation skipped the media reveal animation");
   }
-  await motionPage.locator(".image-viewer__stage > img:not(.image-viewer__jpeg-glitch-source)").evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0 ? undefined : new Promise<void>((resolve, reject) => {
+  await motionPage.locator(".image-viewer__stage > img:not(.image-viewer__glitch-source)").evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0 ? undefined : new Promise<void>((resolve, reject) => {
     image.addEventListener("load", () => resolve(), { once: true });
     image.addEventListener("error", () => reject(new Error("Image viewer asset failed to load")), { once: true });
   }));
   await motionPage.screenshot({ path: path.join(artifactDirectory, "image-viewer.png"), animations: "disabled", omitBackground: true });
   await motionPage.goBack({ waitUntil: "networkidle" });
   if (await motionPage.locator("#image-viewer-title").textContent() !== "command-deck.svg") throw new Error("Browser back did not restore the previous media selection");
-  if (await motionPage.locator(".image-viewer__stage > img:not(.image-viewer__jpeg-glitch-source)").getAttribute("alt") !== "The command deck regions") {
+  if (await motionPage.locator(".image-viewer__stage > img:not(.image-viewer__glitch-source)").getAttribute("alt") !== "The command deck regions") {
     throw new Error("Browser back did not preserve the author's Markdown alt text");
   }
   await motionPage.goBack({ waitUntil: "networkidle" });
@@ -1014,6 +1035,27 @@ try {
   })) {
     throw new Error("Image viewer did not restore the central terminal after dismissal");
   }
+  await motionPage.evaluate(`(() => {
+    window.__originalCanvasGetContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = new Proxy(window.__originalCanvasGetContext, {
+      apply(target, thisArgument, argumentsList) {
+        const contextId = String(argumentsList[0]);
+        if (contextId === "webgl" || contextId === "experimental-webgl" || contextId === "webgl2") return null;
+        return Reflect.apply(target, thisArgument, argumentsList);
+      }
+    });
+  })()`);
+  await motionPage.locator('.file-grid button[data-file-name="command-deck.svg"]').click();
+  await motionPage.locator('.image-viewer__stage[data-reveal-engine="tiles"][data-reveal-state="revealing"]').waitFor({ timeout: 5_000 });
+  if (await motionPage.locator(".image-viewer__reveal-tile").count() === 0) {
+    throw new Error("Media reveal did not retain its tile fallback when WebGL was unavailable");
+  }
+  await motionPage.evaluate(() => {
+    const state = window as typeof window & { __originalCanvasGetContext?: typeof HTMLCanvasElement.prototype.getContext };
+    HTMLCanvasElement.prototype.getContext = state.__originalCanvasGetContext!;
+    delete state.__originalCanvasGetContext;
+  });
+  await motionPage.keyboard.press("Escape");
   await motionPage.evaluate(() => {
     window.location.hash = "#/blog/%2e%2e/%2e%2e/secret";
   });
@@ -1058,7 +1100,7 @@ try {
   if (imageVisibleOnFirstDesktopFrame) {
     throw new Error("Direct image route covered the first fully booted desktop frame");
   }
-  await directImagePage.locator('.image-viewer__stage[data-reveal-engine="jpeg-glitch"][data-reveal-state="revealing"]').waitFor({ timeout: 5_000 });
+  await directImagePage.locator('.image-viewer__stage[data-reveal-engine="gpu-glitch"][data-reveal-state="revealing"]').waitFor({ timeout: 5_000 });
   const directImageSoundCues = await directImagePage.evaluate(() => (window as typeof window & {
     __directImageSoundCues?: string[];
   }).__directImageSoundCues ?? []);
@@ -1066,9 +1108,9 @@ try {
     throw new Error(`Direct image route did not sequence its open and first pulse cues after boot: ${JSON.stringify(directImageSoundCues)}`);
   }
   const directReveal = await directImagePage.evaluate(() => {
-    const image = document.querySelector<HTMLImageElement>(".image-viewer__stage > img:not(.image-viewer__jpeg-glitch-source)")!;
+    const image = document.querySelector<HTMLImageElement>(".image-viewer__stage > img:not(.image-viewer__glitch-source)")!;
     const stage = document.querySelector<HTMLElement>(".image-viewer__stage")!;
-    const canvas = stage.querySelector<HTMLCanvasElement>(".image-viewer__jpeg-glitch-canvas")!;
+    const canvas = stage.querySelector<HTMLCanvasElement>(".image-viewer__glitch-canvas")!;
     return {
       imageOpacity: getComputedStyle(image).opacity,
       canvasVisible: getComputedStyle(canvas).visibility === "visible",
@@ -1162,18 +1204,18 @@ try {
     responsiveChecks: ["1934x1094 frozen Electron container", "1920x1080 logical canvas", "1440x900 with 1440x810 centered stage", "1280x800 with 1280x720 centered stage", "1024x1024 with canonical 1024x576 centered stage", "390x844 terminal mode", "390x844 touch terminal interaction", "390x844 terminal/files shared navigation", "844x390 touch terminal landscape", "reduced-motion static feedback"],
     performanceCheck: frameSample,
     mediaRevealCheck: {
-      engine: "@vfx-js/effects JPEGGlitchEffect",
+      engine: "@vfx-js/effects GlitchEffect",
       viewport: { width: 1920, height: 1080 },
-      initialPreset: { quality: revealVisual.quality, seed: revealVisual.seed, iterations: 10, resolutionScale: 0.63 },
-      resolvingQuality: finalGlitchQuality,
-      resolvingSeed: laterGlitchSeed,
+      initialPreset: { intensity: revealVisual.intensity },
+      resolvingIntensity: laterGlitchIntensity,
       resolvingPhase: laterGlitchPhase,
       resolvingProducedFrames: laterGlitchFrames,
       elapsedMs: revealElapsedMs,
-      directRouteProducedFrames: directReveal.producedFrames
+      directRouteProducedFrames: directReveal.producedFrames,
+      webglFallback: "tiles"
     },
     sourceDrivenChecks: sourceDrivenState,
-    screenshots: ["boot-gate.png", "boot-log.png", "boot-title-outline.png", "boot-title-filled.png", "boot-title-framed.png", "boot-title-glitch.png", "boot-reveal.png", "boot-greeting.png", "boot-greeting-fading.png", "boot-terminal-ready.png", "blog-reader.png", "image-reveal-jpeg-glitch-start.png", "image-reveal-jpeg-glitch-resolving.png", "image-viewer.png", "command-deck.png", "command-deck-1920x1080.png", "command-deck-1440x900.png", "command-deck-1280x800.png", "command-deck-1024x1024.png", "command-deck-mobile.png", "command-deck-mobile-touch.png", "command-deck-mobile-files.png", "command-deck-mobile-landscape.png"],
+    screenshots: ["boot-gate.png", "boot-log.png", "boot-title-outline.png", "boot-title-filled.png", "boot-title-framed.png", "boot-title-glitch.png", "boot-reveal.png", "boot-greeting.png", "boot-greeting-fading.png", "boot-terminal-ready.png", "blog-reader.png", "image-reveal-gpu-glitch-start.png", "image-reveal-gpu-glitch-resolving.png", "image-viewer.png", "command-deck.png", "command-deck-1920x1080.png", "command-deck-1440x900.png", "command-deck-1280x800.png", "command-deck-1024x1024.png", "command-deck-mobile.png", "command-deck-mobile-touch.png", "command-deck-mobile-files.png", "command-deck-mobile-landscape.png"],
     consoleErrors,
     pageErrors,
     upstreamVisualMetrics: metrics,

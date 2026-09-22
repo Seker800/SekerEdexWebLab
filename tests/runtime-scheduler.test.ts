@@ -87,4 +87,48 @@ describe("runtime scheduler", () => {
     expect(callback).toHaveBeenCalledTimes(4);
     scheduler.dispose();
   });
+
+  it("shares one browser animation frame across all active animation tasks", () => {
+    vi.useFakeTimers();
+    const requestFrame = vi.fn((callback: FrameRequestCallback) => setTimeout(() => callback(performance.now()), 16));
+    vi.stubGlobal("requestAnimationFrame", requestFrame);
+    vi.stubGlobal("cancelAnimationFrame", (handle: ReturnType<typeof setTimeout>) => clearTimeout(handle));
+    const scheduler = new RuntimeScheduler(new ControlledVisibility(true));
+    const first = vi.fn();
+    const second = vi.fn();
+
+    const removeFirst = scheduler.eachFrame(first);
+    const removeSecond = scheduler.eachFrame(second);
+    expect(requestFrame).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(16);
+    expect(first).toHaveBeenCalledTimes(1);
+    expect(second).toHaveBeenCalledTimes(1);
+    expect(requestFrame).toHaveBeenCalledTimes(2);
+
+    removeFirst();
+    removeSecond();
+    vi.advanceTimersByTime(32);
+    expect(requestFrame).toHaveBeenCalledTimes(2);
+    scheduler.dispose();
+  });
+
+  it("throttles expensive animation tasks and pauses them while inactive", () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => setTimeout(() => callback(performance.now()), 16));
+    vi.stubGlobal("cancelAnimationFrame", (handle: ReturnType<typeof setTimeout>) => clearTimeout(handle));
+    const scheduler = new RuntimeScheduler(new ControlledVisibility(true));
+    const callback = vi.fn();
+    let active = true;
+    scheduler.eachFrame(callback, { minimumIntervalMs: 32, isActive: () => active });
+
+    vi.advanceTimersByTime(80);
+    expect(callback).toHaveBeenCalledTimes(3);
+    active = false;
+    vi.advanceTimersByTime(64);
+    expect(callback).toHaveBeenCalledTimes(3);
+    active = true;
+    vi.advanceTimersByTime(16);
+    expect(callback).toHaveBeenCalledTimes(4);
+    scheduler.dispose();
+  });
 });

@@ -11,7 +11,14 @@ interface ScheduledTask {
 
 interface AnimationTask {
   readonly callback: () => void;
-  frame: number | undefined;
+  readonly minimumIntervalMs: number;
+  readonly isActive: () => boolean;
+  lastRunAt: number | undefined;
+}
+
+export interface AnimationScheduleOptions {
+  readonly minimumIntervalMs?: number;
+  readonly isActive?: () => boolean;
 }
 
 export class RuntimeScheduler {
@@ -19,6 +26,7 @@ export class RuntimeScheduler {
   private readonly animations: AnimationTask[] = [];
   private readonly unsubscribe: () => void;
   private running = false;
+  private animationFrame: number | undefined;
 
   constructor(private readonly visibility: VisibilitySource) {
     this.unsubscribe = visibility.subscribe(() => this.sync());
@@ -33,10 +41,19 @@ export class RuntimeScheduler {
     return () => this.remove(task);
   }
 
-  eachFrame(callback: () => void): () => void {
-    const animation: AnimationTask = { callback, frame: undefined };
+  eachFrame(callback: () => void, options: AnimationScheduleOptions = {}): () => void {
+    const minimumIntervalMs = options.minimumIntervalMs ?? 0;
+    if (!Number.isFinite(minimumIntervalMs) || minimumIntervalMs < 0) {
+      throw new RangeError("Animation interval cannot be negative");
+    }
+    const animation: AnimationTask = {
+      callback,
+      minimumIntervalMs,
+      isActive: options.isActive ?? (() => true),
+      lastRunAt: undefined
+    };
     this.animations.push(animation);
-    if (this.running) this.startAnimation(animation);
+    if (this.running) this.startAnimationLoop();
     return () => this.removeAnimation(animation);
   }
 
@@ -60,7 +77,7 @@ export class RuntimeScheduler {
     if (this.running) return;
     this.running = true;
     for (const task of this.tasks) this.startTask(task);
-    for (const animation of this.animations) this.startAnimation(animation);
+    this.startAnimationLoop();
   }
 
   private stop(): void {
@@ -70,10 +87,9 @@ export class RuntimeScheduler {
       if (task.timer !== undefined) clearInterval(task.timer);
       task.timer = undefined;
     }
-    for (const animation of this.animations) {
-      if (animation.frame !== undefined) cancelAnimationFrame(animation.frame);
-      animation.frame = undefined;
-    }
+    if (this.animationFrame !== undefined) cancelAnimationFrame(this.animationFrame);
+    this.animationFrame = undefined;
+    for (const animation of this.animations) animation.lastRunAt = undefined;
   }
 
   private startTask(task: ScheduledTask): void {
@@ -87,19 +103,32 @@ export class RuntimeScheduler {
     this.tasks.splice(index, 1);
   }
 
-  private startAnimation(animation: AnimationTask): void {
-    const frame = (): void => {
-      animation.callback();
-      if (this.running && this.animations.includes(animation)) animation.frame = requestAnimationFrame(frame);
+  private startAnimationLoop(): void {
+    if (this.animationFrame !== undefined || this.animations.length === 0) return;
+    const frame = (timestamp: number): void => {
+      this.animationFrame = undefined;
+      if (this.running && this.animations.length > 0) this.animationFrame = requestAnimationFrame(frame);
+      for (const animation of [...this.animations]) {
+        if (!animation.isActive()) {
+          animation.lastRunAt = undefined;
+          continue;
+        }
+        if (animation.lastRunAt !== undefined && timestamp - animation.lastRunAt < animation.minimumIntervalMs) continue;
+        animation.lastRunAt = timestamp;
+        animation.callback();
+      }
     };
-    animation.frame = requestAnimationFrame(frame);
+    this.animationFrame = requestAnimationFrame(frame);
   }
 
   private removeAnimation(animation: AnimationTask): void {
     const index = this.animations.indexOf(animation);
     if (index < 0) return;
-    if (animation.frame !== undefined) cancelAnimationFrame(animation.frame);
     this.animations.splice(index, 1);
+    if (this.animations.length === 0 && this.animationFrame !== undefined) {
+      cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = undefined;
+    }
   }
 }
 

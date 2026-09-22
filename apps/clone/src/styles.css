@@ -99,7 +99,7 @@ html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; }
   width: min(100vw, calc(100vh * 16 / 9));
   height: min(100vh, calc(100vw * 9 / 16));
   container-type: size;
-  overflow: hidden;
+  overflow: clip;
 }
 /* The frozen upstream PNG is a 1934×1094 Electron window container around
    its 1920×1080 opaque content. Preserve that evidence viewport verbatim;
@@ -419,7 +419,7 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .terminal-panel > :not(.terminal-runtime), .terminal-runtime > * { translate: var(--capture-terminal-offset-x) 0; scale: var(--capture-terminal-scale-x) 1; transform-origin: center; }
 .terminal-runtime { display: contents; }
 .content-overlay[hidden], .content-reader[hidden], .image-viewer[hidden] { display: none !important; }
-.content-overlay { position: fixed; z-index: 20; inset: 0; overflow: hidden; translate: 0 0; transform: none; background: rgba(2, 7, 10, .995); color: var(--signal); text-transform: none; }
+.content-overlay { position: absolute; z-index: 20; inset: 0; overflow: hidden; translate: 0 0; transform: none; background: rgba(2, 7, 10, .995); color: var(--signal); text-transform: none; }
 .content-overlay__viewport { position: absolute; inset: 0; overflow: hidden; }
 .content-overlay__close { position: absolute; z-index: 5; top: 1.05cqh; right: .8cqw; border: 1px solid rgba(var(--signal-rgb), .72); background: rgba(2, 10, 12, .92); color: var(--signal); font: 1.05cqh var(--font-ui); padding: .65cqh .65cqw; cursor: pointer; }
 .content-reader { position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden; background: linear-gradient(135deg, rgba(var(--signal-rgb), .055), transparent 34%), rgba(2, 10, 12, .98); color: var(--signal); text-transform: none; }
@@ -461,8 +461,8 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .image-viewer__reveal-tile { min-width: 0; min-height: 0; background-repeat: no-repeat; background-size: calc(var(--image-reveal-columns) * 100%) calc(var(--image-reveal-rows) * 100%); box-shadow: inset 0 0 0 1px rgba(var(--signal-rgb), .18); filter: grayscale(1) sepia(1) saturate(2.4) hue-rotate(128deg) brightness(.72) contrast(1.18); opacity: 0; transform: scale(.94); }
 .image-viewer__reveal-label { position: absolute; z-index: 2; top: 50%; left: 50%; padding: .45cqh .5cqw; border: 1px solid rgba(var(--signal-rgb), .45); background: rgba(2, 10, 12, .94); color: rgba(var(--signal-rgb), .82); font: .9cqh var(--font-ui); letter-spacing: .09em; translate: -50% -50%; }
 .image-viewer__reveal-label:empty { display: none; }
-.image-viewer__jpeg-glitch-source { position: absolute; display: block; max-width: none; max-height: none; object-fit: fill; opacity: 0; transform-origin: center; pointer-events: none; }
-.image-viewer__jpeg-glitch-canvas { pointer-events: none; }
+.image-viewer__glitch-source { position: absolute; display: block; max-width: none; max-height: none; object-fit: fill; opacity: 0; transform-origin: center; pointer-events: none; }
+.image-viewer__glitch-canvas { pointer-events: none; }
 .image-viewer__stage[data-reveal-engine="tiles"][data-reveal-state="revealing"] .image-viewer__reveal { visibility: visible; }
 .image-viewer__stage[data-reveal-engine="tiles"][data-reveal-state="revealing"] .image-viewer__reveal-tile { animation: image-viewer-tile-colorize var(--image-reveal-tile-duration) linear var(--image-reveal-delay) both; }
 .image-viewer__stage[data-reveal-state="revealing"] .image-viewer__reveal-label { opacity: 0; transition: opacity .12s linear; }
