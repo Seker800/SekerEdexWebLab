@@ -14,8 +14,8 @@ afterEach(async () => {
   await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
 });
 
-async function waitFor(predicate: () => boolean, message: string, timeoutMs = 15_000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
+async function waitFor(predicate: () => boolean, message: string): Promise<void> {
+  const deadline = Date.now() + 5_000;
   while (!predicate()) {
     if (Date.now() >= deadline) throw new Error(message);
     await new Promise((resolve) => setTimeout(resolve, 25));
@@ -98,6 +98,8 @@ describe("content source discovery", () => {
     temporaryDirectories.push(projectRoot);
     const contentRoot = path.join(projectRoot, "content");
     await mkdir(contentRoot);
+    const article = path.join(contentRoot, "new.md");
+    await writeFile(article, "# Existing");
     await writeFile(path.join(projectRoot, "index.html"), '<script type="module" src="/main.js"></script>');
     await writeFile(path.join(projectRoot, "main.js"), 'import "virtual:content-manifest";');
     const server = await createServer({
@@ -111,14 +113,15 @@ describe("content source discovery", () => {
     const observed: string[] = [];
     server.watcher.on("add", (file) => { if (file.startsWith(contentRoot)) observed.push("create"); });
     server.watcher.on("unlink", (file) => { if (file.startsWith(contentRoot)) observed.push("delete"); });
-    const watcherReady = new Promise<void>((resolve) => server.watcher.once("ready", resolve));
     await server.listen();
-    await watcherReady;
+    await waitFor(
+      () => server.watcher.getWatched()[contentRoot]?.includes(path.basename(article)) === true,
+      "Vite did not finish registering the content file"
+    );
 
-    const article = path.join(contentRoot, "new.md");
-    await writeFile(article, "# New");
-    await waitFor(() => observed.includes("create"), "Vite did not emit a create event for new content");
     await rm(article);
     await waitFor(() => observed.includes("delete"), "Vite did not emit a delete event for removed content");
-  }, 35_000);
+    await writeFile(article, "# New");
+    await waitFor(() => observed.includes("create"), "Vite did not emit a create event for new content");
+  }, 10_000);
 });

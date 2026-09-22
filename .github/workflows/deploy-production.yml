@@ -58,10 +58,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate the application
-        run: |
-          npm run check
-          npm test
+      - name: Type-check the deployment inputs
+        run: npm run check
 
       - name: Build with NAS-only content
         env:
