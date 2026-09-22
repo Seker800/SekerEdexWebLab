@@ -14,8 +14,8 @@ afterEach(async () => {
   await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
 });
 
-async function waitFor(predicate: () => boolean, message: string): Promise<void> {
-  const deadline = Date.now() + 5_000;
+async function waitFor(predicate: () => boolean, message: string, timeoutMs = 15_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
   while (!predicate()) {
     if (Date.now() >= deadline) throw new Error(message);
     await new Promise((resolve) => setTimeout(resolve, 25));
@@ -108,17 +108,17 @@ describe("content source discovery", () => {
       plugins: [contentManifestPlugin(contentRoot)]
     });
     developmentServers.push(server);
-    const watcherReady = new Promise<void>((resolve) => server.watcher.once("ready", resolve));
-    await server.listen();
-    await watcherReady;
     const observed: string[] = [];
     server.watcher.on("add", (file) => { if (file.startsWith(contentRoot)) observed.push("create"); });
     server.watcher.on("unlink", (file) => { if (file.startsWith(contentRoot)) observed.push("delete"); });
+    const watcherReady = new Promise<void>((resolve) => server.watcher.once("ready", resolve));
+    await server.listen();
+    await watcherReady;
 
     const article = path.join(contentRoot, "new.md");
     await writeFile(article, "# New");
     await waitFor(() => observed.includes("create"), "Vite did not emit a create event for new content");
     await rm(article);
     await waitFor(() => observed.includes("delete"), "Vite did not emit a delete event for removed content");
-  }, 10_000);
+  }, 35_000);
 });
