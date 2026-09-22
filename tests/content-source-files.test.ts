@@ -101,7 +101,6 @@ describe("content source discovery", () => {
     const contentRoot = path.join(projectRoot, "content");
     await mkdir(contentRoot);
     const article = path.join(contentRoot, "new.md");
-    await writeFile(article, "# Existing");
     await writeFile(path.join(projectRoot, "index.html"), '<script type="module" src="/main.js"></script>');
     await writeFile(path.join(projectRoot, "main.js"), 'import "virtual:content-manifest";');
     const server = await createServer({
@@ -113,17 +112,15 @@ describe("content source discovery", () => {
     });
     developmentServers.push(server);
     const observed: string[] = [];
+    const watcherReady = new Promise<void>((resolve) => { server.watcher.once("ready", resolve); });
     server.watcher.on("add", (file) => { if (file.startsWith(contentRoot)) observed.push("create"); });
     server.watcher.on("unlink", (file) => { if (file.startsWith(contentRoot)) observed.push("delete"); });
     await server.listen();
-    await waitFor(
-      () => server.watcher.getWatched()[contentRoot]?.includes(path.basename(article)) === true,
-      "Vite did not finish registering the content file"
-    );
+    await watcherReady;
 
-    await rm(article);
-    await waitFor(() => observed.includes("delete"), "Vite did not emit a delete event for removed content");
     await writeFile(article, "# New");
     await waitFor(() => observed.includes("create"), "Vite did not emit a create event for new content");
+    await rm(article);
+    await waitFor(() => observed.includes("delete"), "Vite did not emit a delete event for removed content");
   }, 10_000);
 });
