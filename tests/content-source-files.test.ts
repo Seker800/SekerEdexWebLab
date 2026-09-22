@@ -100,6 +100,8 @@ describe("content source discovery", () => {
     temporaryDirectories.push(projectRoot);
     const contentRoot = path.join(projectRoot, "content");
     await mkdir(contentRoot);
+    const article = path.join(contentRoot, "new.md");
+    await writeFile(article, "# Existing");
     await writeFile(path.join(projectRoot, "index.html"), '<script type="module" src="/main.js"></script>');
     await writeFile(path.join(projectRoot, "main.js"), 'import "virtual:content-manifest";');
     const server = await createServer({
@@ -117,10 +119,9 @@ describe("content source discovery", () => {
     server.watcher.on("add", (file) => { if (file.startsWith(contentRoot)) observed.push("create"); });
     server.watcher.on("unlink", (file) => { if (file.startsWith(contentRoot)) observed.push("delete"); });
 
-    const article = path.join(contentRoot, "new.md");
-    await writeFile(article, "# New");
-    await waitFor(() => observed.includes("create"), "Vite did not emit a create event for new content");
     await rm(article);
     await waitFor(() => observed.includes("delete"), "Vite did not emit a delete event for removed content");
+    await writeFile(article, "# Recreated");
+    await waitFor(() => observed.includes("create"), "Vite did not emit a create event for recreated content");
   }, 10_000);
 });
