@@ -23,7 +23,6 @@ export interface ContainedImageBounds {
 interface ImageRevealOptions {
   readonly columns?: number;
   readonly rows?: number;
-  readonly reducedMotion?: boolean;
 }
 
 const DEFAULT_COLUMNS = 10;
@@ -60,12 +59,12 @@ export function createImageRevealPlan(options: ImageRevealOptions = {}): ImageRe
     throw new RangeError("Image reveal dimensions must be positive integers");
   }
 
-  const tileDurationMs = options.reducedMotion ? 0 : TILE_DURATION_MS;
+  const tileDurationMs = TILE_DURATION_MS;
   const tiles = Array.from({ length: columns * rows }, (_, index): ImageRevealTile => ({
     index,
     column: index % columns,
     row: Math.floor(index / columns),
-    delayMs: options.reducedMotion ? 0 : index * TILE_STAGGER_MS
+    delayMs: index * TILE_STAGGER_MS
   }));
   const minimumVisibleMs = tiles[tiles.length - 1]!.delayMs + tileDurationMs;
 

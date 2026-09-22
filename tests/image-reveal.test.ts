@@ -20,14 +20,6 @@ describe("image reveal plan", () => {
     expect(lastTile.delayMs + plan.tileDurationMs).toBe(plan.minimumVisibleMs);
   });
 
-  it("removes animation timing when reduced motion is requested", () => {
-    const plan = createImageRevealPlan({ columns: 10, rows: 6, reducedMotion: true });
-
-    expect(plan.minimumVisibleMs).toBe(0);
-    expect(plan.tileDurationMs).toBe(0);
-    expect(plan.tiles.every((tile) => tile.delayMs === 0)).toBe(true);
-  });
-
   it("rejects invalid grid dimensions", () => {
     expect(() => createImageRevealPlan({ columns: 0 })).toThrow(RangeError);
     expect(() => createImageRevealPlan({ rows: 1.5 })).toThrow(RangeError);

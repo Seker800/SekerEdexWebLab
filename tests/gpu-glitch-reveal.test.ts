@@ -41,10 +41,4 @@ describe("GPU glitch reveal plan", () => {
     expect(glitchPhases.every((phase) => phase.presentation.opacity >= 0.72 && phase.presentation.opacity <= 1)).toBe(true);
     expect(glitchPhases.every((phase) => !phase.params.bypass)).toBe(true);
   });
-
-  it("removes the effect entirely for reduced motion", () => {
-    const plan = createGpuGlitchRevealPlan({ reducedMotion: true });
-    expect(plan.phases).toEqual([]);
-    expect(plan.minimumVisibleMs).toBe(0);
-  });
 });

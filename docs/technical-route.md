@@ -87,7 +87,7 @@ src/
     adapters/            键盘、指针、可见性、浏览器指标
     renderers/           xterm、Three.js、Canvas、Web Audio
     features/            shell、terminal、telemetry、keyboard
-    styles/              token、16:9 基准几何、画布缩放和减少动态效果
+    styles/              token、16:9 基准几何和画布缩放
   tests/
     unit/
     e2e/

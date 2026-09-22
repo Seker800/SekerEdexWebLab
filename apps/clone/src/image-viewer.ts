@@ -74,9 +74,8 @@ export class ImageViewer {
     this.image = this.surface.querySelector("img")!;
     this.reveal = this.surface.querySelector(".image-viewer__reveal")!;
     this.revealLabel = this.surface.querySelector(".image-viewer__reveal-label")!;
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    this.revealPlan = createImageRevealPlan({ reducedMotion });
-    this.glitchReveal = new GpuGlitchRevealRenderer(this.stage, revealRuntime, reducedMotion);
+    this.revealPlan = createImageRevealPlan();
+    this.glitchReveal = new GpuGlitchRevealRenderer(this.stage, revealRuntime);
     this.reveal.style.setProperty("--image-reveal-columns", String(this.revealPlan.columns));
     this.reveal.style.setProperty("--image-reveal-rows", String(this.revealPlan.rows));
     this.reveal.style.setProperty("--image-reveal-tile-duration", `${this.revealPlan.tileDurationMs}ms`);
@@ -186,11 +185,6 @@ export class ImageViewer {
       return;
     }
     if (revision !== this.revealRevision) return;
-
-    if (this.revealPlan.minimumVisibleMs === 0) {
-      this.finishReveal(revision);
-      return;
-    }
 
     const bounds = this.containedImageBounds();
     this.revealLabel.textContent = "CORRUPTING SIGNAL";

@@ -805,9 +805,3 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 @media (max-height: 720px) and (pointer: coarse) and (orientation: landscape) {
   .file-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
-  .image-viewer__reveal { display: none; }
-  .image-viewer__stage img { opacity: 1; }
-}

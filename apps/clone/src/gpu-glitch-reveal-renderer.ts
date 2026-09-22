@@ -34,13 +34,8 @@ export class GpuGlitchRevealRenderer {
 
   constructor(
     private readonly stage: HTMLElement,
-    private readonly runtime: GpuGlitchRevealRuntime,
-    private readonly reducedMotion: boolean
+    private readonly runtime: GpuGlitchRevealRuntime
   ) {}
-
-  canAnimate(): boolean {
-    return !this.reducedMotion;
-  }
 
   setZoom(zoom: number): void {
     this.zoom = zoom;
@@ -49,7 +44,6 @@ export class GpuGlitchRevealRenderer {
 
   async start(source: string, bounds: ContainedImageBounds, callbacks: GpuGlitchRevealCallbacks): Promise<boolean> {
     this.cancel();
-    if (!this.canAnimate()) return false;
     const plan = createGpuGlitchRevealPlan();
     const generation = this.generation;
     const sourceImage = document.createElement("img");

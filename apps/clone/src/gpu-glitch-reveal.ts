@@ -19,7 +19,6 @@ export interface GpuGlitchRevealPlan {
 }
 
 interface GpuGlitchRevealOptions {
-  readonly reducedMotion?: boolean;
   readonly random?: () => number;
 }
 
@@ -31,8 +30,6 @@ const MAX_PULSE_INTERVAL_MS = 260;
 const CLEAR_HOLD_MS = 500;
 
 export function createGpuGlitchRevealPlan(options: GpuGlitchRevealOptions = {}): GpuGlitchRevealPlan {
-  if (options.reducedMotion) return Object.freeze({ minimumVisibleMs: 0, phases: Object.freeze([]) });
-
   const random = options.random ?? Math.random;
   const glitchPhaseCount = Math.min(
     MAX_GLITCH_PHASE_COUNT,

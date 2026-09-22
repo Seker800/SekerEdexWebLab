@@ -528,13 +528,11 @@ try {
   const mobileState = await page.evaluate(() => ({
     horizontalOverflow: document.documentElement.scrollWidth > innerWidth,
     verticalOverflow: document.documentElement.scrollHeight > innerHeight,
-    cursorAnimation: getComputedStyle(document.querySelector(".cursor")!).animationName,
     terminalOutputFits: document.querySelector<HTMLElement>("#terminal-output")!.scrollWidth <= document.querySelector<HTMLElement>("#terminal-output")!.clientWidth,
     terminalInputFontSize: Number.parseFloat(getComputedStyle(document.querySelector<HTMLInputElement>("#terminal-input")!).fontSize),
     terminalPromptHeight: document.querySelector<HTMLElement>(".terminal-prompt")!.getBoundingClientRect().height
   }));
   if (mobileState.horizontalOverflow || mobileState.verticalOverflow) throw new Error(`Mobile terminal mode overflowed: ${JSON.stringify(mobileState)}`);
-  if (mobileState.cursorAnimation !== "none") throw new Error(`Reduced motion left cursor animation active: ${mobileState.cursorAnimation}`);
   if (!mobileState.terminalOutputFits) throw new Error(`Mobile terminal content is horizontally clipped: ${JSON.stringify(mobileState)}`);
   if (mobileState.terminalInputFontSize < 16) throw new Error(`Mobile terminal input font is too small for iOS focus without zoom: ${JSON.stringify(mobileState)}`);
   if (mobileState.terminalPromptHeight < 44) throw new Error(`Mobile terminal prompt is smaller than a reliable touch target: ${JSON.stringify(mobileState)}`);
@@ -1064,7 +1062,13 @@ try {
   if (!await motionPage.locator(".section-label small").textContent().then((value) => value?.endsWith("/Blog"))) {
     throw new Error("Invalid content URL did not fall back to the content root");
   }
-  const directImagePage = await motionContext.newPage();
+  const reducedImageContext = await browser.newContext({
+    viewport: { width: 1920, height: 1080 },
+    colorScheme: "dark",
+    reducedMotion: "reduce",
+    deviceScaleFactor: 1
+  });
+  const directImagePage = await reducedImageContext.newPage();
   await directImagePage.bringToFront();
   directImagePage.on("console", (message) => { if (message.type() === "error") consoleErrors.push(`direct-image: ${message.text()}`); });
   directImagePage.on("pageerror", (error) => pageErrors.push(`direct-image: ${error.message}`));
@@ -1087,12 +1091,19 @@ try {
     });
   });
   await directImagePage.goto("http://127.0.0.1:4174/?fastboot=1#/blog/posts/night-routes/tokyo-night.jpg", { waitUntil: "networkidle" });
+  if (!await directImagePage.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches)) {
+    throw new Error("Direct image regression did not run with reduced motion requested");
+  }
   await directImagePage.locator("[data-ready]").waitFor();
   if (await directImagePage.locator(".image-viewer").isVisible()) {
     throw new Error("Direct image route started its reveal behind the startup gate");
   }
   await directImagePage.getByRole("button", { name: "Initialize system" }).click();
   await directImagePage.locator('html[data-boot-phase="complete"]').waitFor({ timeout: 10_000 });
+  const reducedMotionCursor = await directImagePage.locator(".cursor").evaluate((cursor) => getComputedStyle(cursor).animationName);
+  if (reducedMotionCursor !== "cursor-blink") {
+    throw new Error(`Browser motion preference disabled the desktop cursor animation: ${reducedMotionCursor}`);
+  }
   await directImagePage.waitForFunction(() => typeof (window as typeof window & { __directImageVisibleOnFirstDesktopFrame?: boolean })
     .__directImageVisibleOnFirstDesktopFrame === "boolean");
   const imageVisibleOnFirstDesktopFrame = await directImagePage.evaluate(() => (window as typeof window & {
@@ -1122,6 +1133,7 @@ try {
     throw new Error(`Direct image route did not enter the staged reveal after boot: ${JSON.stringify(directReveal)}`);
   }
   await directImagePage.close();
+  await reducedImageContext.close();
   await motionContext.close();
   const metrics = await compareScreenshots(
     path.resolve("references/edex-ui-v2.2.8/screenshot_default.png"),
