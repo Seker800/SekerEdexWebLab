@@ -19,6 +19,7 @@ import { buildContentTree } from "./content/content-tree.js";
 import { contentDirname } from "./content/content-model.js";
 import { contentHash, parseContentHash } from "./content/content-location.js";
 import { renderContentMarkdown } from "./content/markdown-renderer.js";
+import { localizeElements, readLocale, saveLocale, translate, type Locale } from "./locale.js";
 
 const arrowIcons: Record<string, string> = {
   "↑": '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-opacity="1" d="m12.00004 7.99999 4.99996 5h-2.99996v4.00001h-4v-4.00001h-3z"/><path stroke-linejoin="round" fill-opacity=".65" d="m4 3h16c1.1046 0 1-.10457 1 1v16c0 1.1046.1046 1-1 1h-16c-1.10457 0-1 .1046-1-1v-16c0-1.10457-.10457-1 1-1zm0 1v16h16v-16z"/></svg>',
@@ -33,56 +34,60 @@ const lifecycle = new DisposableRegistry();
 const searchParams = new URLSearchParams(window.location.search);
 const staticMode = searchParams.has("static");
 if (staticMode) document.documentElement.dataset.staticMode = "";
+let locale: Locale = staticMode ? "en" : readLocale(window.localStorage);
+document.documentElement.lang = locale;
+const t = (key: Parameters<typeof translate>[1]): string => translate(locale, key);
 const [edexIcons, keyboardRows] = await Promise.all([loadEdexIcons(), loadKeyboardLayout()]);
 const keyboardKeys = new Map(keyboardRows.flat().map((key) => [key.key, key]));
 
 app.innerHTML = `
-  <section class="boot-overlay" id="boot-overlay" data-phase="gate" aria-label="System startup">
+  <section class="boot-overlay" id="boot-overlay" data-phase="gate" aria-label="System startup" data-i18n-aria="startup">
     <div class="boot-gate">
       <p class="boot-gate__eyebrow">eDEX-UI v${canonicalEdexVersion}</p>
-      <p class="boot-gate__source">Unofficial browser port · original by <a href="https://github.com/GitSquared/edex-ui" target="_blank" rel="noreferrer">GitSquared</a></p>
+      <p class="boot-gate__source"><span data-i18n="source">Unofficial browser port · original by</span> <a href="https://github.com/GitSquared/edex-ui" target="_blank" rel="noreferrer">GitSquared</a></p>
+      <label class="language-picker language-picker--gate"><span data-i18n="language">Language</span><select id="gate-language" aria-label="Language" data-i18n-aria="language"><option value="en">English</option><option value="zh-CN">简体中文</option></select></label>
       <div class="boot-gate__actions">
-        <button type="button" id="initialize-system">Initialize system</button>
+        <button type="button" id="initialize-system" data-i18n="initialize">Initialize system</button>
         <button type="button" id="gate-sound-toggle">Sound: on</button>
       </div>
     </div>
     <pre class="boot-log" id="boot-log" aria-live="polite"></pre>
     <div class="boot-title" id="boot-title"><h1 data-text="eDEX-UI">eDEX-UI</h1></div>
-    <button class="boot-skip" id="boot-skip" type="button" hidden>Skip intro</button>
+    <button class="boot-skip" id="boot-skip" type="button" hidden data-i18n="skipIntro">Skip intro</button>
   </section>
   <div class="canvas-stage">
   <main class="command-deck" id="command-deck" data-boot-phase="gate" data-mobile-view="terminal">
-    <div class="global-line global-line--left"><span>PANEL</span><span>SYSTEM</span></div>
-    <div class="global-line global-line--center"><span>TERMINAL</span><span class="deck-controls"><button class="mobile-view-control" type="button" id="mobile-terminal-view" aria-pressed="true">TERMINAL</button><button class="mobile-view-control" type="button" id="mobile-files-view" aria-pressed="false">FILES</button><button type="button" id="reboot-system">REBOOT</button><button type="button" id="sound-toggle">SOUND ON</button></span><span>MAIN SHELL</span></div>
-    <div class="global-line global-line--right"><span>PANEL</span><span>NETWORK</span></div>
+    <div class="global-line global-line--left"><span data-i18n="panel">PANEL</span><span data-i18n="system">SYSTEM</span></div>
+    <div class="global-line global-line--center"><span data-i18n="terminal">TERMINAL</span><span class="deck-controls"><button class="mobile-view-control" type="button" id="mobile-terminal-view" aria-pressed="true" data-i18n="terminal">TERMINAL</button><button class="mobile-view-control" type="button" id="mobile-files-view" aria-pressed="false" data-i18n="files">FILES</button><button type="button" id="reboot-system" data-i18n="reboot">REBOOT</button><button type="button" id="sound-toggle">SOUND ON</button><label class="language-picker language-picker--deck"><span data-i18n="language">Language</span><select id="deck-language" aria-label="Language" data-i18n-aria="language"><option value="en">English</option><option value="zh-CN">简体中文</option></select></label></span><span data-i18n="mainShell">MAIN SHELL</span></div>
+    <div class="global-line global-line--right"><span data-i18n="panel">PANEL</span><span data-i18n="network">NETWORK</span></div>
 
-    <aside class="panel system-panel" aria-label="System telemetry">
+    <aside class="panel system-panel" aria-label="System telemetry" data-i18n-aria="systemTelemetry">
       <section class="clock-block" data-boot-module>
         <time id="deck-clock"><span>2</span><span>0</span><em>:</em><span>2</span><span>7</span><em>:</em><span>4</span><span>6</span></time>
         <div class="clock-meta" data-boot-module>
           <div><h1 id="deck-year">2019</h1><h2 id="deck-date">APR 29</h2></div>
-          <div><h1>UPTIME</h1><h2>1:09:51</h2></div>
-          <div><h1>TYPE</h1><h2>linux</h2></div>
-          <div><h1>POWER</h1><h2>CHARGE</h2></div>
+          <div><h1 data-i18n="uptime">UPTIME</h1><h2>1:09:51</h2></div>
+          <div><h1 data-i18n="type">TYPE</h1><h2>linux</h2></div>
+          <div><h1 data-i18n="power">POWER</h1><h2 data-i18n="charge">CHARGE</h2></div>
         </div>
       </section>
       <section class="data-block machine-id" data-boot-module>
-        <header><span>MANUFACTURER</span><span>MODEL</span><span>CHASSIS</span></header>
+        <header><span data-i18n="manufacturer">MANUFACTURER</span><span data-i18n="model">MODEL</span><span data-i18n="chassis">CHASSIS</span></header>
         <p><b>ASUSTeK COMPUTER</b><b>G551JK</b><b>Notebook</b></p>
       </section>
       <section class="data-block cpu-block" data-boot-module>
-        <header><span>CPU USAGE <i class="telemetry-source" id="telemetry-source">SIMULATED</i></span><small>Intel® Core™ i5-4200H</small></header>
+        <header><span><span data-i18n="cpuUsage">CPU USAGE</span> <i class="telemetry-source" id="telemetry-source">SIMULATED</i></span><small>Intel® Core™ i5-4200H</small></header>
         <div class="cpu-core-row"><div class="cpu-core-label"><b># 1 - 2</b><span id="cpu-a">Avg. 56%</span></div><svg viewBox="0 0 280 64" preserveAspectRatio="none"><polyline id="cpu-line-a-secondary" points="" /><polyline id="cpu-line-a" points="" /></svg></div>
         <div class="cpu-core-row"><div class="cpu-core-label"><b># 3 - 4</b><span id="cpu-b">Avg. 48%</span></div><svg viewBox="0 0 280 64" preserveAspectRatio="none"><polyline id="cpu-line-b-secondary" points="" /><polyline id="cpu-line-b" points="" /></svg></div>
-        <div class="quad-metrics"><span>TEMP<b id="temp">62°C</b></span><span>MIN<b>2.94GHz</b></span><span>MAX<b>2.99GHz</b></span><span>TASKS<b id="tasks">257</b></span></div>
+        <div class="quad-metrics"><span><span data-i18n="temp">TEMP</span><b id="temp">62°C</b></span><span><span data-i18n="min">MIN</span><b>2.94GHz</b></span><span><span data-i18n="max">MAX</span><b>2.99GHz</b></span><span><span data-i18n="tasks">TASKS</span><b id="tasks">257</b></span></div>
       </section>
       <section class="data-block memory-block" data-boot-module>
-        <header><span>MEMORY</span><small id="memory-label">USING 62% OF 16 GB</small></header>
+        <header><span data-i18n="memory">MEMORY</span><small id="memory-label">USING 62% OF 16 GB</small></header>
         <div class="memory-grid" id="memory-grid" aria-hidden="true"></div>
-        <div class="memory-swap"><span>SWAP</span><progress id="memory-meter" max="100" value="1.5"></progress><em>0.2 GiB</em></div>
+        <div class="memory-swap"><span data-i18n="swap">SWAP</span><progress id="memory-meter" max="100" value="1.5"></progress><em>0.2 GiB</em></div>
       </section>
       <section class="data-block process-block" data-boot-module>
-        <header><span>TOP PROCESSES</span><small>PID | NAME | CPU | MEM</small></header>
+        <header><span data-i18n="topProcesses">TOP PROCESSES</span><small>PID | NAME | CPU | MEM</small></header>
         <ol>
           <li><span>5636 edex-ui</span><b>10.3%</b><em>2%</em></li>
           <li><span>2404 gnome-shell</span><b>5.4%</b><em>4%</em></li>
@@ -93,9 +98,9 @@ app.innerHTML = `
       </section>
     </aside>
 
-    <section class="panel terminal-panel" aria-label="Main terminal">
-      <h1 class="terminal-greeting">Welcome back, <em>squared</em></h1>
-      <nav class="terminal-tabs" role="tablist" aria-label="Terminal sessions">
+    <section class="panel terminal-panel" aria-label="Main terminal" data-i18n-aria="mainTerminal">
+      <h1 class="terminal-greeting"><span data-i18n="welcomeBack">Welcome back,</span> <em>squared</em></h1>
+      <nav class="terminal-tabs" role="tablist" aria-label="Terminal sessions" data-i18n-aria="terminalSessions">
         <button class="active" type="button" role="tab" aria-controls="terminal-output"><span>MAIN SHELL</span></button><button type="button" role="tab" aria-controls="terminal-output"><span>EMPTY</span></button><button type="button" role="tab" aria-controls="terminal-output"><span>EMPTY</span></button><button type="button" role="tab" aria-controls="terminal-output"><span>EMPTY</span></button><button type="button" role="tab" aria-controls="terminal-output"><span>EMPTY</span></button>
       </nav>
       <div class="terminal-runtime" id="terminal-runtime">
@@ -105,27 +110,27 @@ app.innerHTML = `
         <form class="terminal-prompt" id="terminal-form">
           <label class="terminal-powerline" for="terminal-input">~/.c/eDEX-UI</label>
           <span class="terminal-editor">
-            <input id="terminal-input" autocomplete="off" autocapitalize="none" autocorrect="off" enterkeyhint="send" inputmode="text" spellcheck="false" aria-label="Terminal command" />
+            <input id="terminal-input" autocomplete="off" autocapitalize="none" autocorrect="off" enterkeyhint="send" inputmode="text" spellcheck="false" aria-label="Terminal command" data-i18n-aria="terminalCommand" />
             <span class="cursor" aria-hidden="true"></span>
           </span>
         </form>
-        <div class="terminal-footer"><span>TYPE <b>HELP</b> FOR COMMANDS</span><span id="latency">381ms</span><span id="terminal-footer-time">lun. 29 avril 2019 20:27:29 CEST</span></div>
+        <div class="terminal-footer"><span data-i18n="terminalHelp">TYPE HELP FOR COMMANDS</span><span id="latency">381ms</span><span id="terminal-footer-time">lun. 29 avril 2019 20:27:29 CEST</span></div>
       </div>
     </section>
 
-    <aside class="panel network-panel" aria-label="Network telemetry">
+    <aside class="panel network-panel" aria-label="Network telemetry" data-i18n-aria="networkTelemetry">
       <section class="data-block network-status" data-boot-module>
-        <header><span>NETWORK STATUS</span><small>Interface: tun0</small></header>
-        <div><span>STATE<b>ONLINE</b></span><span>IPv4<b>194.187.249.35</b></span><span>PING<b id="ping">16ms</b></span></div>
+        <header><span data-i18n="networkStatus">NETWORK STATUS</span><small>Interface: tun0</small></header>
+        <div><span><span data-i18n="state">STATE</span><b data-i18n="online">ONLINE</b></span><span>IPv4<b>194.187.249.35</b></span><span>PING<b id="ping">16ms</b></span></div>
       </section>
       <section class="data-block world-view" data-boot-module>
-        <header><span>WORLD VIEW</span><small>GLOBAL NETWORK MAP</small></header>
-        <div class="world-coordinates"><span>ENDPOINT LAT/LON</span><small>-42.8987, 1.2674</small></div>
-        <div class="globe" id="edex-globe" aria-label="Original eDEX network globe"><span>INITIALIZING GLOBE</span></div>
+        <header><span data-i18n="worldView">WORLD VIEW</span><small data-i18n="globalMap">GLOBAL NETWORK MAP</small></header>
+        <div class="world-coordinates"><span data-i18n="endpoint">ENDPOINT LAT/LON</span><small>-42.8987, 1.2674</small></div>
+        <div class="globe" id="edex-globe" aria-label="Original eDEX network globe" data-i18n-aria="originalGlobe"><span data-i18n="initializingGlobe">INITIALIZING GLOBE</span></div>
       </section>
       <section class="data-block traffic-block" data-boot-module>
-        <header><span>NETWORK TRAFFIC</span><small>UP / DOWN, MB/S</small></header>
-        <div class="traffic-total"><span>TOTAL</span><small id="traffic-label">1.20 UP · 4.80 DOWN</small></div>
+        <header><span data-i18n="networkTraffic">NETWORK TRAFFIC</span><small data-i18n="trafficRate">UP / DOWN, MB/S</small></header>
+        <div class="traffic-total"><span data-i18n="total">TOTAL</span><small id="traffic-label">1.20 UP · 4.80 DOWN</small></div>
         <svg viewBox="0 0 280 197" preserveAspectRatio="none" class="traffic-chart">
           <g class="chart-grid"><path d="M0 7H280M0 38H280M0 69H280M0 101H280M0 131H280M0 162H280M0 196H280M0 0V197M70 0V197M140 0V197M210 0V197M280 0V197" /></g>
           <g><polyline id="net-line-a" points=""/><polyline id="net-line-b" points=""/><polyline id="net-line-c" points=""/><polyline id="net-line-d" points=""/></g>
@@ -134,16 +139,16 @@ app.innerHTML = `
       </section>
     </aside>
 
-    <section class="panel filesystem-panel" aria-label="Filesystem">
-      <header class="section-label"><span>FILESYSTEM</span><small>/home/squared/.config/eDEX-UI</small><button class="mobile-files-home" id="mobile-files-home" type="button">HOME</button></header>
+    <section class="panel filesystem-panel" aria-label="Filesystem" data-i18n-aria="filesystem">
+      <header class="section-label"><span data-i18n="filesystem">FILESYSTEM</span><small>/home/squared/.config/eDEX-UI</small><button class="mobile-files-home" id="mobile-files-home" type="button" data-i18n="home">HOME</button></header>
       <div class="file-grid">
         ${canonicalFileEntries.map(({ icon, name, category }) => `<button type="button" data-icon="${icon}" data-category="${category}"><b>${renderFileIcon(edexIcons, icon)}</b><span>${name}</span></button>`).join("")}
       </div>
       <div class="filesystem-source-scrollbar" aria-hidden="true"></div>
-      <footer><span>Mount /home/squared used 71%</span><progress class="storage-meter" value="71" max="100"></progress></footer>
+      <footer><span data-i18n="mounted">Mount /home/squared used 71%</span><progress class="storage-meter" value="71" max="100"></progress></footer>
     </section>
 
-    <section class="keyboard-panel" aria-label="On-screen QWERTY keyboard">
+    <section class="keyboard-panel" aria-label="On-screen QWERTY keyboard" data-i18n-aria="keyboard">
       ${keyboardRows.map((row, rowIndex) => `<div class="key-row key-row-${rowIndex}">${row.map(({ key, label, shift: shiftedLabel, alt, altShift, fn }) => {
         const specialClass = key === "SPACE" ? " key--space" : key === "ENTER" ? " key--enter-upper" : key === "ENTER_LOWER" ? " key--enter-lower" : "";
         const keyContent = key === "SPACE" ? "" : arrowIcons[key] ?? `<span class="key-alt-shift">${escapeHtml(altShift ?? "")}</span><span class="key-fn">${escapeHtml(fn ?? "")}</span><span class="key-alt">${escapeHtml(alt ?? "")}</span><span class="key-shift">${escapeHtml(shiftedLabel ?? "")}</span><span class="key-main">${escapeHtml(label)}</span>`;
@@ -151,14 +156,14 @@ app.innerHTML = `
       }).join("")}</div>`).join("")}
     </section>
   </main>
-  <section class="content-overlay" id="content-overlay" role="dialog" aria-modal="true" aria-label="Content browser" hidden>
-    <button class="content-overlay__close" type="button" id="content-overlay-close" aria-label="Close content browser">RETURN TO DECK</button>
+  <section class="content-overlay" id="content-overlay" role="dialog" aria-modal="true" aria-label="Content browser" data-i18n-aria="contentBrowser" hidden>
+    <button class="content-overlay__close" type="button" id="content-overlay-close" aria-label="Close content browser" data-i18n="returnToDeck" data-i18n-aria="closeBrowser">RETURN TO DECK</button>
     <div class="content-overlay__viewport" id="content-overlay-viewport">
       <article class="content-reader" id="content-reader" data-content-view="document" hidden aria-labelledby="content-reader-title">
         <header>
           <div><small id="content-reader-meta"></small><h1 id="content-reader-title"></h1><p id="content-reader-summary"></p><div id="content-reader-tags"></div></div>
         </header>
-        <div class="content-reader__body" id="content-reader-body" tabindex="0" aria-label="Article body"></div>
+        <div class="content-reader__body" id="content-reader-body" tabindex="0" aria-label="Article body" data-i18n-aria="articleBody"></div>
       </article>
     </div>
   </section>
@@ -293,7 +298,7 @@ const imageViewer = new ImageViewer(contentOverlay, {
   onSelectionChange: (entry, description) => {
     if (entry.contentPath) writeContentLocation(entry.contentPath, "push", description);
   }
-});
+}, () => locale);
 lifecycle.add(() => imageViewer.dispose());
 let pendingImageOpen: (() => void) | undefined;
 
@@ -357,7 +362,7 @@ function renderFilesystem(): void {
   const snapshot = commandDeck.snapshot();
   const filesystemEntries = snapshot.filesystem.entries;
   filesystemTitle.textContent = snapshot.current.filesystemView === "disks"
-    ? "Showing available block devices"
+    ? t("disks")
     : snapshot.current.cwd;
   fileGrid.innerHTML = filesystemEntries.map(({ icon, name, category }) =>
     `<button type="button" data-file-name="${escapeHtml(name)}" data-icon="${icon}" data-category="${category}"><b>${renderFileIcon(edexIcons, icon)}</b><span>${escapeHtml(name)}</span></button>`
@@ -374,7 +379,9 @@ function renderSessionChrome(): void {
   terminalTabs.forEach((tab, index) => {
     const state = snapshot.tabs[index]!;
     const active = state.active;
-    tab.querySelector("span")!.textContent = active && snapshot.content?.preview?.kind === "document" ? "ARTICLE" : state.label;
+    tab.querySelector("span")!.textContent = active && snapshot.content?.preview?.kind === "document"
+      ? t("article")
+      : state.label === "MAIN SHELL" ? t("mainShell") : state.label === "EMPTY" ? t("empty") : state.label;
     tab.classList.toggle("active", active);
     tab.setAttribute("aria-selected", String(active));
     tab.tabIndex = active ? 0 : -1;
@@ -830,7 +837,7 @@ lifecycle.listen<MouseEvent>(fileGrid, "click", (event) => {
 
 function renderTelemetry(tick: number): void {
   const snapshot = createTelemetrySnapshot(tick);
-  document.querySelector("#telemetry-source")!.textContent = snapshot.source.toUpperCase();
+  document.querySelector("#telemetry-source")!.textContent = t("simulated");
   if (staticMode) {
     document.querySelector("#cpu-line-a")!.setAttribute("points", canonicalCpuTraces.first);
     document.querySelector("#cpu-line-a-secondary")!.setAttribute("points", canonicalCpuTraces.firstSecondary);
@@ -851,13 +858,13 @@ function renderTelemetry(tick: number): void {
     document.querySelector("#net-line-c")!.setAttribute("points", sparklinePoints([...snapshot.historyB].reverse(), 280, 82));
     document.querySelector("#net-line-d")!.setAttribute("points", sparklinePoints([...snapshot.historyA].reverse(), 280, 82));
   }
-  document.querySelector("#cpu-a")!.textContent = staticMode ? "Avg. 55%" : `Avg. ${snapshot.cpu}%`;
-  document.querySelector("#cpu-b")!.textContent = staticMode ? "Avg. 56%" : `Avg. ${Math.max(snapshot.cpu - 8, 0)}%`;
+  document.querySelector("#cpu-a")!.textContent = staticMode ? "Avg. 55%" : `${t("average")} ${snapshot.cpu}%`;
+  document.querySelector("#cpu-b")!.textContent = staticMode ? "Avg. 56%" : `${t("average")} ${Math.max(snapshot.cpu - 8, 0)}%`;
   document.querySelector("#temp")!.textContent = staticMode ? "62°C" : `${snapshot.temperature}°C`;
   document.querySelector("#tasks")!.textContent = staticMode ? "257" : String(snapshot.tasks);
-  document.querySelector("#memory-label")!.textContent = staticMode ? "USING 3.4 OUT OF 7.7 GiB" : `USING ${snapshot.memory}% OF 16 GB`;
+  document.querySelector("#memory-label")!.textContent = staticMode ? "USING 3.4 OUT OF 7.7 GiB" : locale === "zh-CN" ? `${t("using")} ${snapshot.memory}% · ${t("of")} 16 GB` : `USING ${snapshot.memory}% OF 16 GB`;
   (document.querySelector<HTMLProgressElement>("#memory-meter")!).value = staticMode ? 1.5 : 4;
-  document.querySelector("#traffic-label")!.textContent = staticMode ? "158 MB OUT, 1.32 GB IN" : `${snapshot.upload.toFixed(2)} UP · ${snapshot.download.toFixed(2)} DOWN`;
+  document.querySelector("#traffic-label")!.textContent = staticMode ? "158 MB OUT, 1.32 GB IN" : `${snapshot.upload.toFixed(2)} ${t("up")} · ${snapshot.download.toFixed(2)} ${t("down")}`;
   document.querySelector("#ping")!.textContent = staticMode ? "16ms" : `${14 + tick % 7}ms`;
   document.querySelector("#latency")!.textContent = staticMode ? "381ms" : `${34 + tick % 9}ms`;
 }
@@ -877,7 +884,7 @@ function renderClock(): void {
   const now = new Date();
   setClockText(now.toLocaleTimeString("en-GB", { hour12: false }));
   document.querySelector("#deck-year")!.textContent = String(now.getFullYear());
-  document.querySelector("#deck-date")!.textContent = now.toLocaleDateString("en-GB", { month: "short", day: "numeric" }).toUpperCase();
+  document.querySelector("#deck-date")!.textContent = now.toLocaleDateString(locale === "zh-CN" ? "zh-CN" : "en-GB", { month: "short", day: "numeric" }).toUpperCase();
   document.querySelector("#terminal-time")!.textContent = `${now.toISOString().slice(0, 19).replace("T", " ")} UTC`;
   document.querySelector("#terminal-time-secondary")!.textContent = "";
 }
@@ -932,9 +939,8 @@ const soundToggle = document.querySelector<HTMLButtonElement>("#sound-toggle")!;
 const rebootButton = document.querySelector<HTMLButtonElement>("#reboot-system")!;
 
 function updateSoundLabels(): void {
-  const label = audioDeck.isEnabled() ? "ON" : "OFF";
-  soundToggle.textContent = `SOUND ${label}`;
-  gateSoundToggle.textContent = `Sound: ${label.toLowerCase()}`;
+  soundToggle.textContent = t(audioDeck.isEnabled() ? "soundOn" : "soundOff");
+  gateSoundToggle.textContent = t(audioDeck.isEnabled() ? "gateSoundOn" : "gateSoundOff");
   soundToggle.setAttribute("aria-pressed", String(audioDeck.isEnabled()));
   gateSoundToggle.setAttribute("aria-pressed", String(audioDeck.isEnabled()));
 }
@@ -998,6 +1004,21 @@ lifecycle.listen<MouseEvent>(initializeButton, "click", () => { void startBoot()
 lifecycle.listen<MouseEvent>(gateSoundToggle, "click", toggleSound);
 lifecycle.listen<MouseEvent>(soundToggle, "click", toggleSound);
 lifecycle.listen<MouseEvent>(rebootButton, "click", () => { void startBoot(); });
+const languagePickers = [...document.querySelectorAll<HTMLSelectElement>("#gate-language, #deck-language")];
+function applyLocale(next: Locale): void {
+  locale = next;
+  document.documentElement.lang = locale;
+  saveLocale(window.localStorage, locale);
+  languagePickers.forEach((picker) => { picker.value = locale; });
+  localizeElements(app!, locale);
+  imageViewer.setLocale(locale);
+  renderSessionChrome();
+  renderTelemetry(Number(document.documentElement.dataset.telemetryTick ?? 0));
+  renderClock();
+  updateSoundLabels();
+}
+languagePickers.forEach((picker) => lifecycle.listen<Event>(picker, "change", () => applyLocale(picker.value === "zh-CN" ? "zh-CN" : "en")));
+if (!staticMode) applyLocale(locale);
 updateSoundLabels();
 
 if (staticMode) completeBootImmediately(bootElements);

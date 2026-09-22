@@ -128,9 +128,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-button, input { color: inherit; font: inherit; }
+button, input, select { color: inherit; font: inherit; }
 button { text-transform: uppercase; }
-button:focus-visible, input:focus-visible, a:focus-visible { outline: 1px solid var(--signal); outline-offset: 2px; }
+button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 1px solid var(--signal); outline-offset: 2px; }
 
 .boot-overlay {
   position: fixed;
@@ -152,6 +152,12 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 1px solid 
 .boot-gate__actions button { min-width: 14cqw; padding: 1.15cqh 1.5cqw; border: 0; background: #000; font: 600 1.15cqh var(--font-mono); letter-spacing: .1em; }
 .boot-gate__actions button:first-child { color: #000; background: var(--signal); }
 .boot-gate__actions button:hover, .boot-gate__actions button:focus-visible { filter: brightness(1.25); outline: 1px solid var(--signal); }
+.language-picker { display: inline-flex; align-items: center; gap: .5em; color: var(--dim); font-family: var(--font-mono); }
+.language-picker select { min-height: 2.5em; padding: .25em 1.8em .25em .5em; border: 1px solid var(--border); border-radius: 0; background: #000; color: var(--signal); cursor: pointer; }
+.language-picker--gate { margin-top: 2cqh; font-size: 1.15cqh; }
+.language-picker--deck { padding: 0 .48cqw; border-left: 1px solid var(--faint); font-size: .54cqw; font-weight: 600; letter-spacing: .06em; white-space: nowrap; }
+.language-picker--deck select { min-height: 70%; padding: 0 .25em; border-color: var(--faint); font-size: inherit; }
+html[data-static-mode] .language-picker { display: none; }
 
 .boot-log { position: absolute; inset: 0; display: none; margin: 0; padding: 0; overflow: hidden; white-space: pre-wrap; align-content: end; color: var(--signal); font: 1.4cqh/normal monospace; text-transform: none; }
 .boot-overlay[data-phase="log"] .boot-log { display: block; }
@@ -284,6 +290,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 1px solid 
 .global-line--center:hover .deck-controls, .deck-controls:focus-within { opacity: 1; }
 .deck-controls button { padding: 0 .48cqw; border: 0; border-left: 1px solid var(--faint); background: transparent; color: var(--dim); font: 600 .54cqw var(--font-mono); letter-spacing: .06em; }
 .deck-controls button:last-child { border-right: 1px solid var(--faint); }
+.deck-controls .language-picker:last-child { border-right: 1px solid var(--faint); }
 .deck-controls button:hover, .deck-controls button:focus-visible { color: var(--surface); background: var(--signal); outline: 0; }
 html[data-static-mode] .deck-controls { visibility: hidden; }
 .mobile-view-control, .mobile-files-home { display: none; }
@@ -778,6 +785,9 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
   .global-line--center > span:last-child { display: none; }
   .deck-controls { position: static; width: 100%; justify-content: space-between; opacity: 1; transform: none; }
   .deck-controls button { flex: 1; min-width: 0; min-height: 44px; padding: 0 4px; font-size: 10px; }
+  .language-picker--deck { flex: 1.4; justify-content: center; min-width: 0; padding: 0 2px; font-size: 10px; }
+  .language-picker--deck span { display: none; }
+  .language-picker--deck select { max-width: 100%; min-height: 44px; }
   .mobile-view-control { display: block; }
   html[data-static-mode] .deck-controls { visibility: visible; }
   .terminal-tabs { height: 44px; overflow-x: auto; scrollbar-width: none; }

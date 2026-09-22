@@ -2,6 +2,7 @@ import type { BrowserFileEntry, BrowserImagePreview } from "./browser-filesystem
 import type { FullscreenContentOverlay } from "./fullscreen-content-overlay.js";
 import { calculateContainedImageBounds, createImageRevealPlan, type ImageRevealPlan } from "./image-reveal.js";
 import { PixelateRevealRenderer, type PixelateRevealRuntime } from "./pixelate-reveal-renderer.js";
+import { localizeElements, translate, type Locale } from "./locale.js";
 
 export type ImageViewerAction = "previous" | "next" | "zoom-out" | "zoom-in";
 
@@ -39,6 +40,7 @@ export class ImageViewer {
   private revealRevision = 0;
   private revealTimer: number | undefined;
   private readonly descriptions = new Map<string, { alt: string; caption?: string }>();
+  private locale: Locale;
   private readonly handleKeydown = (event: KeyboardEvent): void => {
     if (this.surface.hidden) return;
     if (event.key === "ArrowLeft") this.activate("previous");
@@ -51,22 +53,24 @@ export class ImageViewer {
   constructor(
     private readonly overlay: FullscreenContentOverlay,
     revealRuntime: PixelateRevealRuntime,
-    private readonly events: ImageViewerEvents = {}
+    private readonly events: ImageViewerEvents = {},
+    getLocale: () => Locale = () => "en"
   ) {
+    this.locale = getLocale();
     this.surface = document.createElement("section");
     this.surface.className = "image-viewer";
     this.surface.hidden = true;
     this.surface.setAttribute("role", "region");
     this.surface.setAttribute("aria-labelledby", "image-viewer-title");
     this.surface.innerHTML = `
-      <header class="image-viewer__header"><div><small>MEDIA VIEWER</small><h1 id="image-viewer-title"></h1></div></header>
+      <header class="image-viewer__header"><div><small data-i18n="mediaViewer">MEDIA VIEWER</small><h1 id="image-viewer-title"></h1></div></header>
       <div class="image-viewer__stage" data-reveal-state="ready">
         <img alt="">
         <div class="image-viewer__reveal" aria-hidden="true"></div>
         <span class="image-viewer__reveal-label" role="status" aria-live="polite"></span>
       </div>
       <p class="image-viewer__caption"></p>
-      <footer><button type="button" data-viewer-action="previous" aria-label="Previous image">← PREV</button><span class="image-viewer__counter"></span><button type="button" data-viewer-action="zoom-out" aria-label="Zoom out">−</button><span class="image-viewer__zoom"></span><button type="button" data-viewer-action="zoom-in" aria-label="Zoom in">+</button><button type="button" data-viewer-action="next" aria-label="Next image">NEXT →</button></footer>
+      <footer><button type="button" data-viewer-action="previous" aria-label="Previous image" data-i18n="previous" data-i18n-aria="previousImage">← PREV</button><span class="image-viewer__counter"></span><button type="button" data-viewer-action="zoom-out" aria-label="Zoom out" data-i18n-aria="zoomOut">−</button><span class="image-viewer__zoom"></span><button type="button" data-viewer-action="zoom-in" aria-label="Zoom in" data-i18n-aria="zoomIn">+</button><button type="button" data-viewer-action="next" aria-label="Next image" data-i18n="next" data-i18n-aria="nextImage">NEXT →</button></footer>
     `;
     this.overlay.register("image", this.surface);
     this.stage = this.surface.querySelector(".image-viewer__stage")!;
@@ -90,6 +94,7 @@ export class ImageViewer {
     this.caption = this.surface.querySelector(".image-viewer__caption")!;
     this.counter = this.surface.querySelector(".image-viewer__counter")!;
     this.zoomLabel = this.surface.querySelector(".image-viewer__zoom")!;
+    this.setLocale(this.locale);
 
     this.surface.addEventListener("click", (event) => {
       const button = (event.target as Element | null)?.closest<HTMLButtonElement>("[data-viewer-action]");
@@ -124,6 +129,15 @@ export class ImageViewer {
     this.pixelateReveal.dispose();
     document.removeEventListener("keydown", this.handleKeydown, { capture: true });
     this.surface.remove();
+  }
+
+  setLocale(locale: Locale): void {
+    this.locale = locale;
+    localizeElements(this.surface, locale);
+    const revealState = this.stage.dataset.revealState;
+    if (revealState === "loading" && this.revealLabel.textContent) {
+      this.revealLabel.textContent = translate(locale, this.image.complete ? "resolving" : "decoding");
+    } else if (revealState === "error") this.revealLabel.textContent = translate(locale, "decodeError");
   }
 
   private move(direction: -1 | 1): void {
@@ -168,7 +182,7 @@ export class ImageViewer {
     delete this.stage.dataset.revealFrames;
     delete this.stage.dataset.revealProgress;
     this.stage.setAttribute("aria-busy", "true");
-    this.revealLabel.textContent = "DECODING MEDIA";
+    this.revealLabel.textContent = translate(this.locale, "decoding");
     this.clearRevealTiles();
     this.image.src = source;
 
@@ -178,13 +192,13 @@ export class ImageViewer {
       if (revision !== this.revealRevision) return;
       this.stage.dataset.revealState = "error";
       this.stage.setAttribute("aria-busy", "false");
-      this.revealLabel.textContent = "MEDIA DECODE ERROR";
+      this.revealLabel.textContent = translate(this.locale, "decodeError");
       return;
     }
     if (revision !== this.revealRevision) return;
 
     const bounds = this.containedImageBounds();
-    this.revealLabel.textContent = "RESOLVING IMAGE";
+    this.revealLabel.textContent = translate(this.locale, "resolving");
     const pixelateStarted = await this.pixelateReveal.start(source, bounds, {
       onFrame: (frame) => {
         if (revision !== this.revealRevision) return;
@@ -243,7 +257,7 @@ export class ImageViewer {
     this.reveal.style.height = `${bounds.height}px`;
     const sourceUrl = new URL(source, document.baseURI).href;
     for (const tile of this.revealTiles) tile.style.backgroundImage = `url(${JSON.stringify(sourceUrl)})`;
-    this.revealLabel.textContent = "RASTER ACQUISITION";
+    this.revealLabel.textContent = translate(this.locale, "raster");
     this.stage.dataset.revealState = "revealing";
     this.revealTimer = window.setTimeout(() => this.finishReveal(revision), this.revealPlan.minimumVisibleMs);
   }

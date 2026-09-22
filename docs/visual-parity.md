@@ -102,6 +102,13 @@
 `command-deck-mobile.png`、`command-deck-mobile-touch.png`、`command-deck-mobile-files.png` 与
 `command-deck-mobile-landscape.png`。
 
+## 有意扩展：界面语言
+
+启动门和工作台控制栏提供 English / 简体中文选择。选择保存在浏览器本地存储中，刷新后继续使用；
+工作台、文件区与媒体查看器的界面标签随选择更新。文章正文、文件名、终端命令及上游启动日志保留
+原始内容，避免改变作者文字与可执行命令。`?static` 固定为英文，以便继续对照 eDEX-UI 2.2 的
+官方视觉基准。语言控件属于非上游的有意扩展，不改变五个桌面区域的布局或尺寸。
+
 ## 有意扩展：媒体显现
 
 上游 eDEX-UI 2.2 没有图片浏览器或图片解码动画。项目媒体查看器使用 MIT 许可的
