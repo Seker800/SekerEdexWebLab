@@ -79,7 +79,7 @@ jobs:
 
       - name: Verify the GitHub OIDC identity
         env:
-          EXPECTED_OIDC_SUBJECT: repo:Seker800/SekerEdexWebLab:environment:production
+          EXPECTED_OIDC_SUBJECT: repo:Seker800@92268459/SekerEdexWebLab@1372830011:environment:production
         run: |
           token_response="$(curl --fail --silent --show-error \
             --header "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
