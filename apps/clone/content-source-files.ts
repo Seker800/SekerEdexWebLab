@@ -17,6 +17,7 @@ export async function discoverContentFiles(contentRoot: string): Promise<string[
   const visit = async (directory: string): Promise<void> => {
     const entries = await readdir(directory, { withFileTypes: true });
     await Promise.all(entries.map(async (entry) => {
+      if (entry.name === ".DS_Store" || entry.name.startsWith("._")) return;
       const absolutePath = path.join(directory, entry.name);
       const stats = await lstat(absolutePath);
       if (stats.isSymbolicLink()) throw new Error(`Symbolic links are not allowed in content: ${absolutePath}`);

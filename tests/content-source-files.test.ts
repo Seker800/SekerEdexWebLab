@@ -39,6 +39,8 @@ describe("content source discovery", () => {
     await mkdir(path.join(root, "posts"));
     await writeFile(path.join(root, "posts", "b.md"), "b");
     await writeFile(path.join(root, "a.md"), "a");
+    await writeFile(path.join(root, ".DS_Store"), "finder metadata");
+    await writeFile(path.join(root, "._a.md"), "appledouble metadata");
 
     await expect(discoverContentFiles(root)).resolves.toEqual([
       path.join(root, "a.md"),
