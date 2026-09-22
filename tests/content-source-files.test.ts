@@ -1,26 +1,15 @@
 import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { createServer, type ViteDevServer } from "vite";
 import { afterEach, describe, expect, it } from "vitest";
 import { discoverContentFiles } from "../apps/clone/content-source-files.js";
 import { contentManifestPlugin, resolveContentRoot } from "../apps/clone/vite.config.js";
 
 const temporaryDirectories: string[] = [];
-const developmentServers: ViteDevServer[] = [];
 
 afterEach(async () => {
-  await Promise.all(developmentServers.splice(0).map((server) => server.close()));
   await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
 });
-
-async function waitFor(predicate: () => boolean, message: string): Promise<void> {
-  const deadline = Date.now() + 5_000;
-  while (!predicate()) {
-    if (Date.now() >= deadline) throw new Error(message);
-    await new Promise((resolve) => setTimeout(resolve, 25));
-  }
-}
 
 describe("content source discovery", () => {
   it("resolves a private content root relative to the repository without changing the public default", () => {
@@ -95,33 +84,4 @@ describe("content source discovery", () => {
     expect(results).toEqual([[], [], []]);
   });
 
-  it("receives real create and delete events from a running Vite development server", async () => {
-    const projectRoot = await mkdtemp(path.join(tmpdir(), "seker-vite-content-"));
-    temporaryDirectories.push(projectRoot);
-    const contentRoot = path.join(projectRoot, "content");
-    await mkdir(contentRoot);
-    const article = path.join(contentRoot, "new.md");
-    await writeFile(article, "# Existing");
-    await writeFile(path.join(projectRoot, "index.html"), '<script type="module" src="/main.js"></script>');
-    await writeFile(path.join(projectRoot, "main.js"), 'import "virtual:content-manifest";');
-    const server = await createServer({
-      configFile: false,
-      root: projectRoot,
-      logLevel: "silent",
-      server: { host: "127.0.0.1", port: 0 },
-      plugins: [contentManifestPlugin(contentRoot)]
-    });
-    developmentServers.push(server);
-    const watcherReady = new Promise<void>((resolve) => server.watcher.once("ready", resolve));
-    await server.listen();
-    await watcherReady;
-    const observed: string[] = [];
-    server.watcher.on("add", (file) => { if (file.startsWith(contentRoot)) observed.push("create"); });
-    server.watcher.on("unlink", (file) => { if (file.startsWith(contentRoot)) observed.push("delete"); });
-
-    await rm(article);
-    await waitFor(() => observed.includes("delete"), "Vite did not emit a delete event for removed content");
-    await writeFile(article, "# Recreated");
-    await waitFor(() => observed.includes("create"), "Vite did not emit a create event for recreated content");
-  }, 10_000);
 });

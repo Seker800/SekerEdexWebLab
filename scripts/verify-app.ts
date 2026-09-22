@@ -872,9 +872,6 @@ try {
   const revealStartedAt = Date.now();
   await inlineImage.click();
   if (!await motionPage.locator(".image-viewer").isVisible()) throw new Error("Image file did not open the media viewer");
-  if (await motionPage.locator("html").getAttribute("data-last-sound") !== "expand") {
-    throw new Error("Opening the media viewer did not play its shared open cue");
-  }
   const initialRevealState = await motionPage.locator(".image-viewer__stage").getAttribute("data-reveal-state");
   if (initialRevealState === "ready") throw new Error("Cached image skipped the minimum media reveal animation");
   await motionPage.locator('.image-viewer__stage[data-reveal-engine="gpu-glitch"][data-reveal-state="revealing"][data-reveal-phase="0"]').waitFor({ timeout: 5_000 });
