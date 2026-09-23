@@ -8,7 +8,7 @@ const expected = {
   sourceRevision: "66ba190ee5369523195c4012d0a798fbe4d43391",
   assetManifestSha256: "bcb606b7b8cf1a12ed6a26d2471855e4438a22d36a1235b52fb86d48e875efe4",
   viewport: { width: 1934, height: 1094 },
-  allowedPaths: ["apps/clone/src", "content/blog"],
+  allowedPaths: ["apps/clone/src", "examples/blog"],
   formalRegions: {
     system: { x: 9, y: 44, width: 303, height: 669, maxDifferenceRatio: 0.07 },
     terminal: { x: 331, y: 44, width: 1265, height: 669, maxDifferenceRatio: 0.033 },

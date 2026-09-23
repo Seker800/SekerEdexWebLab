@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "id": "seker-edex-samples",
+  "kind": "sample",
+  "visibility": "public",
+  "defaultLicense": "documented-per-file"
+}

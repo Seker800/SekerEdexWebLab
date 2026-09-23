@@ -37,7 +37,7 @@
     "maxRegionRegressionRatio": 0.001
   },
   "maxAttempts": 3,
-  "allowedPaths": ["apps/clone/src", "content/blog"],
+  "allowedPaths": ["apps/clone/src", "examples/blog"],
   "sourceEvidence": {
     "repositoryUrl": "https://github.com/GitSquared/edex-ui.git",
     "revision": "66ba190ee5369523195c4012d0a798fbe4d43391",

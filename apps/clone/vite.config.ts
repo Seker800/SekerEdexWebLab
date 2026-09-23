@@ -3,15 +3,11 @@ import path from "node:path";
 import { defineConfig, loadEnv, normalizePath, searchForWorkspaceRoot, type Plugin } from "vite";
 import { createContentManifest, supportedContentMediaExtensions } from "./src/content/content-registry.js";
 import { discoverContentFiles } from "./content-source-files.js";
+import { loadContentSource, resolveContentRoot, type LoadedContentSource } from "./content-source.js";
 
 const virtualModuleId = "virtual:content-manifest";
 const resolvedVirtualModuleId = `\0${virtualModuleId}`;
 const repositoryRoot = path.resolve(import.meta.dirname, "../..");
-
-export function resolveContentRoot(root: string, configuredRoot?: string): string {
-  const selectedRoot = configuredRoot?.trim() || "content/blog";
-  return path.resolve(root, selectedRoot);
-}
 
 function contentRelativePath(contentRoot: string, file: string): string {
   return normalizePath(path.relative(contentRoot, file));
@@ -22,7 +18,8 @@ function isContentFile(contentRoot: string, file: string): boolean {
   return relative !== "" && relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
 }
 
-export function contentManifestPlugin(contentRoot = path.resolve(import.meta.dirname, "../../content/blog")): Plugin {
+export function contentManifestPlugin(source: LoadedContentSource | string = path.resolve(import.meta.dirname, "../../examples/blog")): Plugin {
+  const contentRoot = typeof source === "string" ? source : source.root;
   return {
     name: "seker-content-manifest",
     config(config) {
@@ -50,7 +47,7 @@ export function contentManifestPlugin(contentRoot = path.resolve(import.meta.dir
     },
     async load(id) {
       if (id !== resolvedVirtualModuleId) return undefined;
-      const files = await discoverContentFiles(contentRoot);
+      const files = typeof source === "string" ? await discoverContentFiles(contentRoot) : source.files;
       for (const file of files) this.addWatchFile(file);
       const markdownFiles = files.filter((file) => file.endsWith(".md"));
       const mediaFiles = files.filter((file) => supportedContentMediaExtensions.includes(path.extname(file).slice(1).toLocaleLowerCase()));
@@ -62,12 +59,21 @@ export function contentManifestPlugin(contentRoot = path.resolve(import.meta.dir
       const serializedEntries = manifest.entries.map((entry) => entry.kind === "media"
         ? `{...${JSON.stringify(entry)},url:${mediaVariables.get(entry.relativePath)}}`
         : JSON.stringify(entry));
-      return `${mediaImports.join("\n")}\nexport const contentManifest=Object.freeze({entries:Object.freeze([${serializedEntries.join(",")}])});`;
+      const descriptor = typeof source === "string"
+        ? { schemaVersion: 1, id: "legacy-content-source", kind: "sample", visibility: "public", defaultLicense: "unspecified" }
+        : source.descriptor;
+      return `${mediaImports.join("\n")}\nexport const contentSource=Object.freeze(${JSON.stringify(descriptor)});\nexport const contentManifest=Object.freeze({entries:Object.freeze([${serializedEntries.join(",")}])});`;
     }
   };
 }
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(async ({ mode }) => {
   const environment = loadEnv(mode, repositoryRoot, "");
-  return { plugins: [contentManifestPlugin(resolveContentRoot(repositoryRoot, environment.SEKER_CONTENT_ROOT))] };
+  const configuredRoot = environment.SEKER_CONTENT_ROOT?.trim();
+  const source = await loadContentSource({
+    repositoryRoot,
+    contentRoot: resolveContentRoot(repositoryRoot, configuredRoot),
+    expectedKind: configuredRoot ? "author" : "sample"
+  });
+  return { plugins: [contentManifestPlugin(source)] };
 });

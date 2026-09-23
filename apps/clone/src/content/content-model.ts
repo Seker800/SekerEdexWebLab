@@ -1,3 +1,13 @@
+export type ContentSourceKind = "sample" | "author";
+
+export interface ContentSourceDescriptor {
+  readonly schemaVersion: 1;
+  readonly id: string;
+  readonly kind: ContentSourceKind;
+  readonly visibility: "public";
+  readonly defaultLicense: string;
+}
+
 export interface ContentDocument {
   readonly kind: "document";
   readonly relativePath: string;

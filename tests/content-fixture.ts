@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { createContentManifest, supportedContentMediaExtensions } from "../apps/clone/src/content/content-registry.js";
 
-const contentRoot = path.resolve("content/blog");
+const contentRoot = path.resolve("examples/blog");
 
 function filesBelow(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
