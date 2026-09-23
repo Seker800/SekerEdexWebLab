@@ -14,9 +14,10 @@ import { DisposableRegistry } from "./disposable-registry.js";
 import { createSandboxFilesystem } from "./browser-filesystem.js";
 import { ImageViewer } from "./image-viewer.js";
 import { FullscreenContentOverlay } from "./fullscreen-content-overlay.js";
-import { contentManifest, contentSource } from "virtual:content-manifest";
+import { contentDelivery, contentManifest, contentSource } from "virtual:content-manifest";
 import { buildContentTree } from "./content/content-tree.js";
 import { contentDirname } from "./content/content-model.js";
+import { fetchPublishedContent } from "./content/content-release.js";
 import { contentHash, parseContentHash } from "./content/content-location.js";
 import { renderContentMarkdown } from "./content/markdown-renderer.js";
 import { localizeElements, readLocale, saveLocale, translate, type Locale } from "./locale.js";
@@ -34,6 +35,16 @@ const lifecycle = new DisposableRegistry();
 const searchParams = new URLSearchParams(window.location.search);
 const staticMode = searchParams.has("static");
 if (staticMode) document.documentElement.dataset.staticMode = "";
+const selectedContent = contentDelivery === "runtime" && !staticMode
+  ? await fetchPublishedContent().then((content) => {
+    document.documentElement.dataset.contentState = "ready";
+    return content;
+  }).catch((error: unknown) => {
+    document.documentElement.dataset.contentState = "error";
+    console.error("Author content is unavailable; samples will not be shown.", error);
+    return { source: contentSource, manifest: contentManifest };
+  })
+  : { source: contentSource, manifest: contentManifest };
 let locale: Locale = staticMode ? "en" : readLocale(window.localStorage);
 document.documentElement.lang = locale;
 const t = (key: Parameters<typeof translate>[1]): string => translate(locale, key);
@@ -247,10 +258,10 @@ if (staticMode) {
     });
   });
 }
-const contentTree = buildContentTree(contentManifest.entries);
+const contentTree = buildContentTree(selectedContent.manifest.entries);
 const browserFilesystem = createSandboxFilesystem({
-  contentEntries: staticMode ? [] : contentManifest.entries,
-  mountContentRoot: !staticMode && contentSource.kind === "author",
+  contentEntries: staticMode ? [] : selectedContent.manifest.entries,
+  mountContentRoot: !staticMode && selectedContent.source.kind === "author",
   startInContent: !staticMode
 });
 const commandDeck = new CommandDeckController(browserFilesystem);

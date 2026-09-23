@@ -68,10 +68,11 @@ iOS 聚焦缩放的字号、至少 44px 的触控目标和无横向裁切作为�
 控制器返回不可变快照，DOM 层只负责渲染和焦点。页面级 `DisposableRegistry` 统一释放事件监听、
 音频、启动任务、Globe 渲染器与调度器，避免重启、隐藏页面或热重载后遗留写入者。
 
-公开示例内容位于仓库级 `examples/blog`；作者也可通过 `SEKER_CONTENT_ROOT` 选择仓库外的独立作者
-发布根，二者不会在运行时合并。每个内容根必须用 `content-source.json` 声明 `sample` 或 `author`
-身份；未配置时只构建示例，配置作者根后只构建作者内容，空作者根也不会回退示例。生产发布只接受
-仓库外的 `author` 内容根。`apps/clone/vite.config.ts` 在构建边界发现 Markdown 与受支持的图片，
+公开示例内容位于仓库级 `examples/blog`；本地作者预览可通过 `SEKER_CONTENT_ROOT` 选择仓库外的独立
+作者根，二者不会合并。每个内容根必须用 `content-source.json` 声明 `sample` 或 `author` 身份；未配置
+时只构建示例，配置作者根后只构建作者内容，空作者根也不会回退示例。生产网站构建固定使用 runtime
+内容模式，不读取或嵌入作者根；作者内容由独立 workflow 生成版本化清单和媒体，最后切换
+`content/current.json`。`apps/clone/vite.config.ts` 在本地嵌入模式的构建边界发现 Markdown 与受支持的图片，
 先把绝对磁盘位置收敛为内容根内的安全相对路径，再交给内容注册表。内容注册表使用 YAML 与 Zod 校验 frontmatter、路径碰撞、图片 alt 和相对资源，再生成不含
 解析器运行时代码的类型化清单。内容树保留仓库真实层级并挂载到 `/home/squared/Blog`；canonical
 eDEX 目录独立挂载到 `/home/squared/.config/eDEX-UI`，静态参考模式不接收个人内容。虚拟文件系统
@@ -99,8 +100,9 @@ VFX-JS 使用视口坐标绘制图像；当桌面画布在非 16:9 视口居中�
 监听内容根并通过 Vite 7 `hotUpdate` 在新增、删除或修改内容时失效虚拟清单。当前阶段把 Markdown 正文保留在清单中，是为
 了让阅读器与同步终端 `cat` 共享完全相同的文件内容。若实际内容规模证明首屏预算不足，应先引入
 异步 content repository 端口并同时迁移终端读取协议，不能只把阅读器改成惰性加载而让虚拟文件为空。
-外部内容目录只隔离 Git 历史与作者源文件；所有进入静态构建的正文和媒体仍是公开发布物。具体操作与
-许可证边界见 `docs/content-boundary.md`。
+外部内容目录只隔离 Git 历史与作者源文件；所有进入内容 release 的正文和媒体仍是公开发布物。站点
+对象与 `content/` 对象具有互斥所有权，分别通过 Git revision 与内容 digest 标识。具体操作、发布决策
+和许可证边界见 `docs/deployment.md` 与 `docs/content-boundary.md`。
 
 ## Invariants
 

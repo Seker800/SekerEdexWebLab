@@ -9,6 +9,10 @@ const virtualModuleId = "virtual:content-manifest";
 const resolvedVirtualModuleId = `\0${virtualModuleId}`;
 const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 
+interface RuntimeContentPluginSource {
+  readonly delivery: "runtime";
+}
+
 function contentRelativePath(contentRoot: string, file: string): string {
   return normalizePath(path.relative(contentRoot, file));
 }
@@ -18,11 +22,13 @@ function isContentFile(contentRoot: string, file: string): boolean {
   return relative !== "" && relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
 }
 
-export function contentManifestPlugin(source: LoadedContentSource | string = path.resolve(import.meta.dirname, "../../examples/blog")): Plugin {
-  const contentRoot = typeof source === "string" ? source : source.root;
+export function contentManifestPlugin(source: LoadedContentSource | string | RuntimeContentPluginSource = path.resolve(import.meta.dirname, "../../examples/blog")): Plugin {
+  const runtime = typeof source === "object" && "delivery" in source;
+  const contentRoot = runtime ? undefined : typeof source === "string" ? source : source.root;
   return {
     name: "seker-content-manifest",
     config(config) {
+      if (!contentRoot) return undefined;
       const configuredProjectRoot = path.resolve(config.root ?? process.cwd());
       return {
         server: {
@@ -33,9 +39,10 @@ export function contentManifestPlugin(source: LoadedContentSource | string = pat
       };
     },
     configureServer(server) {
-      server.watcher.add(contentRoot);
+      if (contentRoot) server.watcher.add(contentRoot);
     },
     hotUpdate(options) {
+      if (!contentRoot) return;
       if (!isContentFile(contentRoot, options.file)) return;
       const virtualModule = this.environment.moduleGraph.getModuleById(resolvedVirtualModuleId);
       if (virtualModule) this.environment.moduleGraph.invalidateModule(virtualModule, new Set(), options.timestamp, true);
@@ -47,6 +54,10 @@ export function contentManifestPlugin(source: LoadedContentSource | string = pat
     },
     async load(id) {
       if (id !== resolvedVirtualModuleId) return undefined;
+      if (runtime) {
+        return `export const contentDelivery="runtime";\nexport const contentSource=Object.freeze({schemaVersion:1,id:"runtime-author",kind:"author",visibility:"public",defaultLicense:"All rights reserved"});\nexport const contentManifest=Object.freeze({entries:Object.freeze([])});`;
+      }
+      if (!contentRoot) throw new Error("Embedded content requires a content root.");
       const currentSource = typeof source === "string" ? undefined : await loadContentSource({
         repositoryRoot: source.repositoryRoot,
         contentRoot: source.root,
@@ -67,13 +78,16 @@ export function contentManifestPlugin(source: LoadedContentSource | string = pat
       const descriptor = currentSource?.descriptor ?? (typeof source === "string"
         ? { schemaVersion: 1, id: "legacy-content-source", kind: "sample", visibility: "public", defaultLicense: "unspecified" }
         : source.descriptor);
-      return `${mediaImports.join("\n")}\nexport const contentSource=Object.freeze(${JSON.stringify(descriptor)});\nexport const contentManifest=Object.freeze({entries:Object.freeze([${serializedEntries.join(",")}])});`;
+      return `${mediaImports.join("\n")}\nexport const contentDelivery="embedded";\nexport const contentSource=Object.freeze(${JSON.stringify(descriptor)});\nexport const contentManifest=Object.freeze({entries:Object.freeze([${serializedEntries.join(",")}])});`;
     }
   };
 }
 
 export default defineConfig(async ({ mode }) => {
   const environment = loadEnv(mode, repositoryRoot, "");
+  const delivery = environment.SEKER_CONTENT_DELIVERY?.trim() || "embedded";
+  if (delivery !== "embedded" && delivery !== "runtime") throw new Error(`Unsupported content delivery: ${delivery}`);
+  if (delivery === "runtime") return { plugins: [contentManifestPlugin({ delivery: "runtime" })] };
   const configuredRoot = environment.SEKER_CONTENT_ROOT?.trim();
   const selection = selectContentSource(repositoryRoot, configuredRoot, environment.SEKER_CONTENT_PROFILE);
   const source = await loadContentSource({

@@ -1,112 +1,49 @@
-# 生产部署
+# 生产发布决策门禁
 
-本文档是 `www.seker.wang` 的唯一生产发布流程。人工操作和 Agent 自动执行都必须遵循本文档，
-不得另行使用群晖、自托管 Runner、GitHub Actions 部署、OSS 控制台手工上传或临时上传脚本。
+本文档是 `www.seker.wang` 的生产发布总入口。它只负责判断应走哪条发布线；具体步骤分别锁定在
+`docs/site-deployment.md` 与 `docs/content-publishing.md`。人工操作和 Agent 都不得把两条发布线合并、
+互相代跑，或使用未列出的上传方式。
 
-## 发布边界
+## 先判断改了什么
 
-生产站点在作者的 Mac 上构建，并发布到阿里云 OSS 与 CDN。GitHub 只保存程序、测试和公开 CI；
-个人文章与图片保存在公开仓库外的 `SekerEdexContent/blog`，不会进入 GitHub checkout、Artifact、
-Actions 缓存或日志。
+| 变更对象 | 唯一入口 | 必读文档 | 允许写入 | 明确禁止 |
+| --- | --- | --- | --- | --- |
+| 网站代码、样式、依赖、公开示例、构建或运行时 | `npm run deploy:site` | `docs/site-deployment.md` | 除 `content/` 外的站点对象 | 读取作者内容、改写 `content/` |
+| 作者文章、Web 图片、内容目录 | `npm run publish:content` | `docs/content-publishing.md` | 仅 `content/` | 构建或上传网站、改写 `deployment.json` |
+| 两者都改了 | 先分别完成各自门禁，再分别执行两个入口 | 两份都读 | 两条线各自拥有的对象 | 用一次命令打包发布 |
 
-站点仍然是公开静态网站。`SEKER_CONTENT_ROOT` 中的 Markdown 与媒体会编入最终产物并上传 OSS，
-因此该目录只能放准备公开的 Web 版本。草稿、秘密、原始照片和私人记录应放在不参与构建的目录。
+不存在通用的 `npm run deploy`。看到“发布”“上线”“更新生产”但无法判断对象时，必须先查看变更范围；
+仍不明确时停止并询问用户，不能自行选择或同时执行两个入口。
 
-## 一次性本机设置
+## 不可跨越的边界
 
-1. 安装 Node.js 22 与阿里云 CLI 3.5.1 或更高版本。
-2. 在公开仓库外创建内容目录，例如 `../SekerEdexContent/blog`。
-3. 在仓库的 `.env.local` 中配置：
+- 网站版本由根目录 `deployment.json` 记录，只包含程序版本 `site.revision`。
+- 内容版本由 `content/current.json` 记录，只包含作者身份、内容摘要和不可变清单地址。
+- 网站运行时读取当前内容版本；网站构建不嵌入作者文章或图片。
+- 示例内容只用于本地开发、公开 CI 和示例构建。生产内容失败或为空时不得回退到示例。
+- 网站发布的过期对象清理必须排除整个 `content/` 命名空间。
+- 内容发布采用“媒体与清单先上传，指针最后切换”；失败不得改变公开指针。
+- 两条线都只能在作者 Mac 上使用本项目提供的标准入口，并通过同一个本机 OAuth 配置访问阿里云。
+- 不得使用 OSS 控制台、直接执行 OSS 上传命令、临时脚本、GitHub Actions、自托管 Runner 或群晖替代标准入口。
 
-   ```dotenv
-   SEKER_CONTENT_ROOT=../SekerEdexContent/blog
-   ```
-
-   该目录必须包含 `content-source.json`，并声明 `kind` 为 `author`。缺失声明、`sample` 身份和仓库内
-   内容根都会被生产发布拒绝。
-
-4. 使用浏览器 OAuth 创建本机发布配置：
-
-   ```sh
-   aliyun configure --mode OAuth --profile seker-edex-local
-   ```
-
-OAuth 使用可更新的临时凭据，不需要在仓库、脚本或 GitHub 中保存长期 AccessKey。发布脚本固定使用
-`seker-edex-local` 配置、北京地域的 `seker-edex-web` Bucket 和 `www.seker.wang`。
-
-## 标准发布工作流
-
-```text
-完成开发与验证
-      ↓
-只提交本次发布需要的文件
-      ↓
-普通 push 到 origin/main
-      ↓
-确认本机 main、HEAD、origin/main 完全一致
-      ↓
-在作者 Mac 的仓库根目录运行 npm run deploy
-      ↓
-脚本在临时 worktree 中重新检查、测试和构建
-      ↓
-上传 OSS → 发布入口与版本标记 → 刷新 CDN
-      ↓
-公网 deployment.json 与 HEAD 一致才算发布成功
-```
-
-### 发布前
-
-1. 阅读本文件并确认目标是正式生产环境 `www.seker.wang`。
-2. 运行任务要求的全部本地门禁；至少包括 `npm run check`、`npm test` 和生产构建。视觉、动画或
-   交互变更还必须运行项目规定的浏览器与视觉门禁。
-3. 检查 `git status --short`，只暂存和提交本次发布内容，不得覆盖或夹带其他工作区修改。
-4. 使用带 DCO 签名的中文提交，并普通 push 到已确认的 `origin/main`；禁止 force push。
-5. 等待该提交的 GitHub CI 全部通过。GitHub CI 只验证公开仓库，不持有生产凭据，也不执行生产发布。
-
-### 执行发布
-
-在作者 Mac 的仓库根目录运行唯一发布入口：
+## 机器可执行门禁
 
 ```sh
-npm run deploy
+npm run release:verify
 ```
 
-脚本会执行以下步骤：
+该门禁会拒绝含糊的 `deploy` 命令、站点发布读取作者内容、内容发布写入站点版本，以及缺失双入口说明的
+发布文档。它必须进入公开 CI，也必须由网站发布脚本在上传前再次执行。
 
-1. 确认当前分支是 `main`，且 `HEAD` 与 `origin/main` 完全一致。
-2. 在临时 Git worktree 中检出该提交，避免夹带当前工作区的未提交文件。
-3. 从仓库外读取内容，验证 `author` 身份，安装锁定依赖并运行类型检查、单元测试和生产构建。
-4. 先上传普通文件和哈希资源，再发布 `index.html`，最后写入 `deployment.json`。
-5. 刷新 CDN，并从公网确认 `deployment.json` 与目标提交一致。
-6. 只在公网验证成功后删除 OSS 中已经不属于当前构建的旧对象，并再次刷新 CDN。
-7. 无论成功或失败都移除临时 worktree；失败的构建不会上传文件。
+## 选择后的流程
 
-Agent 不得拆开或仿写上述步骤，也不得直接调用 OSS 上传命令来替代 `npm run deploy`。如果发布脚本
-失败，应保留错误现场、定位根因并修复后重新从标准入口执行；不得通过跳过检查、手改线上对象或降低
-验证条件来完成发布。
+- 仅修改程序：继续阅读 `docs/site-deployment.md`，执行 `npm run deploy:site`。
+- 仅修改文章或照片：继续阅读 `docs/content-publishing.md`，执行 `npm run publish:content`。
+- 同时修改：将其视为两个独立发布。两者可以在不同时间上线，也可以独立回滚，不存在共同版本号。
 
-### 发布后验收
+## 首次迁移顺序
 
-发布只有同时满足以下条件才算完成：
-
-1. `npm run deploy` 正常退出并报告目标提交已发布。
-2. `https://www.seker.wang/deployment.json` 返回 `200`，其中 `revision` 与本地 `git rev-parse HEAD`
-   完全一致，`content.kind` 为 `author` 且包含内容摘要，并使用 `Cache-Control: no-store`。
-3. `https://www.seker.wang/` 返回 `200`，入口页使用 `Cache-Control: no-cache`。
-4. 对应 GitHub CI 的所有必需任务通过。
-5. 向用户报告正式域名、发布提交、门禁结果，以及任何仍需人工验证的浏览器或设备范围。
-
-哈希资源使用一年不可变缓存，普通文件使用短缓存，入口页不缓存，部署标记禁止缓存。上传参数通过
-进程参数数组传递，不会从文章名或浏览器内容拼接 Shell 命令。
-
-## 恢复与故障处理
-
-- OAuth 过期或被撤销时，重新运行配置命令并在浏览器登录。
-- CDN 验证失败时，OSS 中可能已有完整新版本；修复网络或权限后重新执行同一提交即可。
-- 需要回滚时，把目标历史提交恢复为新的 `main` 提交并再次运行 `npm run deploy`，线上版本和公开 Git
-  历史仍保持可追踪。
-- 本机内容目录应单独使用私人 Git、Time Machine 或其他备份。发布脚本只读取该目录，不承担源文件备份。
-- 无法访问作者 Mac、OAuth 失效、CI 未通过或公网版本标记不一致时，生产发布处于阻塞状态；先恢复
-  对应条件，再从 `npm run deploy` 重新执行，不能切换到其他发布通道。
-
-GitHub 上不再运行生产部署，也不需要自托管 Runner、部署环境变量或 GitHub OIDC 角色。
+当前线上版本若仍把内容嵌入网站产物，首次切换必须先运行 `npm run publish:content`，确认
+`content/current.json` 和清单可用，再运行 `npm run deploy:site`。旧网站会忽略提前发布的内容对象，
+因此这个顺序不会影响现有页面；反过来先发布 runtime 网站会产生暂时的空内容状态。完成首次迁移后，
+两条发布线不再有固定先后关系。

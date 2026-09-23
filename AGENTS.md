@@ -63,17 +63,21 @@
 
 ## 生产发布
 
-- `docs/deployment.md` 是 `www.seker.wang` 的唯一生产发布工作流；任何 Agent 执行生产发布前必须先阅读并完整遵循。
-- 生产发布只能在作者 Mac 的本仓库中通过 `npm run deploy` 执行。不得使用群晖、自托管 Runner、
-  GitHub Actions 部署、OSS 控制台手工上传、直接调用 OSS 上传命令或另写临时发布脚本。
-- 发布前必须完成所需本地门禁，只提交本次发布内容，普通 push 到 `origin/main`，并确认该提交的
-  GitHub CI 全部通过；不得为发布绕过检查、降低验收阈值或夹带其他工作区修改。
-- `main`、本地 `HEAD` 与 `origin/main` 必须完全一致。发布脚本的分支、工作区、构建、上传、CDN
-  刷新和公网版本核验不得拆开执行或手工替代。
-- 只有 `npm run deploy` 成功、线上 `deployment.json` 的 `revision` 与本地 `HEAD` 完全一致、首页返回
-  正常且必需 CI 全绿，才可以向用户报告生产发布完成。
-- OAuth 失效、CI 失败、脚本失败或公网版本不一致时，必须修复根因并从标准入口重试；不能改走其他
-  发布通道。回滚也必须按 `docs/deployment.md` 生成新的 `main` 提交后重新执行同一流程。
+- `docs/deployment.md` 是生产发布决策门禁。任何 Agent 执行发布前必须先判断本次变更属于网站程序还是
+  作者内容；目标不明确时必须询问，不能同时执行两条发布线。
+- 网站程序只允许通过 `npm run deploy:site` 发布，并完整遵循 `docs/site-deployment.md`。它不得读取
+  `SEKER_CONTENT_ROOT`，不得写入或删除 `content/`，也不得把示例或作者内容嵌入生产网站构建。
+- 作者文章与图片只允许通过 `npm run publish:content` 发布，并完整遵循 `docs/content-publishing.md`。
+  它只允许写入 `content/`，不得构建网站、改写 `deployment.json` 或顺便发布程序。
+- 禁止重新引入含糊的 `npm run deploy`，也禁止把两个入口串成一个“一键发布”。运行
+  `npm run release:verify` 是两个工作流共同的结构门禁。
+- 网站发布前必须完成本地门禁、DCO 提交、普通 push 和 GitHub CI；`main`、本地 `HEAD` 与
+  `origin/main` 必须完全一致。内容发布使用独立内容摘要，不要求为文章修改制造程序仓库提交。
+- 两条生产发布都只能在作者 Mac 使用标准入口。不得使用群晖、自托管 Runner、GitHub Actions 部署、
+  OSS 控制台手工上传、直接调用 OSS 上传命令或另写临时发布脚本。
+- 网站发布只有在 `deployment.json.site.revision` 与本地 `HEAD` 一致时完成；内容发布只有在
+  `content/current.json` 与目标内容摘要一致时完成。任何一条失败都只能修复后从原入口重试，不能让
+  另一条发布线代偿或绕过。
 
 ## Commit 与 Push
 

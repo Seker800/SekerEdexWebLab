@@ -16,11 +16,12 @@
 7. [`adr/0002-lock-tron-reference.md`](adr/0002-lock-tron-reference.md)
 8. [`adr/0003-web-technology-route.md`](adr/0003-web-technology-route.md)
 9. [`adr/0004-fixed-canvas-and-reference-fonts.md`](adr/0004-fixed-canvas-and-reference-fonts.md)
+10. [`adr/0005-independent-site-and-content-releases.md`](adr/0005-independent-site-and-content-releases.md)
 
 ## 当前开发流程
 
 当前原型使用 Node.js 22、npm、Vite 和严格 TypeScript。完整本地门禁为 `npm run verify`，
-依次执行基准策略完整性、上游资产、静态检查、单元测试、内容核心覆盖率、生产构建、演示场景、
+依次执行基准策略完整性、上游资产、双发布线边界、静态检查、单元测试、内容核心覆盖率、生产构建、演示场景、
 Chromium、WebKit 和冻结视觉复刻验证。内容核心的 statements、branches、functions 与 lines
 覆盖率均不得低于 80%。
 
@@ -67,9 +68,12 @@ npm run content:check
 ```
 
 内容根还必须包含 `content-source.json`。公开 CI 使用 `npm run content:verify:sample`，作者发布前使用
-`npm run content:verify:author`；生产脚本检测到 `sample`、缺失声明或仓库内作者根会直接失败。
+`npm run content:verify:author`；内容脚本检测到 `sample`、缺失声明或仓库内作者根会直接失败。正式发布
+必须先阅读 [`deployment.md`](deployment.md)：程序使用 `npm run deploy:site`，文章和照片使用
+`npm run publish:content`，两者不得合并。
 
-无需修改 `apps/clone/src`。构建插件会生成媒体哈希 URL，左下角文件系统会按仓库真实目录挂载到
+无需修改 `apps/clone/src`。本地构建插件生成预览 URL；内容发布器生成基于 digest 的不可变媒体 URL。
+左下角文件系统会按内容真实目录挂载到
 `/home/squared/Blog`，文章和图片地址使用 `#/blog/...`，适用于无需 rewrite 的静态托管。文章与图片
 都会在同一个全屏内容层中打开，并共享位置、尺寸、关闭按钮和 Escape 行为；图片仍支持同目录切换、
 缩放和 Back/Forward 恢复。

@@ -32,6 +32,19 @@ export interface ContentManifest {
   readonly entries: readonly ContentEntry[];
 }
 
+export interface PublishedContentManifest extends ContentManifest {
+  readonly schemaVersion: 1;
+  readonly source: ContentSourceDescriptor;
+  readonly digest: string;
+}
+
+export interface ContentReleasePointer {
+  readonly schemaVersion: 1;
+  readonly source: ContentSourceDescriptor;
+  readonly digest: string;
+  readonly manifestPath: string;
+}
+
 export function normalizeContentPath(value: string, options: { allowRoot?: boolean } = {}): string {
   if (value.includes("\\") || value.includes("\0") || value.startsWith("/")) {
     throw new Error(`Invalid content path: ${value}`);

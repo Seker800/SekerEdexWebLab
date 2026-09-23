@@ -93,8 +93,22 @@ describe("content source discovery", () => {
     const generated = await Reflect.apply(plugin.load, { addWatchFile: () => undefined }, ["\0virtual:content-manifest"]);
 
     expect(generated).toContain('"kind":"author"');
+    expect(generated).toContain('contentDelivery="embedded"');
     expect(generated).toContain("entries:Object.freeze([])");
     expect(generated).not.toContain("Welcome to the command deck");
+  });
+
+  it("emits a content-free runtime adapter for independently deployed sites", async () => {
+    const plugin = contentManifestPlugin({ delivery: "runtime" });
+    if (typeof plugin.load !== "function") throw new Error("Content plugin is missing its virtual module loader");
+
+    const generated = await Reflect.apply(plugin.load, {}, ["\0virtual:content-manifest"]);
+
+    expect(generated).toContain('contentDelivery="runtime"');
+    expect(generated).toContain('id:"runtime-author"');
+    expect(generated).toContain("entries:Object.freeze([])");
+    expect(generated).not.toContain("media0");
+    expect(generated).not.toContain("examples/blog");
   });
 
 });
