@@ -62,6 +62,23 @@ describe("content source identity", () => {
 
     expect(source.descriptor.kind).toBe("author");
     expect(source.files).toEqual([]);
+    expect(source.digest).toMatch(/^[a-f\d]{64}$/u);
+  });
+
+  it("produces a deterministic content digest that changes with publishable content", async () => {
+    const repositoryRoot = await temporaryDirectory("seker-repository-");
+    const contentRoot = await temporaryDirectory("seker-author-content-");
+    await writeDescriptor(contentRoot, "author");
+    const articlePath = path.join(contentRoot, "about.md");
+    await writeFile(articlePath, "first revision");
+
+    const first = await loadContentSource({ repositoryRoot, contentRoot, expectedKind: "author" });
+    const repeated = await loadContentSource({ repositoryRoot, contentRoot, expectedKind: "author" });
+    await writeFile(articlePath, "second revision");
+    const changed = await loadContentSource({ repositoryRoot, contentRoot, expectedKind: "author" });
+
+    expect(repeated.digest).toBe(first.digest);
+    expect(changed.digest).not.toBe(first.digest);
   });
 
   it("rejects missing or mismatched identities and author content inside the public repository", async () => {
