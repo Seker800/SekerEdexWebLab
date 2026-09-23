@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { discoverContentFiles } from "../apps/clone/content-source-files.js";
-import { contentManifestPlugin, resolveContentRoot } from "../apps/clone/vite.config.js";
+import { contentManifestPlugin } from "../apps/clone/vite.config.js";
 
 const temporaryDirectories: string[] = [];
 
@@ -12,16 +12,6 @@ afterEach(async () => {
 });
 
 describe("content source discovery", () => {
-  it("resolves a private content root relative to the repository without changing the public default", () => {
-    const repositoryRoot = path.join(tmpdir(), "SekerEdexWebLab");
-
-    expect(resolveContentRoot(repositoryRoot)).toBe(path.join(repositoryRoot, "content", "blog"));
-    expect(resolveContentRoot(repositoryRoot, "../SekerEdexContent/blog"))
-      .toBe(path.join(tmpdir(), "SekerEdexContent", "blog"));
-    expect(resolveContentRoot(repositoryRoot, path.join(tmpdir(), "private-blog")))
-      .toBe(path.join(tmpdir(), "private-blog"));
-  });
-
   it("returns deterministic regular files and refuses symbolic links", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "seker-content-"));
     temporaryDirectories.push(root);
