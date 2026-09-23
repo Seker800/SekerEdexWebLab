@@ -58,6 +58,14 @@ describe("browser filesystem", () => {
     expect(deck.filesystemEntries().map((entry) => entry.name)).toEqual(["Show disks", "Go up", "posts", "projects", "about.md"]);
   });
 
+  it("keeps an explicitly selected empty author root visible without inserting samples", () => {
+    const filesystem = createSandboxFilesystem({ contentEntries: [], mountContentRoot: true, startInContent: true });
+
+    expect(filesystem.initialPath).toBe(filesystem.contentRoot);
+    expect(filesystem.list(filesystem.root).map((entry) => entry.name)).toContain("Blog");
+    expect(filesystem.list(filesystem.contentRoot).map((entry) => entry.name)).toEqual(["Show disks", "Go up"]);
+  });
+
   it("projects nested content paths without filesystem-specific article wiring", () => {
     const filesystem = createSandboxFilesystem({
       contentEntries: [{
