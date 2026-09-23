@@ -15,11 +15,13 @@ interface FakeSource {
   stop: ReturnType<typeof vi.fn>;
 }
 
-function createAudioHarness(failingCue?: SoundCue) {
+function createAudioHarness(options: { failingCue?: SoundCue; nonOkCue?: SoundCue; resumeFails?: boolean } = {}) {
   const fetchedUrls: string[] = [];
   const decodedBuffers: AudioBuffer[] = [];
   const sources: FakeSource[] = [];
-  const resume = vi.fn(async () => undefined);
+  const resume = vi.fn(async () => {
+    if (options.resumeFails) throw new DOMException("resume blocked", "NotAllowedError");
+  });
   const close = vi.fn(async () => undefined);
   const context = {
     state: "suspended",
@@ -52,7 +54,8 @@ function createAudioHarness(failingCue?: SoundCue) {
   const fetcher = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
     fetchedUrls.push(url);
-    if (failingCue && url.endsWith(`/${failingCue}.wav`)) throw new TypeError("network unavailable");
+    if (options.failingCue && url.endsWith(`/${options.failingCue}.wav`)) throw new TypeError("network unavailable");
+    if (options.nonOkCue && url.endsWith(`/${options.nonOkCue}.wav`)) return new Response(null, { status: 404 });
     return new Response(new Uint8Array([82, 73, 70, 70]));
   }) as typeof fetch;
   const soundEvents: Array<{ cue: SoundCue; enabled: boolean; volume: number }> = [];
@@ -86,10 +89,12 @@ describe("AudioDeck", () => {
     expect(harness.sources[0]!.buffer).toBe(harness.sources[1]!.buffer);
     expect(harness.sources.every((source) => source.start.mock.calls.length === 1)).toBe(true);
     expect(harness.resume).toHaveBeenCalledTimes(1);
+    harness.sources[0]!.onended?.();
+    expect(harness.sources[0]!.disconnect).toHaveBeenCalledTimes(1);
   });
 
   it("remembers a failed preload instead of retrying the same network request on every play", async () => {
-    const harness = createAudioHarness("folder");
+    const harness = createAudioHarness({ failingCue: "folder" });
 
     await expect(harness.deck.unlock()).resolves.toBeUndefined();
     harness.deck.play("folder");
@@ -115,5 +120,27 @@ describe("AudioDeck", () => {
 
     harness.deck.dispose();
     expect(harness.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps playback non-blocking when a response is missing or audio resume is denied", async () => {
+    const harness = createAudioHarness({ nonOkCue: "error", resumeFails: true });
+
+    await expect(harness.deck.unlock()).resolves.toBeUndefined();
+    harness.deck.play("error");
+    harness.deck.play("stdin");
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(harness.sources).toHaveLength(0);
+    expect(harness.resume).toHaveBeenCalled();
+  });
+
+  it("degrades safely when Web Audio is unavailable", async () => {
+    vi.stubGlobal("AudioContext", undefined);
+    const deck = new AudioDeck();
+
+    await expect(deck.unlock()).resolves.toBeUndefined();
+    expect(() => deck.play("info")).not.toThrow();
+    deck.dispose();
+    expect(() => deck.dispose()).not.toThrow();
   });
 });

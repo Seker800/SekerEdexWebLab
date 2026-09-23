@@ -946,7 +946,9 @@ function updateSoundLabels(): void {
 }
 
 function toggleSound(): void {
-  audioDeck.setEnabled(!audioDeck.isEnabled());
+  const enabled = !audioDeck.isEnabled();
+  audioDeck.setEnabled(enabled);
+  if (enabled) void audioDeck.unlock();
   updateSoundLabels();
 }
 
@@ -1000,10 +1002,15 @@ async function startBoot(): Promise<void> {
   }
 }
 
-lifecycle.listen<MouseEvent>(initializeButton, "click", () => { void startBoot(); });
+function startBootFromUserGesture(): void {
+  void audioDeck.unlock();
+  void startBoot();
+}
+
+lifecycle.listen<MouseEvent>(initializeButton, "click", startBootFromUserGesture);
 lifecycle.listen<MouseEvent>(gateSoundToggle, "click", toggleSound);
 lifecycle.listen<MouseEvent>(soundToggle, "click", toggleSound);
-lifecycle.listen<MouseEvent>(rebootButton, "click", () => { void startBoot(); });
+lifecycle.listen<MouseEvent>(rebootButton, "click", startBootFromUserGesture);
 const languagePickers = [...document.querySelectorAll<HTMLSelectElement>("#gate-language, #deck-language")];
 function applyLocale(next: Locale): void {
   locale = next;
