@@ -14,7 +14,7 @@ import { DisposableRegistry } from "./disposable-registry.js";
 import { createSandboxFilesystem } from "./browser-filesystem.js";
 import { ImageViewer } from "./image-viewer.js";
 import { FullscreenContentOverlay } from "./fullscreen-content-overlay.js";
-import { contentManifest } from "virtual:content-manifest";
+import { contentManifest, contentSource } from "virtual:content-manifest";
 import { buildContentTree } from "./content/content-tree.js";
 import { contentDirname } from "./content/content-model.js";
 import { contentHash, parseContentHash } from "./content/content-location.js";
@@ -250,6 +250,7 @@ if (staticMode) {
 const contentTree = buildContentTree(contentManifest.entries);
 const browserFilesystem = createSandboxFilesystem({
   contentEntries: staticMode ? [] : contentManifest.entries,
+  mountContentRoot: !staticMode && contentSource.kind === "author",
   startInContent: !staticMode
 });
 const commandDeck = new CommandDeckController(browserFilesystem);

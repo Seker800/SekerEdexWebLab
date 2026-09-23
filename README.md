@@ -102,7 +102,7 @@ scenario passes.
 | Path | Responsibility |
 | --- | --- |
 | [`apps/clone`](apps/clone) | Browser application and copied-asset provenance |
-| [`content/blog`](content/blog) | Repository-backed articles and media |
+| [`examples/blog`](examples/blog) | Repository-backed sample articles and media |
 | [`src`](src) | Scenario configuration, capture orchestration, judging, and repair contracts |
 | [`scripts`](scripts) | App, asset, gate, and replication verification entry points |
 | [`specs`](specs) / [`schemas`](schemas) | Scenario contracts and typed process-boundary data |

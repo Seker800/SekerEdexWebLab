@@ -22,6 +22,9 @@ Actions 缓存或日志。
    SEKER_CONTENT_ROOT=../SekerEdexContent/blog
    ```
 
+   该目录必须包含 `content-source.json`，并声明 `kind` 为 `author`。缺失声明、`sample` 身份和仓库内
+   内容根都会被生产发布拒绝。
+
 4. 使用浏览器 OAuth 创建本机发布配置：
 
    ```sh
@@ -72,7 +75,7 @@ npm run deploy
 
 1. 确认当前分支是 `main`，且 `HEAD` 与 `origin/main` 完全一致。
 2. 在临时 Git worktree 中检出该提交，避免夹带当前工作区的未提交文件。
-3. 从仓库外读取内容，安装锁定依赖并运行类型检查、单元测试和生产构建。
+3. 从仓库外读取内容，验证 `author` 身份，安装锁定依赖并运行类型检查、单元测试和生产构建。
 4. 先上传普通文件和哈希资源，再发布 `index.html`，最后写入 `deployment.json`。
 5. 刷新 CDN，并从公网确认 `deployment.json` 与目标提交一致。
 6. 只在公网验证成功后删除 OSS 中已经不属于当前构建的旧对象，并再次刷新 CDN。
@@ -88,7 +91,7 @@ Agent 不得拆开或仿写上述步骤，也不得直接调用 OSS 上传命令
 
 1. `npm run deploy` 正常退出并报告目标提交已发布。
 2. `https://www.seker.wang/deployment.json` 返回 `200`，其中 `revision` 与本地 `git rev-parse HEAD`
-   完全一致，且响应使用 `Cache-Control: no-store`。
+   完全一致，`content.kind` 为 `author` 且包含内容摘要，并使用 `Cache-Control: no-store`。
 3. `https://www.seker.wang/` 返回 `200`，入口页使用 `Cache-Control: no-cache`。
 4. 对应 GitHub CI 的所有必需任务通过。
 5. 向用户报告正式域名、发布提交、门禁结果，以及任何仍需人工验证的浏览器或设备范围。

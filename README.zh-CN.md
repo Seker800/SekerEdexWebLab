@@ -93,7 +93,7 @@ React 只管理可声明的界面状态。终端渲染、地球、JPEG 故障效
 | 路径 | 职责 |
 | --- | --- |
 | [`apps/clone`](apps/clone) | 浏览器应用与复制素材的来源记录 |
-| [`content/blog`](content/blog) | 仓库内文章与媒体内容 |
+| [`examples/blog`](examples/blog) | 仓库内示例文章与媒体内容 |
 | [`src`](src) | 场景配置、采集编排、判定与修复协议 |
 | [`scripts`](scripts) | 应用、素材、门禁和复刻验证入口 |
 | [`specs`](specs) / [`schemas`](schemas) | 场景合同与进程边界类型数据 |

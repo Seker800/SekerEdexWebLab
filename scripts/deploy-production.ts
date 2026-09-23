@@ -4,6 +4,7 @@ import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { loadEnv } from "vite";
+import { loadContentSource, selectContentSource, type LoadedContentSource } from "../apps/clone/content-source.js";
 
 const execFile = promisify(execFileCallback);
 const repositoryRoot = path.resolve(import.meta.dirname, "..");
@@ -33,16 +34,12 @@ async function requireCommittedMain(): Promise<string> {
   return revision;
 }
 
-function resolvePrivateContentRoot(): string {
+async function resolveProductionContentSource(): Promise<LoadedContentSource> {
   const environment = loadEnv("production", repositoryRoot, "");
   const configuredRoot = environment.SEKER_CONTENT_ROOT?.trim();
   if (!configuredRoot) throw new Error("Set SEKER_CONTENT_ROOT in .env.local before deploying.");
-  const contentRoot = path.resolve(repositoryRoot, configuredRoot);
-  const relative = path.relative(repositoryRoot, contentRoot);
-  if (relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== "..")) {
-    throw new Error("Production content must live outside the public repository.");
-  }
-  return contentRoot;
+  const selection = selectContentSource(repositoryRoot, configuredRoot, "author");
+  return loadContentSource({ repositoryRoot, ...selection });
 }
 
 async function collectFiles(root: string, directory = root): Promise<string[]> {
@@ -96,11 +93,18 @@ async function removeStaleObjects(expected: Set<string>): Promise<void> {
   }
 }
 
-async function verifyPublicRevision(revision: string): Promise<void> {
+async function verifyPublicRevision(revision: string, contentSource: LoadedContentSource): Promise<void> {
   for (let attempt = 0; attempt < 12; attempt += 1) {
     try {
       const response = await fetch(`${publicOrigin}/deployment.json?revision=${revision}`, { cache: "no-store" });
-      if (response.ok && (await response.json() as { revision?: string }).revision === revision) return;
+      const deployment = response.ok ? await response.json() as {
+        revision?: string;
+        content?: { id?: string; kind?: string; digest?: string };
+      } : undefined;
+      if (deployment?.revision === revision
+        && deployment.content?.id === contentSource.descriptor.id
+        && deployment.content.kind === "author"
+        && deployment.content.digest === contentSource.digest) return;
     } catch {
       // CDN refreshes are eventually consistent; retry only this bounded public read.
     }
@@ -110,7 +114,8 @@ async function verifyPublicRevision(revision: string): Promise<void> {
 }
 
 async function deploy(): Promise<void> {
-  const [revision, contentRoot] = await Promise.all([requireCommittedMain(), Promise.resolve(resolvePrivateContentRoot())]);
+  const [revision, contentSource] = await Promise.all([requireCommittedMain(), resolveProductionContentSource()]);
+  const contentRoot = contentSource.root;
   if (!(await lstat(contentRoot)).isDirectory()) throw new Error("SEKER_CONTENT_ROOT must point to a directory.");
   await lstat(aliyunExecutable);
 
@@ -120,14 +125,26 @@ async function deploy(): Promise<void> {
     console.log("Preparing a clean production build...");
     await run("git", ["worktree", "add", "--detach", worktree, revision]);
     await run("npm", ["ci"], worktree);
-    const buildEnvironment = { ...process.env, SEKER_CONTENT_ROOT: contentRoot };
+    const buildEnvironment = { ...process.env, SEKER_CONTENT_PROFILE: "author", SEKER_CONTENT_ROOT: contentRoot };
     await run("npm", ["run", "check"], worktree, buildEnvironment);
     await run("npm", ["test"], worktree, buildEnvironment);
     await run("npm", ["run", "build"], worktree, buildEnvironment);
 
+    const postBuildContentSource = await resolveProductionContentSource();
+    if (postBuildContentSource.digest !== contentSource.digest) {
+      throw new Error("Author content changed during the production build; restart deployment from a stable source tree.");
+    }
+
     const buildRoot = path.join(worktree, "dist", "clone");
     const deploymentFile = path.join(buildRoot, "deployment.json");
-    await writeFile(deploymentFile, `${JSON.stringify({ revision })}\n`);
+    await writeFile(deploymentFile, `${JSON.stringify({
+      revision,
+      content: {
+        id: contentSource.descriptor.id,
+        kind: contentSource.descriptor.kind,
+        digest: contentSource.digest
+      }
+    })}\n`);
     const files = await collectFiles(buildRoot);
     const ordinaryFiles = files.filter((file) => file !== "index.html" && file !== "deployment.json");
 
@@ -146,7 +163,7 @@ async function deploy(): Promise<void> {
       "--ObjectPath", `${publicOrigin}/`,
       "--ObjectType", "Directory"
     ]);
-    await verifyPublicRevision(revision);
+    await verifyPublicRevision(revision, contentSource);
     await removeStaleObjects(new Set(files));
     await run(aliyunExecutable, [
       "cdn", "RefreshObjectCaches",

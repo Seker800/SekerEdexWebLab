@@ -3,7 +3,7 @@ import path from "node:path";
 import { defineConfig, loadEnv, normalizePath, searchForWorkspaceRoot, type Plugin } from "vite";
 import { createContentManifest, supportedContentMediaExtensions } from "./src/content/content-registry.js";
 import { discoverContentFiles } from "./content-source-files.js";
-import { loadContentSource, resolveContentRoot, type LoadedContentSource } from "./content-source.js";
+import { loadContentSource, selectContentSource, type LoadedContentSource } from "./content-source.js";
 
 const virtualModuleId = "virtual:content-manifest";
 const resolvedVirtualModuleId = `\0${virtualModuleId}`;
@@ -47,9 +47,14 @@ export function contentManifestPlugin(source: LoadedContentSource | string = pat
     },
     async load(id) {
       if (id !== resolvedVirtualModuleId) return undefined;
-      const files = typeof source === "string" ? await discoverContentFiles(contentRoot) : source.files;
+      const currentSource = typeof source === "string" ? undefined : await loadContentSource({
+        repositoryRoot: source.repositoryRoot,
+        contentRoot: source.root,
+        expectedKind: source.expectedKind
+      });
+      const files = currentSource?.files ?? await discoverContentFiles(contentRoot);
       for (const file of files) this.addWatchFile(file);
-      const markdownFiles = files.filter((file) => file.endsWith(".md"));
+      const markdownFiles = files.filter((file) => path.extname(file).toLocaleLowerCase() === ".md");
       const mediaFiles = files.filter((file) => supportedContentMediaExtensions.includes(path.extname(file).slice(1).toLocaleLowerCase()));
       const markdownSources = Object.fromEntries(await Promise.all(markdownFiles.map(async (file) => [contentRelativePath(contentRoot, file), await readFile(file, "utf8")] as const)));
       const placeholderMedia = Object.fromEntries(mediaFiles.map((file) => [contentRelativePath(contentRoot, file), file]));
@@ -59,9 +64,9 @@ export function contentManifestPlugin(source: LoadedContentSource | string = pat
       const serializedEntries = manifest.entries.map((entry) => entry.kind === "media"
         ? `{...${JSON.stringify(entry)},url:${mediaVariables.get(entry.relativePath)}}`
         : JSON.stringify(entry));
-      const descriptor = typeof source === "string"
+      const descriptor = currentSource?.descriptor ?? (typeof source === "string"
         ? { schemaVersion: 1, id: "legacy-content-source", kind: "sample", visibility: "public", defaultLicense: "unspecified" }
-        : source.descriptor;
+        : source.descriptor);
       return `${mediaImports.join("\n")}\nexport const contentSource=Object.freeze(${JSON.stringify(descriptor)});\nexport const contentManifest=Object.freeze({entries:Object.freeze([${serializedEntries.join(",")}])});`;
     }
   };
@@ -70,10 +75,10 @@ export function contentManifestPlugin(source: LoadedContentSource | string = pat
 export default defineConfig(async ({ mode }) => {
   const environment = loadEnv(mode, repositoryRoot, "");
   const configuredRoot = environment.SEKER_CONTENT_ROOT?.trim();
+  const selection = selectContentSource(repositoryRoot, configuredRoot, environment.SEKER_CONTENT_PROFILE);
   const source = await loadContentSource({
     repositoryRoot,
-    contentRoot: resolveContentRoot(repositoryRoot, configuredRoot),
-    expectedKind: configuredRoot ? "author" : "sample"
+    ...selection
   });
   return { plugins: [contentManifestPlugin(source)] };
 });

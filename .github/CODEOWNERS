@@ -9,6 +9,8 @@
 /schemas/ @Seker800
 /references/ @Seker800
 /scripts/verify-*.ts @Seker800
+/apps/clone/content-source.ts @Seker800
+/examples/blog/content-source.json @Seker800
 /src/config/ @Seker800
 /src/judge/ @Seker800
 /src/orchestrator/ @Seker800

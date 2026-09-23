@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { discoverContentFiles } from "../apps/clone/content-source-files.js";
+import { contentSourceDescriptorFilename, loadContentSource } from "../apps/clone/content-source.js";
 import { contentManifestPlugin } from "../apps/clone/vite.config.js";
 
 const temporaryDirectories: string[] = [];
@@ -72,6 +73,28 @@ describe("content source discovery", () => {
     expect(invalidated).toEqual([virtualModule, virtualModule, virtualModule]);
     expect(messages).toEqual(Array.from({ length: 3 }, () => ({ type: "full-reload" })));
     expect(results).toEqual([[], [], []]);
+  });
+
+  it("emits an empty author manifest without importing repository samples", async () => {
+    const repositoryRoot = await mkdtemp(path.join(tmpdir(), "seker-repository-"));
+    const contentRoot = await mkdtemp(path.join(tmpdir(), "seker-author-content-"));
+    temporaryDirectories.push(repositoryRoot, contentRoot);
+    await writeFile(path.join(contentRoot, contentSourceDescriptorFilename), JSON.stringify({
+      schemaVersion: 1,
+      id: "seker-blog",
+      kind: "author",
+      visibility: "public",
+      defaultLicense: "All rights reserved"
+    }));
+    const source = await loadContentSource({ repositoryRoot, contentRoot, expectedKind: "author" });
+    const plugin = contentManifestPlugin(source);
+    if (typeof plugin.load !== "function") throw new Error("Content plugin is missing its virtual module loader");
+
+    const generated = await Reflect.apply(plugin.load, { addWatchFile: () => undefined }, ["\0virtual:content-manifest"]);
+
+    expect(generated).toContain('"kind":"author"');
+    expect(generated).toContain("entries:Object.freeze([])");
+    expect(generated).not.toContain("Welcome to the command deck");
   });
 
 });

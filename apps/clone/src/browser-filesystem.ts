@@ -173,13 +173,17 @@ function normalizeWithinRoot(cwd: string, requestedPath: string): string {
   return segments.length === 0 ? root : `${root}/${segments.join("/")}`;
 }
 
-export function createSandboxFilesystem(options: { contentEntries?: readonly ContentEntry[]; startInContent?: boolean } = {}): BrowserFilesystem {
+export function createSandboxFilesystem(options: {
+  contentEntries?: readonly ContentEntry[];
+  mountContentRoot?: boolean;
+  startInContent?: boolean;
+} = {}): BrowserFilesystem {
   const contentEntries = options.contentEntries ?? [];
-  const hasContent = contentEntries.length > 0;
-  const contentDirectories = hasContent ? contentSeedDirectories(buildContentTree(contentEntries)) : {};
+  const hasContentRoot = contentEntries.length > 0 || options.mountContentRoot === true;
+  const contentDirectories = hasContentRoot ? contentSeedDirectories(buildContentTree(contentEntries)) : {};
   const rootSeeds = [
     ...canonicalSeedDirectories[root]!,
-    ...(hasContent ? [{ name: "Blog", category: "directory" as const }] : [])
+    ...(hasContentRoot ? [{ name: "Blog", category: "directory" as const }] : [])
   ];
   const directorySeeds = new Map<string, readonly SeedEntry[]>([
     ...Object.entries(canonicalSeedDirectories),
@@ -193,7 +197,7 @@ export function createSandboxFilesystem(options: { contentEntries?: readonly Con
   }
   for (const entry of canonical) files.set(entry.path, entry);
 
-  const initialPath = hasContent && options.startInContent ? contentRoot : canonicalRoot;
+  const initialPath = hasContentRoot && options.startInContent ? contentRoot : canonicalRoot;
   const isDirectory = (path: string): boolean => path === canonicalRoot || directorySeeds.has(path);
   const resolve = (cwd: string, requestedPath: string): string => {
     if (requestedPath === "~") return root;

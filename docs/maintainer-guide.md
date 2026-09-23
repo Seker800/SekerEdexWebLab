@@ -32,17 +32,18 @@ CI 将这些职责拆成 `gate-integrity`、`source`、`app-chromium`、`app-web
 3.5%，感知全屏上限为 6%，并对五个区域设置独立上限；调整运行平台时必须重新采样并通过
 baseline review，不能直接放宽阈值。
 
-自动修复只能写入 `apps/clone/src` 与 `content/blog`。不得为了通过门禁扩大可写范围、放宽阈值、
+自动修复只能写入 `apps/clone/src` 与 `examples/blog`。不得为了通过门禁扩大可写范围、放宽阈值、
 修改参考证据、资产哈希或判定器。
 
 ## 添加文章与照片
 
-运行态只有一个内容根作为事实源。未配置时使用公开、受 Git 跟踪的 `content/blog`；作者可通过
-`SEKER_CONTENT_ROOT` 改用仓库外的私人内容根。两者的 Git、发布与许可证边界见
+运行态只有一个内容根作为事实源。未配置时使用公开、受 Git 跟踪且声明为 `sample` 的
+`examples/blog`；作者可通过 `SEKER_CONTENT_ROOT` 改用仓库外、声明为 `author` 的发布根。
+两者不会合并，空作者根也不会回退示例。Git、发布与许可证边界见
 [`content-boundary.md`](content-boundary.md)。推荐每篇带图文章使用独立目录：
 
 ```text
-content/blog/posts/my-trip/
+SekerEdexContent/blog/posts/my-trip/
 ├── index.md
 ├── cover.webp
 └── mountain.jpg
@@ -64,6 +65,9 @@ AVIF、GIF 和 SVG；文章中用 `![可访问说明](./mountain.jpg)` 引用，
 ```sh
 npm run content:check
 ```
+
+内容根还必须包含 `content-source.json`。公开 CI 使用 `npm run content:verify:sample`，作者发布前使用
+`npm run content:verify:author`；生产脚本检测到 `sample`、缺失声明或仓库内作者根会直接失败。
 
 无需修改 `apps/clone/src`。构建插件会生成媒体哈希 URL，左下角文件系统会按仓库真实目录挂载到
 `/home/squared/Blog`，文章和图片地址使用 `#/blog/...`，适用于无需 rewrite 的静态托管。文章与图片

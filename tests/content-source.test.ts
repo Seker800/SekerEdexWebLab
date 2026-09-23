@@ -1,11 +1,12 @@
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   contentSourceDescriptorFilename,
   loadContentSource,
-  resolveContentRoot
+  resolveContentRoot,
+  selectContentSource
 } from "../apps/clone/content-source.js";
 
 const temporaryDirectories: string[] = [];
@@ -38,6 +39,22 @@ describe("content source identity", () => {
     expect(resolveContentRoot(repositoryRoot)).toBe(path.join(repositoryRoot, "examples", "blog"));
     expect(resolveContentRoot(repositoryRoot, "../SekerEdexContent/published"))
       .toBe(path.join(tmpdir(), "SekerEdexContent", "published"));
+  });
+
+  it("uses an explicit profile so local author configuration cannot leak into sample checks", () => {
+    const repositoryRoot = path.join(tmpdir(), "SekerEdexWebLab");
+    const configuredRoot = "../SekerEdexContent/published";
+
+    expect(selectContentSource(repositoryRoot, configuredRoot, "sample")).toEqual({
+      contentRoot: path.join(repositoryRoot, "examples", "blog"),
+      expectedKind: "sample"
+    });
+    expect(selectContentSource(repositoryRoot, configuredRoot, "author")).toEqual({
+      contentRoot: path.join(tmpdir(), "SekerEdexContent", "published"),
+      expectedKind: "author"
+    });
+    expect(() => selectContentSource(repositoryRoot, undefined, "author")).toThrow(/requires SEKER_CONTENT_ROOT/i);
+    expect(() => selectContentSource(repositoryRoot, undefined, "mixed")).toThrow(/unsupported content profile/i);
   });
 
   it("accepts the declared repository sample in sample mode", async () => {
@@ -97,6 +114,21 @@ describe("content source identity", () => {
     await writeDescriptor(internalRoot, "author");
     await expect(loadContentSource({ repositoryRoot, contentRoot: internalRoot, expectedKind: "author" }))
       .rejects.toThrow(/outside.*repository/i);
+  });
+
+  it("rejects an author root that reaches back into the public repository through a parent symlink", async () => {
+    const repositoryRoot = await temporaryDirectory("seker-repository-");
+    const internalRoot = path.join(repositoryRoot, "content", "author");
+    const apparentExternalRoot = await temporaryDirectory("seker-external-content-");
+    await mkdir(internalRoot, { recursive: true });
+    await writeDescriptor(internalRoot, "author");
+    await symlink(repositoryRoot, path.join(apparentExternalRoot, "repository-link"));
+
+    await expect(loadContentSource({
+      repositoryRoot,
+      contentRoot: path.join(apparentExternalRoot, "repository-link", "content", "author"),
+      expectedKind: "author"
+    })).rejects.toThrow(/outside.*repository/i);
   });
 
   it("rejects unknown files instead of silently omitting possible drafts or originals", async () => {
