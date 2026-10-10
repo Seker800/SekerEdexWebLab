@@ -29,7 +29,15 @@ export interface BrowserImagePreview {
   mediaType: string;
 }
 
-export type BrowserFilePreview = BrowserDocumentPreview | BrowserImagePreview;
+export interface BrowserVideoPreview {
+  kind: "video";
+  contentPath: string;
+  src: string;
+  alt: string;
+  mediaType: string;
+}
+
+export type BrowserFilePreview = BrowserDocumentPreview | BrowserImagePreview | BrowserVideoPreview;
 
 export interface BrowserFilesystem {
   readonly root: string;
@@ -107,13 +115,22 @@ function contentSeed(node: Exclude<ContentTreeNode, ContentDirectoryNode>): Seed
       }
     };
   }
+  if (node.kind === "link") {
+    const markdown = `# ${node.title}\n\n${node.summary}\n\n[Open external link](${node.href})`;
+    return {
+      name: contentBasename(node.relativePath), category: "file", icon: "markdown", contentPath: node.relativePath,
+      content: markdown,
+      preview: { kind: "document", contentPath: node.relativePath, title: node.title, summary: node.summary, markdown }
+    };
+  }
+  const video = node.mediaType.startsWith("video/");
   return {
     name: contentBasename(node.relativePath),
     category: "file",
-    icon: "image",
+    icon: video ? "file" : "image",
     contentPath: node.relativePath,
     preview: {
-      kind: "image",
+      kind: video ? "video" : "image",
       contentPath: node.relativePath,
       src: node.url,
       alt: node.alt,

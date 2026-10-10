@@ -16,6 +16,16 @@ export interface ContentDocument {
   readonly publishedAt: string;
   readonly tags: readonly string[];
   readonly markdown: string;
+  readonly sortOrder?: number;
+}
+
+export interface ContentLink {
+  readonly kind: "link";
+  readonly relativePath: string;
+  readonly title: string;
+  readonly summary: string;
+  readonly href: string;
+  readonly sortOrder?: number;
 }
 
 export interface ContentMedia {
@@ -24,9 +34,10 @@ export interface ContentMedia {
   readonly url: string;
   readonly mediaType: string;
   readonly alt: string;
+  readonly sortOrder?: number;
 }
 
-export type ContentEntry = ContentDocument | ContentMedia;
+export type ContentEntry = ContentDocument | ContentLink | ContentMedia;
 
 export interface ContentManifest {
   readonly entries: readonly ContentEntry[];

@@ -29,6 +29,10 @@ function sortNodes(nodes: ContentTreeNode[]): void {
   nodes.sort((left, right) => {
     if (left.kind === "directory" && right.kind !== "directory") return -1;
     if (left.kind !== "directory" && right.kind === "directory") return 1;
+    if (left.kind !== "directory" && right.kind !== "directory") {
+      const order = (left.sortOrder ?? 0) - (right.sortOrder ?? 0);
+      if (order !== 0) return order;
+    }
     return nodeName(left).localeCompare(nodeName(right));
   });
   for (const node of nodes) if (node.kind === "directory") sortNodes(node.children as ContentTreeNode[]);
