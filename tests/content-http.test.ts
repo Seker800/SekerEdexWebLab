@@ -44,4 +44,25 @@ describe("public content API and private administration", () => {
     expect(accepted.status).toBe(201);
     expect((await fetch(`${base}/api/v1/content`).then((response) => response.json()) as { entries: unknown[] }).entries).toHaveLength(1);
   });
+
+  it("serves an authenticated manager and keeps uploaded media draft until published", async () => {
+    const { base } = await fixture();
+    const authorization = `Basic ${Buffer.from("author:long local test password").toString("base64")}`;
+    const admin = await fetch(`${base}/admin`, { headers: { Authorization: authorization } });
+    expect(admin.status).toBe(200);
+    expect(await admin.text()).toContain("Content manager");
+    const upload = await fetch(`${base}/api/v1/admin/media`, {
+      method: "POST",
+      headers: { Authorization: authorization, Origin: "http://127.0.0.1", "Content-Type": "image/png", "X-Content-Path": "photos/one.png", "X-Content-Title": "One", "X-Content-Alt": "One photo" },
+      body: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3])
+    });
+    expect(upload.status).toBe(201);
+    const item = await upload.json() as { id: string };
+    expect((await fetch(`${base}/api/v1/media/${item.id}`)).status).toBe(404);
+    const published = await fetch(`${base}/api/v1/admin/items/${item.id}`, { method: "PATCH", headers: { Authorization: authorization, Origin: "http://127.0.0.1", "Content-Type": "application/json" }, body: JSON.stringify({ status: "published" }) });
+    expect(published.status).toBe(200);
+    const media = await fetch(`${base}/api/v1/media/${item.id}`, { headers: { Range: "bytes=0-3" } });
+    expect(media.status).toBe(206);
+    expect(new Uint8Array(await media.arrayBuffer())).toEqual(new Uint8Array([137, 80, 78, 71]));
+  });
 });
