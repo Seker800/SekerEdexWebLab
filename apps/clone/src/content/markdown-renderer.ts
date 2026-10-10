@@ -81,7 +81,7 @@ markdown.renderer.rules.link_open = (tokens, index, options, environment, render
   }
   const context = renderContext(environment);
   const target = resolveContentReference(context.tree, context.documentPath, href);
-  if (target?.kind === "document") {
+  if (target?.kind === "document" || target?.kind === "link" || target?.kind === "media") {
     token.attrSet("href", contentHash(target.relativePath));
     token.attrSet("data-content-path", target.relativePath);
   } else {
@@ -102,6 +102,9 @@ markdown.renderer.rules.image = (tokens, index, _options, environment) => {
     const label = alt === "" ? "Image requires alt text" : `Missing image: ${alt}`;
     const className = alt === "" ? "content-image--invalid" : "content-reference--missing";
     return `<span class="${className}" role="note">${escapeAttribute(markdown, label)}</span>`;
+  }
+  if (target.mediaType.startsWith("video/")) {
+    return `<video controls playsinline preload="metadata" src="${escapeAttribute(markdown, target.url)}" aria-label="${escapeAttribute(markdown, alt)}"></video>`;
   }
   const contentPath = escapeAttribute(markdown, target.relativePath);
   if (tokens[index - 1]?.type === "link_open") {

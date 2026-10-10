@@ -4,6 +4,7 @@ import { defineConfig, loadEnv, normalizePath, searchForWorkspaceRoot, type Plug
 import { createContentManifest, supportedContentMediaExtensions } from "./src/content/content-registry.js";
 import { discoverContentFiles } from "./content-source-files.js";
 import { loadContentSource, selectContentSource, type LoadedContentSource } from "./content-source.js";
+import { normalizeContentApiOrigin } from "./src/content/content-api.js";
 
 const virtualModuleId = "virtual:content-manifest";
 const resolvedVirtualModuleId = `\0${virtualModuleId}`;
@@ -11,6 +12,13 @@ const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 
 interface RuntimeContentPluginSource {
   readonly delivery: "runtime";
+  readonly apiOrigin: string;
+}
+
+export function runtimeContentConfiguration(environment: Record<string, string | undefined>): RuntimeContentPluginSource {
+  const raw = environment.SEKER_CONTENT_API_ORIGIN?.trim();
+  if (!raw) throw new Error("Production content API origin is required (SEKER_CONTENT_API_ORIGIN).");
+  return { delivery: "runtime", apiOrigin: normalizeContentApiOrigin(raw) };
 }
 
 function contentRelativePath(contentRoot: string, file: string): string {
@@ -55,7 +63,7 @@ export function contentManifestPlugin(source: LoadedContentSource | string | Run
     async load(id) {
       if (id !== resolvedVirtualModuleId) return undefined;
       if (runtime) {
-        return `export const contentDelivery="runtime";\nexport const contentSource=Object.freeze({schemaVersion:1,id:"runtime-author",kind:"author",visibility:"public",defaultLicense:"All rights reserved"});\nexport const contentManifest=Object.freeze({entries:Object.freeze([])});`;
+        return `export const contentDelivery="runtime";\nexport const contentApiOrigin=${JSON.stringify((source as RuntimeContentPluginSource).apiOrigin)};\nexport const contentSource=Object.freeze({schemaVersion:1,id:"runtime-author",kind:"author",visibility:"public",defaultLicense:"All rights reserved"});\nexport const contentManifest=Object.freeze({entries:Object.freeze([])});`;
       }
       if (!contentRoot) throw new Error("Embedded content requires a content root.");
       const currentSource = typeof source === "string" ? undefined : await loadContentSource({
@@ -78,7 +86,7 @@ export function contentManifestPlugin(source: LoadedContentSource | string | Run
       const descriptor = currentSource?.descriptor ?? (typeof source === "string"
         ? { schemaVersion: 1, id: "legacy-content-source", kind: "sample", visibility: "public", defaultLicense: "unspecified" }
         : source.descriptor);
-      return `${mediaImports.join("\n")}\nexport const contentDelivery="embedded";\nexport const contentSource=Object.freeze(${JSON.stringify(descriptor)});\nexport const contentManifest=Object.freeze({entries:Object.freeze([${serializedEntries.join(",")}])});`;
+      return `${mediaImports.join("\n")}\nexport const contentDelivery="embedded";\nexport const contentApiOrigin="";\nexport const contentSource=Object.freeze(${JSON.stringify(descriptor)});\nexport const contentManifest=Object.freeze({entries:Object.freeze([${serializedEntries.join(",")}])});`;
     }
   };
 }
@@ -87,7 +95,7 @@ export default defineConfig(async ({ mode }) => {
   const environment = loadEnv(mode, repositoryRoot, "");
   const delivery = environment.SEKER_CONTENT_DELIVERY?.trim() || "embedded";
   if (delivery !== "embedded" && delivery !== "runtime") throw new Error(`Unsupported content delivery: ${delivery}`);
-  if (delivery === "runtime") return { plugins: [contentManifestPlugin({ delivery: "runtime" })] };
+  if (delivery === "runtime") return { plugins: [contentManifestPlugin(runtimeContentConfiguration(environment))] };
   const configuredRoot = environment.SEKER_CONTENT_ROOT?.trim();
   const selection = selectContentSource(repositoryRoot, configuredRoot, environment.SEKER_CONTENT_PROFILE);
   const source = await loadContentSource({

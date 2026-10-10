@@ -1,4 +1,4 @@
-export type FullscreenContentView = "document" | "image";
+export type FullscreenContentView = "document" | "image" | "video";
 
 interface CloseOptions {
   readonly notify?: boolean;

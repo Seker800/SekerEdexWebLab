@@ -99,12 +99,13 @@ describe("content source discovery", () => {
   });
 
   it("emits a content-free runtime adapter for independently deployed sites", async () => {
-    const plugin = contentManifestPlugin({ delivery: "runtime" });
+    const plugin = contentManifestPlugin({ delivery: "runtime", apiOrigin: "https://content.example" });
     if (typeof plugin.load !== "function") throw new Error("Content plugin is missing its virtual module loader");
 
     const generated = await Reflect.apply(plugin.load, {}, ["\0virtual:content-manifest"]);
 
     expect(generated).toContain('contentDelivery="runtime"');
+    expect(generated).toContain('contentApiOrigin="https://content.example"');
     expect(generated).toContain('id:"runtime-author"');
     expect(generated).toContain("entries:Object.freeze([])");
     expect(generated).not.toContain("media0");

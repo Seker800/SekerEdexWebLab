@@ -13,11 +13,12 @@ import { documentVisibilitySource, RuntimeScheduler } from "./runtime-scheduler.
 import { DisposableRegistry } from "./disposable-registry.js";
 import { createSandboxFilesystem } from "./browser-filesystem.js";
 import { ImageViewer } from "./image-viewer.js";
+import { VideoViewer } from "./video-viewer.js";
 import { FullscreenContentOverlay } from "./fullscreen-content-overlay.js";
-import { contentDelivery, contentManifest, contentSource } from "virtual:content-manifest";
+import { contentApiOrigin, contentDelivery, contentManifest, contentSource } from "virtual:content-manifest";
 import { buildContentTree } from "./content/content-tree.js";
 import { contentDirname } from "./content/content-model.js";
-import { fetchPublishedContent } from "./content/content-release.js";
+import { fetchContentApi } from "./content/content-api.js";
 import { contentHash, parseContentHash } from "./content/content-location.js";
 import { renderContentMarkdown } from "./content/markdown-renderer.js";
 import { localizeElements, readLocale, saveLocale, translate, type Locale } from "./locale.js";
@@ -36,7 +37,7 @@ const searchParams = new URLSearchParams(window.location.search);
 const staticMode = searchParams.has("static");
 if (staticMode) document.documentElement.dataset.staticMode = "";
 const selectedContent = contentDelivery === "runtime" && !staticMode
-  ? await fetchPublishedContent().then((content) => {
+  ? await fetchContentApi(contentApiOrigin).then((content) => {
     document.documentElement.dataset.contentState = "ready";
     return content;
   }).catch((error: unknown) => {
@@ -292,6 +293,7 @@ const contentOverlay = new FullscreenContentOverlay(
   commandDeckElement,
   contentOverlayClose,
   () => {
+    videoViewer.close({ notify: false });
     commandDeck.dispatch({ type: "close-content" });
     renderSessionChrome();
     syncLocationToDeck();
@@ -312,6 +314,8 @@ const imageViewer = new ImageViewer(contentOverlay, {
   }
 }, () => locale);
 lifecycle.add(() => imageViewer.dispose());
+const videoViewer = new VideoViewer(contentOverlay);
+lifecycle.add(() => videoViewer.dispose());
 let pendingImageOpen: (() => void) | undefined;
 
 function renderTerminal(): void {
@@ -508,6 +512,7 @@ function openContentPath(relativePath: string, options: { render?: boolean; focu
     pendingImageOpen = undefined;
     imageViewer.close({ notify: false });
   }
+  if (result.kind !== "video") videoViewer.close({ notify: false });
   if (result.kind === "missing") {
     commandDeck.dispatch({ type: "activate-content-path", relativePath: "" });
     writeContentLocation("", "replace");
@@ -531,6 +536,11 @@ function openContentPath(relativePath: string, options: { render?: boolean; focu
       pendingImageOpen = openImage;
     }
   }
+  if (result.kind === "video" && result.entry.contentPath) {
+    const openVideo = (): void => videoViewer.open(result.entry);
+    if (document.documentElement.dataset.bootPhase === "complete") openVideo();
+    else pendingImageOpen = openVideo;
+  }
 }
 
 function restoreContentLocation(options: { render?: boolean; state?: unknown } = {}): void {
@@ -545,6 +555,7 @@ function restoreContentLocation(options: { render?: boolean; state?: unknown } =
         lastContentHash = "";
         pendingImageOpen = undefined;
         imageViewer.close({ notify: false });
+        videoViewer.close({ notify: false });
         if (options.render !== false) {
           renderTerminal();
           renderSessionChrome();
@@ -842,9 +853,13 @@ lifecycle.listen<MouseEvent>(fileGrid, "click", (event) => {
     if (result.entry.contentPath) writeContentLocation(result.entry.contentPath);
     imageViewer.open(images, result.entry.path);
   }
+  if (result.kind === "video") {
+    if (result.entry.contentPath) writeContentLocation(result.entry.contentPath);
+    videoViewer.open(result.entry);
+  }
   if (result.kind === "insert") audioDeck.play("folder");
-  else if (result.kind !== "image") playFeedback(result.feedback);
-  if (!["document", "image"].includes(result.kind) && commandDeckElement.dataset.mobileView !== "files") input.focus();
+  else if (result.kind !== "image" && result.kind !== "video") playFeedback(result.feedback);
+  if (!["document", "image", "video"].includes(result.kind) && commandDeckElement.dataset.mobileView !== "files") input.focus();
 });
 
 function renderTelemetry(tick: number): void {

@@ -452,10 +452,16 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
 .content-reader__body a { color: #d7ffff; }
 .content-reader__body .content-image { display: block; width: min(100%, 1120px); margin: 1.5cqh auto; padding: 0; border: 1px solid rgba(var(--signal-rgb), .35); background: rgba(var(--signal-rgb), .035); color: inherit; cursor: zoom-in; }
 .content-reader__body .content-image img { display: block; width: 100%; height: auto; max-height: 48cqh; object-fit: contain; }
+.content-reader__body video { display: block; width: min(100%, 1120px); max-height: 55cqh; margin: 1.5cqh auto; }
 .content-reader__body .content-image:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
 .content-reference--missing, .content-image--invalid { color: #ffb7a8; border-bottom: 1px dotted currentColor; }
 
 .image-viewer { position: absolute; inset: 0; display: block; overflow: hidden; isolation: isolate; background: rgba(2, 10, 12, .98); color: var(--signal); text-transform: none; }
+.video-viewer { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1cqh; padding: 5cqh 3cqw; overflow: hidden; background: rgba(2, 10, 12, .98); color: var(--signal); text-transform: none; }
+.video-viewer header { position: absolute; top: 1cqh; left: 2cqw; right: 8cqw; }
+.video-viewer h1 { margin: 0; font: 1.3cqh var(--font-ui); }
+.video-viewer video { width: 100%; max-width: 1200px; max-height: 78cqh; }
+.video-viewer p { font: 1.1cqh var(--font-mono); }
 .image-viewer__header { position: absolute; z-index: 2; top: 0; right: 0; left: 0; display: flex; min-height: 3.2cqh; align-items: center; justify-content: space-between; gap: .8cqw; padding: .35cqh 10cqw .35cqh .45cqw; border-bottom: 1px solid rgba(var(--signal-rgb), .3); background: linear-gradient(180deg, rgba(2, 10, 12, .96), rgba(2, 10, 12, .72)); color: var(--signal); font: 1cqh var(--font-ui); backdrop-filter: blur(4px); }
 .image-viewer__header > div { min-width: 0; display: flex; align-items: baseline; gap: .55cqw; }
 .image-viewer__header small { flex: none; color: rgba(var(--signal-rgb), .62); font: .85cqh var(--font-ui); text-transform: uppercase; }

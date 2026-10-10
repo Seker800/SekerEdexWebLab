@@ -97,7 +97,7 @@ export class CommandDeckController {
       case "activate-filesystem-entry": {
         const filesystem = this.terminal.activateFilesystemEntry(intent.name);
         if (filesystem.kind === "document") this.openContent = filesystem.entry;
-        else if (filesystem.kind === "image" || filesystem.kind === "navigated" || filesystem.kind === "show-disks") this.openContent = null;
+        else if (filesystem.kind === "image" || filesystem.kind === "video" || filesystem.kind === "navigated" || filesystem.kind === "show-disks") this.openContent = null;
         return {
           filesystem,
           ...("feedback" in filesystem ? { feedback: filesystem.feedback } : {})
@@ -106,7 +106,7 @@ export class CommandDeckController {
       case "activate-content-path": {
         const filesystem = this.terminal.activateContentPath(intent.relativePath);
         if (filesystem.kind === "document") this.openContent = filesystem.entry;
-        else if (filesystem.kind === "image" || filesystem.kind === "navigated") this.openContent = null;
+        else if (filesystem.kind === "image" || filesystem.kind === "video" || filesystem.kind === "navigated") this.openContent = null;
         return {
           filesystem,
           ...("feedback" in filesystem ? { feedback: filesystem.feedback } : {})
