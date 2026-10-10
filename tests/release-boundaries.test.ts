@@ -19,6 +19,9 @@ describe("production release ownership", () => {
       CONTENT_ADMIN_PASSWORD_HASH: "private",
       CONTENT_DATA_DIR: "/private/data"
     })).toEqual({ PATH: "/bin", SEKER_CONTENT_API_ORIGIN: "https://content.example", SEKER_CONTENT_DELIVERY: "runtime" });
+    expect(() => siteBuildEnvironment({ SEKER_CONTENT_API_ORIGIN: "http://192.168.1.89:4175" })).toThrow(/public HTTPS/i);
+    expect(() => siteBuildEnvironment({ SEKER_CONTENT_API_ORIGIN: "https://localhost:4175" })).toThrow(/public HTTPS/i);
+    expect(() => siteBuildEnvironment({})).toThrow(/API origin/i);
   });
 
   it("only accepts an explicit index of site-owned files for stale cleanup", () => {
