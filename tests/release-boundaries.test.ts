@@ -1,23 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { assertContentOwnedObjectKey, assertSiteOwnedObjectKey, createSiteFileIndex, parseSiteFileIndex, siteBuildEnvironment } from "../scripts/release-boundaries.js";
+import { assertSiteOwnedObjectKey, createSiteFileIndex, parseSiteFileIndex, siteBuildEnvironment } from "../scripts/release-boundaries.js";
 
 describe("production release ownership", () => {
-  it("keeps site and content object namespaces mutually exclusive", () => {
+  it("keeps legacy content objects outside site ownership", () => {
     expect(() => assertSiteOwnedObjectKey("index.html")).not.toThrow();
     expect(() => assertSiteOwnedObjectKey("assets/app-123.js")).not.toThrow();
     expect(() => assertSiteOwnedObjectKey("content/current.json")).toThrow(/content-owned/i);
-    expect(() => assertContentOwnedObjectKey("content/current.json")).not.toThrow();
-    expect(() => assertContentOwnedObjectKey("deployment.json")).toThrow(/site-owned/i);
-    expect(() => assertContentOwnedObjectKey("content/../index.html")).toThrow(/unsafe/i);
+    expect(() => assertSiteOwnedObjectKey("content/../index.html")).toThrow(/unsafe/i);
   });
 
-  it("removes every local author-content selector from a site build", () => {
+  it("passes only public API configuration to the site build", () => {
     expect(siteBuildEnvironment({
       PATH: "/bin",
       SEKER_CONTENT_ROOT: "../private/blog",
       SEKER_CONTENT_PROFILE: "author",
-      SEKER_CONTENT_DELIVERY: "embedded"
-    })).toEqual({ PATH: "/bin", SEKER_CONTENT_DELIVERY: "runtime" });
+      SEKER_CONTENT_DELIVERY: "embedded",
+      SEKER_CONTENT_API_ORIGIN: "https://content.example",
+      CONTENT_ADMIN_PASSWORD_HASH: "private",
+      CONTENT_DATA_DIR: "/private/data"
+    })).toEqual({ PATH: "/bin", SEKER_CONTENT_API_ORIGIN: "https://content.example", SEKER_CONTENT_DELIVERY: "runtime" });
   });
 
   it("only accepts an explicit index of site-owned files for stale cleanup", () => {
