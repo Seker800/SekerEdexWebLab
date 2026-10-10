@@ -65,4 +65,14 @@ describe("public content API and private administration", () => {
     expect(media.status).toBe(206);
     expect(new Uint8Array(await media.arrayBuffer())).toEqual(new Uint8Array([137, 80, 78, 71]));
   });
+
+  it("limits repeated failed administrator passwords", async () => {
+    const { base } = await fixture();
+    const wrong = `Basic ${Buffer.from("author:wrong password value").toString("base64")}`;
+    const statuses: number[] = [];
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      statuses.push((await fetch(`${base}/admin`, { headers: { Authorization: wrong } })).status);
+    }
+    expect(statuses.at(-1)).toBe(429);
+  });
 });
