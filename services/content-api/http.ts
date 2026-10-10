@@ -142,7 +142,7 @@ export function createContentHandler(options: ContentHttpOptions): RequestListen
       const mediaMatch = /^\/api\/v1\/media\/([a-f\d-]+)$/iu.exec(url.pathname);
       if (mediaMatch && request.method === "GET" && uuidPattern.test(mediaMatch[1]!)) return sendMedia(request, response, options, mediaMatch[1]!);
 
-      const adminRoute = url.pathname === "/admin" || url.pathname === "/admin/app.js" || url.pathname.startsWith("/api/v1/admin/");
+      const adminRoute = url.pathname === "/admin" || url.pathname === "/admin/app.js" || url.pathname === "/admin/style.css" || url.pathname.startsWith("/api/v1/admin/");
       if (!adminRoute) throw new HttpError(404, "Not found");
       if (!authorized(request, options)) {
         response.setHeader("WWW-Authenticate", 'Basic realm="Seker Content", charset="UTF-8"');
@@ -156,6 +156,10 @@ export function createContentHandler(options: ContentHttpOptions): RequestListen
       if (url.pathname === "/admin/app.js" && request.method === "GET") {
         const script = await readFile(path.join(import.meta.dirname, "admin.js"));
         response.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8" }); response.end(script); return;
+      }
+      if (url.pathname === "/admin/style.css" && request.method === "GET") {
+        const style = await readFile(path.join(import.meta.dirname, "style.css"));
+        response.writeHead(200, { "Content-Type": "text/css; charset=utf-8" }); response.end(style); return;
       }
       if (url.pathname === "/api/v1/admin/items" && request.method === "GET") return send(response, 200, { items: options.store.all() });
       if (request.method !== "GET") assertAdminMutationOrigin(request, options);
