@@ -3,7 +3,7 @@ import path from "node:path";
 import { defineConfig, loadEnv, normalizePath, searchForWorkspaceRoot, type Plugin } from "vite";
 import { createContentManifest, supportedContentMediaExtensions } from "./src/content/content-registry.js";
 import { discoverContentFiles } from "./content-source-files.js";
-import { loadContentSource, selectContentSource, type LoadedContentSource } from "./content-source.js";
+import { loadContentSource, type LoadedContentSource } from "./content-source.js";
 import { normalizeContentApiOrigin } from "./src/content/content-api.js";
 
 const virtualModuleId = "virtual:content-manifest";
@@ -96,11 +96,10 @@ export default defineConfig(async ({ mode }) => {
   const delivery = environment.SEKER_CONTENT_DELIVERY?.trim() || "embedded";
   if (delivery !== "embedded" && delivery !== "runtime") throw new Error(`Unsupported content delivery: ${delivery}`);
   if (delivery === "runtime") return { plugins: [contentManifestPlugin(runtimeContentConfiguration(environment))] };
-  const configuredRoot = environment.SEKER_CONTENT_ROOT?.trim();
-  const selection = selectContentSource(repositoryRoot, configuredRoot, environment.SEKER_CONTENT_PROFILE);
   const source = await loadContentSource({
     repositoryRoot,
-    ...selection
+    contentRoot: path.join(repositoryRoot, "examples/blog"),
+    expectedKind: "sample"
   });
   return { plugins: [contentManifestPlugin(source)] };
 });

@@ -5,8 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   contentSourceDescriptorFilename,
   loadContentSource,
-  resolveContentRoot,
-  selectContentSource
+  resolveContentRoot
 } from "../apps/clone/content-source.js";
 
 const temporaryDirectories: string[] = [];
@@ -33,28 +32,10 @@ afterEach(async () => {
 });
 
 describe("content source identity", () => {
-  it("selects the repository sample only when no author root is configured", () => {
+  it("selects only the repository sample for local builds", () => {
     const repositoryRoot = path.join(tmpdir(), "SekerEdexWebLab");
 
     expect(resolveContentRoot(repositoryRoot)).toBe(path.join(repositoryRoot, "examples", "blog"));
-    expect(resolveContentRoot(repositoryRoot, "../SekerEdexContent/published"))
-      .toBe(path.join(tmpdir(), "SekerEdexContent", "published"));
-  });
-
-  it("uses an explicit profile so local author configuration cannot leak into sample checks", () => {
-    const repositoryRoot = path.join(tmpdir(), "SekerEdexWebLab");
-    const configuredRoot = "../SekerEdexContent/published";
-
-    expect(selectContentSource(repositoryRoot, configuredRoot, "sample")).toEqual({
-      contentRoot: path.join(repositoryRoot, "examples", "blog"),
-      expectedKind: "sample"
-    });
-    expect(selectContentSource(repositoryRoot, configuredRoot, "author")).toEqual({
-      contentRoot: path.join(tmpdir(), "SekerEdexContent", "published"),
-      expectedKind: "author"
-    });
-    expect(() => selectContentSource(repositoryRoot, undefined, "author")).toThrow(/requires SEKER_CONTENT_ROOT/i);
-    expect(() => selectContentSource(repositoryRoot, undefined, "mixed")).toThrow(/unsupported content profile/i);
   });
 
   it("accepts the declared repository sample in sample mode", async () => {

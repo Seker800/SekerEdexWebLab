@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createServer } from "node:http";
+import { randomUUID } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -63,7 +64,32 @@ describe("public content API and private administration", () => {
     expect(published.status).toBe(200);
     const media = await fetch(`${base}/api/v1/media/${item.id}`, { headers: { Range: "bytes=0-3" } });
     expect(media.status).toBe(206);
+    expect(media.headers.get("cache-control")).toBe("no-store");
     expect(new Uint8Array(await media.arrayBuffer())).toEqual(new Uint8Array([137, 80, 78, 71]));
+    const withdrawn = await fetch(`${base}/api/v1/admin/items/${item.id}`, { method: "PATCH", headers: { Authorization: authorization, Origin: "http://127.0.0.1", "Content-Type": "application/json" }, body: JSON.stringify({ status: "draft" }) });
+    expect(withdrawn.status).toBe(200);
+    expect((await fetch(`${base}/api/v1/media/${item.id}`)).status).toBe(404);
+  });
+
+  it("validates media signatures and paths, then removes uploaded files with their records", async () => {
+    const { base } = await fixture();
+    const headers = { Authorization: `Basic ${Buffer.from("author:long local test password").toString("base64")}`, Origin: "http://127.0.0.1", "Content-Type": "image/png", "X-Content-Path": "photos/one.png", "X-Content-Title": "One", "X-Content-Alt": "One photo" };
+    const valid = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3]);
+    expect((await fetch(`${base}/api/v1/admin/media`, { method: "POST", headers, body: Buffer.from("not an image") })).status).toBe(415);
+    expect((await fetch(`${base}/api/v1/admin/media`, { method: "POST", headers: { ...headers, "X-Content-Path": "photos/one.jpg" }, body: valid })).status).toBe(400);
+    const uploaded = await fetch(`${base}/api/v1/admin/media`, { method: "POST", headers, body: valid });
+    expect(uploaded.status).toBe(201);
+    const item = await uploaded.json() as { id: string };
+    expect((await fetch(`${base}/api/v1/admin/items`, { headers: { Authorization: headers.Authorization } }).then((response) => response.json()) as { items: unknown[] }).items).toHaveLength(1);
+    expect((await fetch(`${base}/api/v1/admin/items/${item.id}`, { method: "PATCH", headers: { Authorization: headers.Authorization, Origin: headers.Origin, "Content-Type": "application/json" }, body: JSON.stringify({ storageKey: "changed" }) })).status).toBe(400);
+    expect((await fetch(`${base}/api/v1/admin/items/${item.id}`, { method: "PATCH", headers: { Authorization: headers.Authorization, Origin: headers.Origin, "Content-Type": "application/json" }, body: JSON.stringify({ status: "published" }) })).status).toBe(200);
+    expect((await fetch(`${base}/api/v1/media/${item.id}`, { headers: { Range: "bytes=99-100" } })).status).toBe(416);
+    expect((await fetch(`${base}/api/v1/media/${item.id}`, { headers: { Range: "items=0-1" } })).status).toBe(416);
+    expect((await fetch(`${base}/api/v1/media/${item.id}`, { headers: { Range: "bytes=4-3" } })).status).toBe(416);
+    expect((await fetch(`${base}/api/v1/media/${item.id}`, { headers: { Range: "bytes=3-" } })).status).toBe(206);
+    expect((await fetch(`${base}/api/v1/media/${item.id}`)).status).toBe(200);
+    expect((await fetch(`${base}/api/v1/admin/items/${item.id}`, { method: "DELETE", headers: { Authorization: headers.Authorization, Origin: headers.Origin } })).status).toBe(200);
+    expect((await fetch(`${base}/api/v1/media/${item.id}`)).status).toBe(404);
   });
 
   it("limits repeated failed administrator passwords", async () => {
@@ -74,5 +100,29 @@ describe("public content API and private administration", () => {
       statuses.push((await fetch(`${base}/admin`, { headers: { Authorization: wrong } })).status);
     }
     expect(statuses.at(-1)).toBe(429);
+  });
+
+  it("rejects malformed requests and serves only authenticated manager assets", async () => {
+    const { base } = await fixture();
+    const authorization = `Basic ${Buffer.from("author:long local test password").toString("base64")}`;
+    const headers = { Authorization: authorization, Origin: "http://127.0.0.1", "Content-Type": "application/json" };
+    expect((await fetch(`${base}/admin/app.js`)).status).toBe(401);
+    expect((await fetch(`${base}/admin`, { headers: { Authorization: "Basic invalid" } })).status).toBe(401);
+    expect((await fetch(`${base}/admin`, { headers: { Authorization: `Basic ${Buffer.from("other:long local test password").toString("base64")}` } })).status).toBe(401);
+    expect((await fetch(`${base}/admin/app.js`, { headers: { Authorization: authorization } })).status).toBe(200);
+    expect((await fetch(`${base}/admin/style.css`, { headers: { Authorization: authorization } })).status).toBe(200);
+    expect((await fetch(`${base}/not-found`)).status).toBe(404);
+    expect((await fetch(`${base}/api/v1/admin/items`, { method: "POST", headers, body: "{" })).status).toBe(400);
+    expect((await fetch(`${base}/api/v1/admin/items`, { method: "POST", headers, body: "{}" })).status).toBe(400);
+    expect((await fetch(`${base}/api/v1/admin/items`, { method: "POST", headers: { ...headers, "Content-Type": "text/plain" }, body: "hello" })).status).toBe(415);
+    expect((await fetch(`${base}/api/v1/admin/media`, { method: "POST", headers: { ...headers, "Content-Type": "application/octet-stream" }, body: "hello" })).status).toBe(415);
+    expect((await fetch(`${base}/api/v1/admin/media`, { method: "POST", headers: { ...headers, "Content-Type": "image/png", "X-Content-Path": "photos/blank.png", "X-Content-Title": "Blank", "X-Content-Alt": "Blank" }, body: new Uint8Array() })).status).toBe(415);
+    for (const [mediaType, extension] of [["image/jpeg", "jpg"], ["image/gif", "gif"], ["video/webm", "webm"]]) {
+      expect((await fetch(`${base}/api/v1/admin/media`, { method: "POST", headers: { ...headers, "Content-Type": mediaType!, "X-Content-Path": `photos/invalid.${extension}`, "X-Content-Title": "Invalid", "X-Content-Alt": "Invalid" }, body: "not media" })).status).toBe(415);
+    }
+    expect((await fetch(`${base}/api/v1/admin/items/${randomUUID()}`, { method: "DELETE", headers })).status).toBe(404);
+    const created = await fetch(`${base}/api/v1/admin/items`, { method: "POST", headers, body: JSON.stringify({ kind: "link", relativePath: "links/project.link", title: "Project", summary: "", href: "https://example.org", sortOrder: 0, status: "published" }) });
+    expect(created.status).toBe(201);
+    expect((await fetch(`${base}/api/v1/content`).then((response) => response.json()) as { entries: Array<{ kind: string }> }).entries[0]?.kind).toBe("link");
   });
 });

@@ -75,6 +75,7 @@ export class ImageViewer {
     this.overlay.register("image", this.surface);
     this.stage = this.surface.querySelector(".image-viewer__stage")!;
     this.image = this.surface.querySelector("img")!;
+    this.image.crossOrigin = "anonymous";
     this.reveal = this.surface.querySelector(".image-viewer__reveal")!;
     this.revealLabel = this.surface.querySelector(".image-viewer__reveal-label")!;
     this.revealPlan = createImageRevealPlan();

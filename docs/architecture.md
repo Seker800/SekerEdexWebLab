@@ -68,18 +68,18 @@ iOS 聚焦缩放的字号、至少 44px 的触控目标和无横向裁切作为�
 控制器返回不可变快照，DOM 层只负责渲染和焦点。页面级 `DisposableRegistry` 统一释放事件监听、
 音频、启动任务、Globe 渲染器与调度器，避免重启、隐藏页面或热重载后遗留写入者。
 
-公开示例内容位于仓库级 `examples/blog`；本地作者预览可通过 `SEKER_CONTENT_ROOT` 选择仓库外的独立
-作者根，二者不会合并。每个内容根必须用 `content-source.json` 声明 `sample` 或 `author` 身份；未配置
-时只构建示例，配置作者根后只构建作者内容，空作者根也不会回退示例。生产网站构建固定使用 runtime
-内容模式，不读取或嵌入作者根；作者内容由独立 workflow 生成版本化清单和媒体，最后切换
-`content/current.json`。`apps/clone/vite.config.ts` 在本地嵌入模式的构建边界发现 Markdown 与受支持的图片，
+公开示例内容只位于仓库级 `examples/blog`，并声明 `sample` 身份；本地嵌入模式固定构建这些示例。
+生产网站构建固定使用 runtime 内容模式，显式配置公开 HTTPS `SEKER_CONTENT_API_ORIGIN` 后从独立
+内容服务读取 `author` 身份的已发布清单。数据库、草稿与媒体原件都在服务私有数据卷，不能进入
+阿里云静态产物或公开 Git。API 失败或返回空数据时绝不回退示例。不同静态前端可以使用同一 API，
+服务通过明确的 CORS origin 列表允许读取。`apps/clone/vite.config.ts` 在示例嵌入模式的构建边界发现 Markdown 与受支持的图片，
 先把绝对磁盘位置收敛为内容根内的安全相对路径，再交给内容注册表。内容注册表使用 YAML 与 Zod 校验 frontmatter、路径碰撞、图片 alt 和相对资源，再生成不含
 解析器运行时代码的类型化清单。内容树保留仓库真实层级并挂载到 `/home/squared/Blog`；canonical
 eDEX 目录独立挂载到 `/home/squared/.config/eDEX-UI`，静态参考模式不接收个人内容。虚拟文件系统
 只投影目录、文件和预览，不拥有内容发现逻辑；投影边界根据内容节点类型分配项目自有的 `markdown`
 与 `image` 图标语义，界面不解析扩展名猜测类型。文章链接、文件点击与 hash 地址统一发送类型化
 content intent；Blog 外的沙箱目录写入类型化 `history.state`，文章内锚点只在阅读器中定位，二者都不
-占用内容 hash 路由。文章与图片作为两种内容视图挂载到同一个 `FullscreenContentOverlay`：它统一
+占用内容 hash 路由。文章、图片与视频作为内容视图挂载到同一个 `FullscreenContentOverlay`：它统一
 全屏几何、背景隔离、关闭按钮、Escape 行为和生命周期，并在打开时把整个 command deck 切换为
 `inert` 与 `aria-hidden`。图片序列、缩放、关闭与浏览器历史仍走同一 content route，不建立第二套
 弹层状态。图片显现由独立的 `PixelateRevealRenderer` 适配器和一次性、可取消状态机管理：真实图片
@@ -95,14 +95,11 @@ VFX-JS 的 `pixelateTransition` 预设。像素块在约 1 秒内由粗变细，
 VFX-JS 使用视口坐标绘制图像；当桌面画布在非 16:9 视口居中留边时，渲染适配器把特效 canvas 的
 原点校正回视口原点，避免留边偏移叠加到图片效果上。
 
-内容发现只接受所选内容根内的声明文件、Markdown、受支持图片、真实普通文件和目录；未知文件、
-符号链接与其他特殊文件会使构建失败；开发服务器
-监听内容根并通过 Vite 7 `hotUpdate` 在新增、删除或修改内容时失效虚拟清单。当前阶段把 Markdown 正文保留在清单中，是为
+示例内容发现只接受声明文件、Markdown、受支持图片、真实普通文件和目录；未知文件、
+符号链接与其他特殊文件会使构建失败；开发服务器监听示例根并通过 Vite 7 `hotUpdate` 在新增、删除或修改时失效虚拟清单。生产服务使用 SQLite 的 `draft/published` 状态和安全相对路径管理作者数据；公开 API 只投影已发布项，媒体通过独立 GET 端点流式读取，后台写接口要求鉴权与同源校验。当前阶段把 Markdown 正文保留在清单中，是为
 了让阅读器与同步终端 `cat` 共享完全相同的文件内容。若实际内容规模证明首屏预算不足，应先引入
 异步 content repository 端口并同时迁移终端读取协议，不能只把阅读器改成惰性加载而让虚拟文件为空。
-外部内容目录只隔离 Git 历史与作者源文件；所有进入内容 release 的正文和媒体仍是公开发布物。站点
-对象与 `content/` 对象具有互斥所有权，分别通过 Git revision 与内容 digest 标识。具体操作、发布决策
-和许可证边界见 `docs/deployment.md` 与 `docs/content-boundary.md`。
+作者数据卷隔离 Git 历史、草稿、数据库、媒体和备份；已发布的正文和媒体仍是公开可保存的内容。静态网站版本由 Git revision 标识，内容状态由数据库控制；旧 `content/` OSS 命名空间暂时保留但不再写入。具体操作、发布决策和许可证边界见 `docs/deployment.md` 与 `docs/content-boundary.md`。
 
 ## Invariants
 

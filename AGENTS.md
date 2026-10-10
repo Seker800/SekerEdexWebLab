@@ -63,21 +63,23 @@
 
 ## 生产发布
 
-- `docs/deployment.md` 是生产发布决策门禁。任何 Agent 执行发布前必须先判断本次变更属于网站程序还是
-  作者内容；目标不明确时必须询问，不能同时执行两条发布线。
-- 网站程序只允许通过 `npm run deploy:site` 发布，并完整遵循 `docs/site-deployment.md`。它不得读取
-  `SEKER_CONTENT_ROOT`，不得写入或删除 `content/`，也不得把示例或作者内容嵌入生产网站构建。
-- 作者文章与图片只允许通过 `npm run publish:content` 发布，并完整遵循 `docs/content-publishing.md`。
-  它只允许写入 `content/`，不得构建网站、改写 `deployment.json` 或顺便发布程序。
-- 禁止重新引入含糊的 `npm run deploy`，也禁止把两个入口串成一个“一键发布”。运行
-  `npm run release:verify` 是两个工作流共同的结构门禁。
+- `docs/deployment.md` 是生产发布决策门禁。先区分静态网站代码、内容服务代码和作者内容数据；
+  目标不明确时必须询问，不能串成“一键发布”。本轮代码变更不得推送或发布生产。
+- 静态网站程序只允许通过 `npm run deploy:site` 发布，并完整遵循 `docs/site-deployment.md`。
+  生产构建必须配置公开 HTTPS `SEKER_CONTENT_API_ORIGIN`，不得读取私有数据库、媒体卷或后台配置，
+  也不得写入或删除旧的 `content/` OSS 命名空间。
+- 作者文章、链接、图片、视频、目录与顺序只在 `npm run content:serve` 提供的独立后台管理，
+  遵循 `docs/content-publishing.md`；修改内容不产生本程序仓库提交，也不构建网站。
+- 内容服务的程序代码和数据库结构属于代码变更，使用 `npm run content-api:build` 本地验证，
+  生产升级必须单独审查和授权；不得借网站发布或编辑文章的动作顺便升级服务。
+- 禁止重新引入含糊的 `npm run deploy` 或已废弃的 `npm run publish:content`。运行
+  `npm run release:verify` 是工作流的结构门禁。真实内容、SQLite 文件、上传媒体、备份、凭据、
+  私有 `.env` 与原始照片不得进入公开 Git、CI 产物或静态前端包。
 - 网站发布前必须完成本地门禁、DCO 提交、普通 push 和 GitHub CI；`main`、本地 `HEAD` 与
-  `origin/main` 必须完全一致。内容发布使用独立内容摘要，不要求为文章修改制造程序仓库提交。
-- 两条生产发布都只能在作者 Mac 使用标准入口。不得使用群晖、自托管 Runner、GitHub Actions 部署、
-  OSS 控制台手工上传、直接调用 OSS 上传命令或另写临时发布脚本。
-- 网站发布只有在 `deployment.json.site.revision` 与本地 `HEAD` 一致时完成；内容发布只有在
-  `content/current.json` 与目标内容摘要一致时完成。任何一条失败都只能修复后从原入口重试，不能让
-  另一条发布线代偿或绕过。
+  `origin/main` 必须完全一致。网站发布只有在 `deployment.json.site.revision` 与本地 `HEAD`
+  一致时完成；内容数据以数据库发布状态为准，与网站 Git revision 独立。
+- 网站正式发布仍只能在作者 Mac 使用标准入口，不得使用群晖、GitHub Actions、OSS 控制台手工上传、
+  直接调用 OSS 上传命令或临时脚本替代。内容服务生产部署尚未授权，不得自行连接或改动群晖。
 
 ## Commit 与 Push
 

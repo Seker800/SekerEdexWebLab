@@ -115,7 +115,7 @@ async function sendMedia(request: IncomingMessage, response: ServerResponse, opt
   }
   response.writeHead(range ? 206 : 200, {
     "Content-Type": item.mediaType, "Content-Length": end - start + 1,
-    "Accept-Ranges": "bytes", "Cache-Control": "public, max-age=300",
+    "Accept-Ranges": "bytes", "Cache-Control": "no-store",
     ...(range ? { "Content-Range": `bytes ${start}-${end}/${size}` } : {})
   });
   createReadStream(file, { start, end }).pipe(response);
@@ -123,6 +123,7 @@ async function sendMedia(request: IncomingMessage, response: ServerResponse, opt
 
 export function createContentHandler(options: ContentHttpOptions): RequestListener {
   const allowed = new Set(options.allowedOrigins);
+  const failedAdminAuth = new Map<string, { count: number; expiresAt: number }>();
   return (request, response) => {
     void (async () => {
       response.setHeader("X-Content-Type-Options", "nosniff");
@@ -144,10 +145,19 @@ export function createContentHandler(options: ContentHttpOptions): RequestListen
 
       const adminRoute = url.pathname === "/admin" || url.pathname === "/admin/app.js" || url.pathname === "/admin/style.css" || url.pathname.startsWith("/api/v1/admin/");
       if (!adminRoute) throw new HttpError(404, "Not found");
+      const peer = request.socket.remoteAddress ?? "unknown";
+      const now = Date.now();
+      const previous = failedAdminAuth.get(peer);
+      if (previous && previous.expiresAt <= now) failedAdminAuth.delete(peer);
+      const current = failedAdminAuth.get(peer);
+      if (current && current.count >= 9) throw new HttpError(429, "Too many authentication attempts");
       if (!authorized(request, options)) {
+        failedAdminAuth.set(peer, { count: (current?.count ?? 0) + 1, expiresAt: now + 15 * 60_000 });
+        if (failedAdminAuth.size > 10_000) failedAdminAuth.delete(failedAdminAuth.keys().next().value!);
         response.setHeader("WWW-Authenticate", 'Basic realm="Seker Content", charset="UTF-8"');
         throw new HttpError(401, "Authentication required");
       }
+      failedAdminAuth.delete(peer);
       if (url.pathname === "/admin" && request.method === "GET") {
         response.setHeader("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'");
         const html = await readFile(path.join(import.meta.dirname, "admin.html"));
@@ -205,7 +215,8 @@ export function createContentHandler(options: ContentHttpOptions): RequestListen
       if (response.headersSent) { response.destroy(); return; }
       if (error instanceof HttpError) return fail(response, error.status, error.message);
       if (error instanceof z.ZodError) return fail(response, 400, "Invalid content data");
-      if (error instanceof Error && /UNIQUE constraint failed/u.test(error.message)) return fail(response, 409, "Content path already exists");
+      if (error instanceof Error && /UNIQUE constraint failed|Content path collision/u.test(error.message)) return fail(response, 409, "Content path collision");
+      if (error instanceof Error && /immutable/u.test(error.message)) return fail(response, 400, "Immutable item field");
       console.error("Content API request failed", error instanceof Error ? error.name : "unknown");
       fail(response, 500, "Internal server error");
     });

@@ -46,6 +46,7 @@ export class PixelateRevealRenderer {
     sourceImage.className = "image-viewer__pixelate-source";
     sourceImage.alt = "";
     sourceImage.setAttribute("aria-hidden", "true");
+    sourceImage.crossOrigin = "anonymous";
     sourceImage.src = source;
     sourceImage.style.left = `${bounds.left}px`;
     sourceImage.style.top = `${bounds.top}px`;

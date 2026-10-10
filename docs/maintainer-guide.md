@@ -36,47 +36,14 @@ baseline review，不能直接放宽阈值。
 自动修复只能写入 `apps/clone/src` 与 `examples/blog`。不得为了通过门禁扩大可写范围、放宽阈值、
 修改参考证据、资产哈希或判定器。
 
-## 添加文章与照片
+## 添加文章、链接、照片与视频
 
-运行态只有一个内容根作为事实源。未配置时使用公开、受 Git 跟踪且声明为 `sample` 的
-`examples/blog`；作者可通过 `SEKER_CONTENT_ROOT` 改用仓库外、声明为 `author` 的发布根。
-两者不会合并，空作者根也不会回退示例。Git、发布与许可证边界见
-[`content-boundary.md`](content-boundary.md)。推荐每篇带图文章使用独立目录：
+`examples/blog` 只供公开 CI 与本地示例预览，不能保存作者内容。真实内容在独立数据库后台创建、编辑和发布：
+本地先按 [`content-publishing.md`](content-publishing.md) 配置 `npm run content:serve`，粘贴 Markdown、添加 HTTPS 链接或上传 Web 图片/视频。目录由相对路径形成，顺序由 `sortOrder` 控制，草稿不会进入公开 API。图片和视频须提供可访问说明，上传前清理敏感元数据。相对文章链接仍按内容树解析；原始 HTML 不渲染。
 
-```text
-SekerEdexContent/blog/posts/my-trip/
-├── index.md
-├── cover.webp
-└── mountain.jpg
-```
+内容修改不需要改 `apps/clone/src`、建立公开 Git 提交或重建阿里云网站。只有改变展示方式、API 协议或后台程序时才属于代码改动。静态网站使用 `npm run deploy:site`，内容服务代码另行审查；禁止恢复旧 `publish:content` 静态上传。具体 Git、发布与许可证边界见 [`content-boundary.md`](content-boundary.md) 和 [`deployment.md`](deployment.md)。
 
-Markdown frontmatter 必须包含 `title`、`summary`、ISO 日期格式的 `publishedAt` 和字符串数组
-`tags`。旧的逗号分隔 `tags` 仍可读取，但新内容应使用 YAML 数组。图片支持 PNG、JPEG、WebP、
-AVIF、GIF 和 SVG；文章中用 `![可访问说明](./mountain.jpg)` 引用，alt 不得为空。相对文章链接
-同样按仓库路径解析，例如 `[下一篇](../next.md)`。原始 HTML、越界路径、缺失相对资源、重复路径
-和文件/目录碰撞都会使构建失败。
-
-所选内容目录只能包含真实目录和普通文件；符号链接及其他特殊文件会被拒绝，避免构建越过内容根读取
-本机文件。开发服务器运行期间直接新增、删除或修改文章与图片会自动刷新内容清单，无需重启。
-标题会生成稳定且可聚焦的锚点；文章内 `#锚点` 由阅读器就地滚动，不会污染全局内容路由。单斜杠
-开头的站内链接会原样保留，协议相对地址与不受支持的协议会禁用。
-
-添加内容后先运行：
-
-```sh
-npm run content:check
-```
-
-内容根还必须包含 `content-source.json`。公开 CI 使用 `npm run content:verify:sample`，作者发布前使用
-`npm run content:verify:author`；内容脚本检测到 `sample`、缺失声明或仓库内作者根会直接失败。正式发布
-必须先阅读 [`deployment.md`](deployment.md)：程序使用 `npm run deploy:site`，文章和照片使用
-`npm run publish:content`，两者不得合并。
-
-无需修改 `apps/clone/src`。本地构建插件生成预览 URL；内容发布器生成基于 digest 的不可变媒体 URL。
-左下角文件系统会按内容真实目录挂载到
-`/home/squared/Blog`，文章和图片地址使用 `#/blog/...`，适用于无需 rewrite 的静态托管。文章与图片
-都会在同一个全屏内容层中打开，并共享位置、尺寸、关闭按钮和 Escape 行为；图片仍支持同目录切换、
-缩放和 Back/Forward 恢复。
+文件系统仍将已发布内容按层级挂载到 `/home/squared/Blog`，使用 `#/blog/...` 内容地址；文章、图片和视频共享全屏覆盖层与浏览器历史。示例内容的源码检查仍可运行 `npm run content:check`，但它不是作者内容发布门禁。
 
 ## Commit 与 Push
 

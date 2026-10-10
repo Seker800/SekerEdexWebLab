@@ -1,0 +1,12 @@
+*
+!package.json
+!package-lock.json
+!tsconfig.json
+!tsconfig.content-api.json
+!services/
+!services/content-api/
+!services/content-api/*.ts
+!services/content-api/*.html
+!services/content-api/*.js
+!services/content-api/*.css
+!services/content-api/Dockerfile

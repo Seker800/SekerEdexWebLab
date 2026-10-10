@@ -1,74 +1,29 @@
-# 作者内容发布
+# 后台内容管理（不发布网站代码）
 
-本流程只发布作者文章和 Web 图片，不发布网站代码。网站发布的唯一入口是 `npm run deploy:site`；内容
-修改不要求创建公开程序仓库提交，也不要求为了文章更新重新构建整站。
+此流程负责文章、链接、图片、视频、目录与顺序。它不调用 `npm run deploy:site`，也不把作者数据送进公开 Git 仓库。内容服务程序自身升级是另一项代码变更，不能用编辑文章的动作代替。
 
-## 所有权合同
+## 本地启动
 
-内容发布只拥有 OSS 的 `content/` 命名空间：
+1. 将 `services/content-api/.env.example` 复制为同目录 `.env.local`。把 `CONTENT_DATA_DIR` 改成公开仓库之外的绝对私有目录，并确保只有运行用户能读写。
+2. 在终端运行 `npm run content:hash-password`，输入至少 16 个字符的管理员密码。把输出的哈希仅填入私有 `.env.local` 的 `CONTENT_ADMIN_PASSWORD_HASH`；明文密码和哈希都不要上传 GitHub。
+3. 本地开发使用 `CONTENT_REQUIRE_HTTPS=false`、回环地址 `CONTENT_LISTEN_HOST=127.0.0.1`，并让 `CONTENT_ADMIN_ORIGIN` 与浏览器实际打开的后台 origin 完全相同，包括端口。`CONTENT_PUBLIC_ORIGINS` 列出允许读取内容的静态前端 origin，逗号分隔，不允许 `*`。
+4. 运行 `npm run content:serve`，访问 `http://127.0.0.1:4175/admin`。浏览器会要求输入管理员用户名和密码。数据库首次启动为空，不迁移旧样例。
 
-```text
-content/
-├── current.json
-└── releases/
-    └── <sha256-content-digest>/
-        ├── manifest.json
-        └── media/...
-```
+后台可以粘贴 Markdown 正文、保存 HTTPS 外部链接、上传图片或 MP4/WebM 视频。`relativePath` 使用安全的相对目录，例如 `travel/2026/story.md`、`travel/2026/photo.webp`；目录由路径自然形成。`sortOrder` 较小者先显示，同值按路径排序。上传媒体强制先成为草稿，确认文件与说明后再点“发布”；公开 API 只返回已发布项。修改、撤回、删除和调整顺序都只改变数据库或媒体卷，不触碰阿里云网站代码。
 
-`releases/<digest>/` 不可变并使用长期缓存；`current.json` 禁止缓存，是唯一可变入口。内容脚本不得写入
-`index.html`、`assets/`、`deployment.json` 或其他站点对象，也不得运行网站 Git worktree 发布流程。
+文章内的相对 Markdown 链接与图片仍按内容树解析；视频可以在文章里使用 `![视频说明](./clip.mp4)` 嵌入，也能从文件树打开。媒体上传限制为 JPEG、PNG、GIF、WebP、AVIF、MP4、WebM，验证类型、文件头与大小；请先清理照片 EXIF/GPS，视频只上传准备公开的压缩版本。第三方素材需自行确认来源和许可证。
 
-## 内容源
+## 服务与网络边界
 
-在公开仓库外维护作者发布根，例如 `../SekerEdexContent/blog`，并在 `.env.local` 配置：
+SQLite 数据库和媒体文件都在 `CONTENT_DATA_DIR`，不放在网站静态目录。公开反向代理只能放行 `GET /api/v1/content` 与 `GET /api/v1/media/:id`；`/admin`、`/api/v1/admin/` 和数据库端口不得对公网开放。管理后台只经 VPN 或其他私人入口访问，并在 HTTPS 下使用；服务要求反向代理覆盖并传入可信的 `X-Forwarded-Proto: https`。**不能把容器的 4175 端口直接转发到公网**，否则可能绕过路由隔离或伪造代理头。
 
-```dotenv
-SEKER_CONTENT_ROOT=../SekerEdexContent/blog
-```
+`services/content-api/compose.example.yml` 只是隔离部署模板，不是上线命令。容器仅绑定主机回环地址；私有卷需预先归属容器 UID 1000。群晖上的公网 HTTPS、非标准端口或隧道、DNS、备份、升级及回滚仍须单独审查和授权，本轮不执行。外部静态前端能否访问 API，必须从家庭网络以外验证；内网回流成功不能代替公网验证。
 
-该目录必须包含 `content-source.json`，声明 `kind: "author"` 与 `visibility: "public"`。发布根只放准备
-公开的 Markdown 和经过压缩、清理元数据的 Web 图片；草稿、原始照片、秘密和私人记录必须放在发布根
-之外。内容源建议使用独立私人 Git 和独立备份，但其提交历史不进入公开程序仓库。
+备份时把 SQLite 数据库及 `media/` 视为同一数据集，并保留一致性快照；不要只复制一个正在写入的 SQLite 主文件而漏掉 WAL。至少测试一次从备份恢复。后台密码哈希、配置文件、数据库、媒体、备份和日志都属于私有运行数据，不进入开源仓库、CI 产物或前端构建。
 
-## 发布前门禁
+## 验证与失败处理
 
-1. 阅读 `docs/deployment.md`，确认本次目标只有文章、图片或内容目录。
-2. 运行 `npm run content:verify:author` 和 `npm run content:check`，并在本地预览文章、链接和图片。
-3. 检查作者内容仓库状态；只把准备公开的修改纳入本次内容版本。
-4. 确认没有秘密、原始照片、未清理的 EXIF/GPS 信息或许可证不明材料。
-5. 运行 `npm run release:verify`，确认发布入口和命名空间合同仍然有效。
-
-## 唯一执行入口
-
-```sh
-npm run publish:content
-```
-
-脚本验证作者身份、frontmatter、相对链接、图片 alt、路径和文件类型，然后按全部发布文件计算 SHA-256
-摘要。它先上传该摘要下的媒体和 `manifest.json`，再次读取内容根确认上传期间没有变化，最后才更新
-`content/current.json` 并刷新该文件的 CDN 缓存。
-
-若上传、校验或稳定性检查在指针切换前失败，访客继续读取旧版本；已经上传的不可变对象不会成为当前
-版本。旧 release 不会被网站发布删除，可用于审计和回滚。
-
-## 完成标准
-
-只有以下条件全部满足，才可报告内容发布成功：
-
-1. `npm run publish:content` 正常退出并报告目标摘要。
-2. `https://www.seker.wang/content/current.json` 返回 `200`，声明 `author` 身份、目标摘要及同摘要的清单路径，
-   并使用 `Cache-Control: no-store`。
-3. 指针引用的 `manifest.json` 可读取，清单摘要和作者身份与指针一致。
-4. 新文章和图片可以从正式站点打开，缺失内容不会显示示例文章。
-5. 根目录 `deployment.json` 的 `site.revision` 不因本次内容发布而改变。
-
-## 回滚与故障
-
-- 内容回滚：在独立内容仓库恢复目标版本，重新完成内容门禁并运行 `npm run publish:content`。相同内容会
-  复用相同摘要路径，最后只重新切换公开指针。
-- OAuth、内容校验或公网核验失败：修复根因后从同一入口重试，不得手工编辑 OSS 指针。
-- 内容发布不得顺便发布网站；如果运行时不支持某种新内容能力，应另开网站代码变更并走
-  `npm run deploy:site`。
-
-网站程序发布入口仍为 `npm run deploy:site`，详见 `docs/site-deployment.md`；本流程不得代替它。
+- 本地运行 `npm run check`、`npm test`、`npm run content-api:coverage`、`npm run content-api:build`、`npm run content:integration`、`npm run release:verify`；自动集成测试覆盖草稿不可读、发布后可读、撤回后不可读和视频 Range 请求，生产接入前还须在真实网络上手动复核。
+- 若 API 暂时不可用，前端显示空作者内容/错误状态，绝不回退到 `examples/blog`；站点代码版本不会因此改变。
+- 内容错误在后台修改或撤回；服务代码错误另开代码变更。不要恢复已删除的 `publish:content` 或手工向旧 OSS `content/` 上传来绕过后台。
+- 网站程序发布仍只走 `npm run deploy:site`；具体门禁见 [生产发布决策](deployment.md)。

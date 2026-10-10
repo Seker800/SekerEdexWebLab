@@ -71,6 +71,7 @@ export class ContentStore {
 
   create(value: ContentInput): ContentItem {
     const input = contentInput.parse(value);
+    this.assertPathAvailable(input.relativePath);
     const id = randomUUID();
     this.db.prepare("INSERT INTO content_items (id,kind,relative_path,title,summary,markdown,published_at,tags_json,href,alt,media_type,storage_key,sort_order,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
       .run(id, input.kind, input.relativePath, input.title,
@@ -96,6 +97,10 @@ export class ContentStore {
     if (!existing) return undefined;
     const { id: _id, ...current } = existing;
     const input = contentInput.parse({ ...current, ...patch });
+    if (input.kind !== existing.kind || (input.kind === "media" && existing.kind === "media" && (input.storageKey !== existing.storageKey || input.mediaType !== existing.mediaType))) {
+      throw new Error("Content kind and media storage are immutable");
+    }
+    this.assertPathAvailable(input.relativePath, id);
     this.db.prepare("UPDATE content_items SET relative_path=?,title=?,summary=?,markdown=?,published_at=?,tags_json=?,href=?,alt=?,media_type=?,sort_order=?,status=? WHERE id=?")
       .run(input.relativePath, input.title,
         "summary" in input ? input.summary : null,
@@ -124,4 +129,11 @@ export class ContentStore {
   }
 
   close(): void { this.db.close(); }
+
+  private assertPathAvailable(candidate: string, excludeId?: string): void {
+    const rows = this.db.prepare("SELECT id, relative_path FROM content_items").all() as unknown as Array<{ id: string; relative_path: string }>;
+    if (rows.some((row) => row.id !== excludeId && (row.relative_path === candidate || row.relative_path.startsWith(`${candidate}/`) || candidate.startsWith(`${row.relative_path}/`)))) {
+      throw new Error("Content path collision");
+    }
+  }
 }

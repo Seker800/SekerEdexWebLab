@@ -1,54 +1,41 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-const repositoryRoot = path.resolve(import.meta.dirname, "..");
+const root = path.resolve(import.meta.dirname, "..");
+const read = (relativePath: string): Promise<string> => readFile(path.join(root, relativePath), "utf8");
 
-async function read(relativePath: string): Promise<string> {
-  return readFile(path.join(repositoryRoot, relativePath), "utf8");
+function requireText(source: string, value: string, label: string): void {
+  if (!source.includes(value)) throw new Error(`${label} must contain ${JSON.stringify(value)}.`);
+}
+function forbidText(source: string, value: string, label: string): void {
+  if (source.includes(value)) throw new Error(`${label} must not contain ${JSON.stringify(value)}.`);
 }
 
-function requireText(source: string, expected: string, label: string): void {
-  if (!source.includes(expected)) throw new Error(`${label} must contain ${JSON.stringify(expected)}.`);
-}
-
-function forbidText(source: string, forbidden: string, label: string): void {
-  if (source.includes(forbidden)) throw new Error(`${label} must not contain ${JSON.stringify(forbidden)}.`);
-}
-
-const [packageSource, siteScript, contentScript, deploymentIndex, siteGuide, contentGuide] = await Promise.all([
-  read("package.json"),
-  read("scripts/deploy-site.ts"),
-  read("scripts/publish-content.ts"),
-  read("docs/deployment.md"),
-  read("docs/site-deployment.md"),
-  read("docs/content-publishing.md")
+const [packageSource, siteScript, siteBoundary, server, client, deployment, siteGuide, contentGuide] = await Promise.all([
+  read("package.json"), read("scripts/deploy-site.ts"), read("scripts/release-boundaries.ts"),
+  read("services/content-api/serve.ts"), read("apps/clone/src/content/content-api.ts"),
+  read("docs/deployment.md"), read("docs/site-deployment.md"), read("docs/content-publishing.md")
 ]);
-const packageJson = JSON.parse(packageSource) as { scripts?: Record<string, string> };
-const scripts = packageJson.scripts ?? {};
-
-if (scripts.deploy !== undefined) throw new Error("The ambiguous npm run deploy entry is forbidden; choose deploy:site or publish:content.");
-if (scripts["deploy:site"] !== "tsx scripts/deploy-site.ts") throw new Error("deploy:site must use the canonical site release entry.");
-if (scripts["publish:content"] !== "tsx scripts/publish-content.ts") throw new Error("publish:content must use the canonical content release entry.");
+const scripts = (JSON.parse(packageSource) as { scripts: Record<string, string> }).scripts;
+if (scripts.deploy !== undefined || scripts["publish:content"] !== undefined) throw new Error("Ambiguous or obsolete content deployment entry is forbidden.");
+if (scripts["deploy:site"] !== "tsx scripts/deploy-site.ts") throw new Error("Site release must use its canonical entry.");
+if (scripts["content:serve"] !== "node --env-file=services/content-api/.env.local --import tsx services/content-api/serve.ts") throw new Error("Content service must use its canonical entry.");
 
 requireText(siteScript, "siteBuildEnvironment", "Site release");
 requireText(siteScript, "assertSiteOwnedObjectKey", "Site release");
 requireText(siteScript, 'uploadProductionObject("site"', "Site release");
 forbidText(siteScript, 'uploadProductionObject("content"', "Site release");
 forbidText(siteScript, "loadContentSource", "Site release");
-forbidText(siteScript, "createContentReleaseBundle", "Site release");
-forbidText(siteScript, "contentPointerObjectKey", "Site release");
-
-requireText(contentScript, "createContentReleaseBundle", "Content release");
-requireText(contentScript, "assertContentOwnedObjectKey", "Content release");
-requireText(contentScript, 'uploadProductionObject("content"', "Content release");
-forbidText(contentScript, 'uploadProductionObject("site"', "Content release");
-forbidText(contentScript, "git\", [\"worktree", "Content release");
-forbidText(contentScript, "deployment.json", "Content release");
-
-for (const [source, label] of [[deploymentIndex, "Deployment decision gate"], [siteGuide, "Site guide"], [contentGuide, "Content guide"]] as const) {
-  requireText(source, "npm run deploy:site", label);
-  requireText(source, "npm run publish:content", label);
-  requireText(source, "不得", label);
+requireText(siteBoundary, '"SEKER_CONTENT_API_ORIGIN"', "Site build boundary");
+forbidText(siteBoundary, "...environment", "Site build boundary");
+requireText(siteBoundary, 'sanitized.SEKER_CONTENT_DELIVERY = "runtime"', "Site build boundary");
+requireText(server, "CONTENT_DATA_DIR", "Content service");
+requireText(server, "CONTENT_ADMIN_PASSWORD_HASH", "Content service");
+forbidText(server, "deploy:site", "Content service");
+requireText(client, "credentials: \"omit\"", "Public content client");
+for (const [document, label] of [[deployment, "Deployment decision"], [siteGuide, "Site guide"], [contentGuide, "Content guide"]] as const) {
+  requireText(document, "npm run deploy:site", label);
+  requireText(document, "content:serve", label);
+  forbidText(document, "npm run publish:content", label);
 }
-
-console.log("Verified independent site and content release boundaries.");
+console.log("Verified separate site-code and database-content workflows.");

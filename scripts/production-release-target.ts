@@ -3,7 +3,7 @@ import { lstat } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { assertContentOwnedObjectKey, assertSiteOwnedObjectKey } from "./release-boundaries.js";
+import { assertSiteOwnedObjectKey } from "./release-boundaries.js";
 
 const execFile = promisify(execFileCallback);
 const productionBucket = "seker-edex-web";
@@ -27,9 +27,8 @@ export async function requireProductionReleaseTools(): Promise<void> {
   if (!stats.isFile()) throw new Error("The configured Aliyun CLI executable is not a regular file.");
 }
 
-export async function uploadProductionObject(owner: "site" | "content", localPath: string, objectKey: string, cacheControl: string, cwd: string): Promise<void> {
-  if (owner === "site") assertSiteOwnedObjectKey(objectKey);
-  else assertContentOwnedObjectKey(objectKey);
+export async function uploadProductionObject(owner: "site", localPath: string, objectKey: string, cacheControl: string, cwd: string): Promise<void> {
+  assertSiteOwnedObjectKey(objectKey);
   await runCommand(aliyunExecutable, [
     "oss", "cp", localPath, `oss://${productionBucket}/${objectKey}`,
     "--profile", aliyunProfile,
@@ -41,9 +40,8 @@ export async function uploadProductionObject(owner: "site" | "content", localPat
   ], cwd);
 }
 
-export async function removeProductionObject(owner: "site" | "content", objectKey: string, cwd: string): Promise<void> {
-  if (owner === "site") assertSiteOwnedObjectKey(objectKey);
-  else assertContentOwnedObjectKey(objectKey);
+export async function removeProductionObject(owner: "site", objectKey: string, cwd: string): Promise<void> {
+  assertSiteOwnedObjectKey(objectKey);
   await runCommand(aliyunExecutable, [
     "oss", "rm", `oss://${productionBucket}/${objectKey}`,
     "--profile", aliyunProfile,

@@ -32,11 +32,6 @@ export interface LoadContentSourceOptions {
   readonly expectedKind: ContentSourceKind;
 }
 
-export interface ContentSourceSelection {
-  readonly contentRoot: string;
-  readonly expectedKind: ContentSourceKind;
-}
-
 function isWithinRoot(root: string, candidate: string): boolean {
   const relative = path.relative(root, candidate);
   return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative));
@@ -47,27 +42,8 @@ function isPublishableContentFile(file: string): boolean {
   return extension === "md" || supportedContentMediaExtensions.includes(extension);
 }
 
-export function resolveContentRoot(repositoryRoot: string, configuredRoot?: string): string {
-  return path.resolve(repositoryRoot, configuredRoot?.trim() || defaultSampleContentRoot);
-}
-
-export function selectContentSource(
-  repositoryRoot: string,
-  configuredRoot?: string,
-  profile?: string
-): ContentSourceSelection {
-  const normalizedProfile = profile?.trim();
-  if (normalizedProfile && normalizedProfile !== "sample" && normalizedProfile !== "author") {
-    throw new Error(`Unsupported content profile: ${normalizedProfile}`);
-  }
-  const expectedKind: ContentSourceKind = normalizedProfile === "sample" || normalizedProfile === "author"
-    ? normalizedProfile
-    : configuredRoot?.trim() ? "author" : "sample";
-  if (expectedKind === "sample") {
-    return { contentRoot: resolveContentRoot(repositoryRoot), expectedKind };
-  }
-  if (!configuredRoot?.trim()) throw new Error("Author content requires SEKER_CONTENT_ROOT.");
-  return { contentRoot: resolveContentRoot(repositoryRoot, configuredRoot), expectedKind };
+export function resolveContentRoot(repositoryRoot: string): string {
+  return path.resolve(repositoryRoot, defaultSampleContentRoot);
 }
 
 export async function loadContentSource(options: LoadContentSourceOptions): Promise<LoadedContentSource> {

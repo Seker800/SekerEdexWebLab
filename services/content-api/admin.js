@@ -33,6 +33,7 @@ function switchKind() {
 function resetEditor() {
   editingId = null;
   itemForm.reset();
+  field(itemForm, "kind").disabled = false;
   field(itemForm, "publishedAt").value = new Date().toISOString().slice(0, 10);
   switchKind();
 }
@@ -41,6 +42,7 @@ function edit(item) {
   if (item.kind === "media") return;
   editingId = item.id;
   for (const name of ["kind", "relativePath", "title", "summary", "sortOrder", "status"]) field(itemForm, name).value = item[name];
+  field(itemForm, "kind").disabled = true;
   switchKind();
   if (item.kind === "document") {
     field(itemForm, "publishedAt").value = item.publishedAt;
