@@ -30,7 +30,7 @@ describe("independent content database", () => {
     expect(db.publicEntries().map((entry) => entry.relativePath)).toEqual(["journal/b.md", "journal/link.url"]);
     db.update(second.id, { sortOrder: 40 });
     expect(db.publicEntries().map((entry) => entry.relativePath)).toEqual(["journal/link.url", "journal/b.md"]);
-    expect(db.get(second.id)?.markdown).toBe("# B");
+    expect(db.get(second.id)).toMatchObject({ markdown: "# B" });
     db.close();
   });
 
@@ -38,8 +38,8 @@ describe("independent content database", () => {
     const db = await store();
     expect(() => db.create({ kind: "link", relativePath: "../escape.url", title: "Bad", summary: "Bad", href: "javascript:alert(1)", sortOrder: 0, status: "published" })).toThrow();
     expect(() => db.create({ kind: "link", relativePath: "safe.url", title: "Bad", summary: "Bad", href: "javascript:alert(1)", sortOrder: 0, status: "published" })).toThrow();
-    db.create({ kind: "media", relativePath: "photos/one.webp", title: "One", alt: "One", mediaType: "image/webp", storageKey: "one.webp", sortOrder: 0, status: "draft" });
-    expect(() => db.create({ kind: "media", relativePath: "photos/one.webp", title: "Other", alt: "Other", mediaType: "image/webp", storageKey: "two.webp", sortOrder: 1, status: "published" })).toThrow();
+    db.create({ kind: "media", relativePath: "photos/one.webp", title: "One", alt: "One", mediaType: "image/webp", storageKey: "00000000-0000-0000-0000-000000000000", sortOrder: 0, status: "draft" });
+    expect(() => db.create({ kind: "media", relativePath: "photos/one.webp", title: "Other", alt: "Other", mediaType: "image/webp", storageKey: "ffffffff-ffff-ffff-ffff-ffffffffffff", sortOrder: 1, status: "published" })).toThrow();
     expect(db.publicEntries()).toEqual([]);
     db.close();
   });
