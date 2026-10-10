@@ -21,6 +21,8 @@
     "content:verify:sample": "tsx scripts/verify-content-source.ts sample",
     "content:verify:author": "tsx scripts/verify-content-source.ts author",
     "content:check": "npm run content:verify && npm run content:coverage && npm run app:build",
+    "content:serve": "tsx services/content-api/serve.ts",
+    "content-api:build": "tsc -p tsconfig.content-api.json",
     "release:verify": "tsx scripts/verify-release-boundaries.ts",
     "deploy:site": "tsx scripts/deploy-site.ts",
     "publish:content": "tsx scripts/publish-content.ts",

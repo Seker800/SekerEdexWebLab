@@ -134,8 +134,8 @@ export function createContentHandler(options: ContentHttpOptions): RequestListen
       if (origin && allowed.has(origin) && (url.pathname === "/api/v1/content" || url.pathname.startsWith("/api/v1/media/"))) {
         response.setHeader("Access-Control-Allow-Origin", origin);
       }
-      if (options.requireHttps && request.headers["x-forwarded-proto"] !== "https") throw new HttpError(403, "HTTPS is required");
       if (url.pathname === "/health/live" && request.method === "GET") return send(response, 200, { status: "ok" });
+      if (options.requireHttps && request.headers["x-forwarded-proto"] !== "https") throw new HttpError(403, "HTTPS is required");
       if (url.pathname === "/api/v1/content" && request.method === "GET") {
         return send(response, 200, { schemaVersion: 1, source: { schemaVersion: 1, id: "seker-content", kind: "author", visibility: "public", defaultLicense: "All rights reserved" }, entries: options.store.publicEntries().map(publicEntry) });
       }

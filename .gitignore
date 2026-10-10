@@ -10,6 +10,8 @@ coverage/
 .vite/
 artifacts/
 .cache/
+.local/
+runtime/
 .omx/
 playwright-report/
 test-results/

@@ -60,6 +60,14 @@ async function reload() {
     li.append(label);
     const actions = [
       ...(item.kind === "media" ? [] : [["编辑", () => edit(item)]]),
+      ["调整顺序", async () => {
+        const value = prompt("新的顺序（0 到 1000000）", String(item.sortOrder));
+        if (value === null) return;
+        const sortOrder = Number(value);
+        if (!Number.isInteger(sortOrder) || sortOrder < 0 || sortOrder > 1000000) throw new Error("顺序必须是 0 到 1000000 的整数");
+        await request(`/api/v1/admin/items/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sortOrder }) });
+        await reload();
+      }],
       [item.status === "published" ? "转草稿" : "发布", async () => { await request(`/api/v1/admin/items/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: item.status === "published" ? "draft" : "published" }) }); await reload(); }],
       ["删除", async () => { if (!confirm(`确定删除 ${item.relativePath}？`)) return; await request(`/api/v1/admin/items/${item.id}`, { method: "DELETE" }); await reload(); }]
     ];
