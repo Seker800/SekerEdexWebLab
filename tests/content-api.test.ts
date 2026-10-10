@@ -43,4 +43,11 @@ describe("independent content database", () => {
     expect(db.publicEntries()).toEqual([]);
     db.close();
   });
+
+  it("never accepts a file that collides with a directory", async () => {
+    const db = await store();
+    db.create({ kind: "document", relativePath: "trip", title: "Trip", summary: "", markdown: "", publishedAt: "2026-10-11", tags: [], sortOrder: 0, status: "draft" });
+    expect(() => db.create({ kind: "document", relativePath: "trip/post.md", title: "Post", summary: "", markdown: "", publishedAt: "2026-10-11", tags: [], sortOrder: 0, status: "draft" })).toThrow(/collision/i);
+    db.close();
+  });
 });
