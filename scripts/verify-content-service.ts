@@ -14,15 +14,7 @@ const temporaryRoot = await mkdtemp(path.join(tmpdir(), "seker-content-integrati
 const store = new ContentStore(path.join(temporaryRoot, "content.sqlite"));
 const frontendPort = 4180;
 const frontendOrigin = `http://127.0.0.1:${frontendPort}`;
-const backend = createHttpServer(createContentHandler({
-  store,
-  mediaRoot: path.join(temporaryRoot, "media"),
-  allowedOrigins: [frontendOrigin],
-  adminOrigin: "http://127.0.0.1:4175",
-  adminUsername: "author",
-  adminPasswordHash: hashAdminPassword("integration test password"),
-  requireHttps: false
-}));
+const backend = createHttpServer();
 let backendOpen = false;
 let vite: Awaited<ReturnType<typeof createViteServer>> | undefined;
 let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
@@ -39,6 +31,15 @@ try {
   const address = backend.address();
   if (!address || typeof address === "string") throw new Error("Backend did not acquire a port");
   const apiOrigin = `http://127.0.0.1:${address.port}`;
+  backend.on("request", createContentHandler({
+    store,
+    mediaRoot,
+    allowedOrigins: [frontendOrigin],
+    adminOrigin: apiOrigin,
+    adminUsername: "author",
+    adminPasswordHash: hashAdminPassword("integration test password"),
+    requireHttps: false
+  }));
   vite = await createViteServer({
     configFile: false,
     root: path.resolve(import.meta.dirname, "../apps/clone"),

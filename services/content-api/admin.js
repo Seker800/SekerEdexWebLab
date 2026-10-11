@@ -107,7 +107,7 @@ mediaForm.addEventListener("submit", (event) => {
   if (!file) return;
   request("/api/v1/admin/media", {
     method: "POST", body: file,
-    headers: { "Content-Type": file.type, "X-Content-Path": field(mediaForm, "relativePath").value.trim(), "X-Content-Title": field(mediaForm, "title").value.trim(), "X-Content-Alt": field(mediaForm, "alt").value.trim(), "X-Content-Sort-Order": field(mediaForm, "sortOrder").value }
+    headers: { "Content-Type": file.type, "X-Content-Path": encodeURIComponent(field(mediaForm, "relativePath").value.trim()), "X-Content-Title": encodeURIComponent(field(mediaForm, "title").value.trim()), "X-Content-Alt": encodeURIComponent(field(mediaForm, "alt").value.trim()), "X-Content-Sort-Order": field(mediaForm, "sortOrder").value }
   }).then(() => { report("上传成功，尚未发布"); mediaForm.reset(); return reload(); }).catch((error) => report(error.message, true));
 });
 

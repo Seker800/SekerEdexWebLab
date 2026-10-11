@@ -79,6 +79,12 @@ function assertAdminMutationOrigin(request: IncomingMessage, options: ContentHtt
   if (request.headers.origin !== options.adminOrigin) throw new HttpError(403, "Admin origin is not allowed");
 }
 
+function decodedUploadHeader(value: string | string[] | undefined): string | undefined {
+  if (typeof value !== "string") return undefined;
+  try { return decodeURIComponent(value); }
+  catch { throw new HttpError(400, "Invalid media metadata encoding"); }
+}
+
 function mediaSignatureMatches(data: Buffer, mediaType: string): boolean {
   if (mediaType === "image/jpeg") return data.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]));
   if (mediaType === "image/png") return data.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
@@ -198,10 +204,10 @@ export function createContentHandler(options: ContentHttpOptions): RequestListen
       if (url.pathname === "/api/v1/admin/media" && request.method === "POST") {
         const mediaType = request.headers["content-type"]?.split(";")[0] ?? "";
         if (!(mediaType in mediaExtensions)) throw new HttpError(415, "Unsupported media type");
+        const input = contentInput.parse({ kind: "media", relativePath: decodedUploadHeader(request.headers["x-content-path"]), title: decodedUploadHeader(request.headers["x-content-title"]), alt: decodedUploadHeader(request.headers["x-content-alt"]), mediaType, storageKey: randomUUID(), sortOrder: Number(request.headers["x-content-sort-order"] ?? 0), status: "draft" });
+        if (input.kind !== "media" || !input.relativePath.toLowerCase().endsWith(mediaExtensions[mediaType]!)) throw new HttpError(400, "Media path extension does not match type");
         const data = await readLimited(request, maximumMediaBytes);
         if (data.length === 0 || !mediaSignatureMatches(data, mediaType)) throw new HttpError(415, "Media signature does not match its type");
-        const input = contentInput.parse({ kind: "media", relativePath: request.headers["x-content-path"], title: request.headers["x-content-title"], alt: request.headers["x-content-alt"], mediaType, storageKey: randomUUID(), sortOrder: Number(request.headers["x-content-sort-order"] ?? 0), status: "draft" });
-        if (input.kind !== "media" || !input.relativePath.toLowerCase().endsWith(mediaExtensions[mediaType]!)) throw new HttpError(400, "Media path extension does not match type");
         await mkdir(options.mediaRoot, { recursive: true, mode: 0o700 });
         const temporary = path.join(options.mediaRoot, `${input.storageKey}.tmp`);
         const destination = path.join(options.mediaRoot, input.storageKey);
