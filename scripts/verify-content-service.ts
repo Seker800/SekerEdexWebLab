@@ -76,6 +76,14 @@ try {
   await page.locator("#boot-skip").click();
   await page.locator('html[data-boot-phase="complete"]').waitFor();
   await page.locator('.file-grid button[data-file-name="posts"]').click();
+  await page.locator('.file-grid button[data-file-name="hello.md"]').click();
+  await page.waitForFunction(() => {
+    const image = document.querySelector<HTMLImageElement>(".content-image img");
+    return image?.complete && image.naturalWidth > 0;
+  });
+  await page.locator(".content-image img").screenshot({ path: path.resolve(import.meta.dirname, "../artifacts/app-verification/content-api-inline-image.png") });
+  await page.screenshot({ path: path.resolve(import.meta.dirname, "../artifacts/app-verification/content-api-article.png") });
+  await page.locator("#content-overlay-close").click();
   await page.locator('.file-grid button[data-file-name="clip.mp4"]').click();
   await page.locator('.video-viewer video').waitFor({ state: "visible" });
   assert.equal(await page.locator(".video-viewer p").textContent(), "A short clip");
