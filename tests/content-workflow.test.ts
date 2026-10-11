@@ -9,7 +9,9 @@ describe("separate code and content workflows", () => {
     const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")) as { scripts: Record<string, string> };
     expect(pkg.scripts["deploy:site"]).toBe("tsx scripts/deploy-site.ts");
     expect(pkg.scripts["publish:content"]).toBeUndefined();
-    expect(pkg.scripts["content:serve"]).toBe("node --env-file=services/content-api/.env.local --import tsx services/content-api/serve.ts");
+    expect(pkg.scripts["content:serve"]).toBeUndefined();
+    expect(pkg.scripts["content-api:build"]).toBeUndefined();
+    expect(pkg.scripts["content:integration"]).toBe("tsx scripts/verify-content-client.ts");
     expect(pkg.scripts.deploy).toBeUndefined();
   });
 });

@@ -59,4 +59,4 @@ npm run deploy:site
 - 内容不可用不授权网站发布显示示例；运行时会保留作者内容挂载点并进入明确的内容错误状态。
 - 网站发布不得通过重新发布内容来掩盖程序问题。
 
-作者内容只在 `npm run content:serve` 提供的后台修改，详见 `docs/content-publishing.md`；本流程不得代替它。
+作者内容只在 `SekerContentApi` 提供的后台修改，详见 `docs/content-publishing.md`；本流程不得代替它。

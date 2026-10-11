@@ -71,9 +71,9 @@
 - 静态网站程序只允许通过 `npm run deploy:site` 发布，并完整遵循 `docs/site-deployment.md`。
   生产构建必须配置公开 HTTPS `SEKER_CONTENT_API_ORIGIN`，不得读取私有数据库、媒体卷或后台配置，
   也不得写入或删除旧的 `content/` OSS 命名空间。
-- 作者文章、链接、图片、视频、目录与顺序只在 `npm run content:serve` 提供的独立后台管理，
+- 作者文章、链接、图片、视频、目录与顺序只在 `SekerContentApi` 独立后台管理，
   遵循 `docs/content-publishing.md`；修改内容不产生本程序仓库提交，也不构建网站。
-- 内容服务的程序代码和数据库结构属于代码变更，使用 `npm run content-api:build` 本地验证，
+- 内容服务的程序代码和数据库结构属于 `SekerContentApi` 仓库的代码变更，在该仓库运行 `npm run verify`，
   生产升级必须单独审查和授权；不得借网站发布或编辑文章的动作顺便升级服务。
 - 禁止重新引入含糊的 `npm run deploy` 或已废弃的 `npm run publish:content`。运行
   `npm run release:verify` 是工作流的结构门禁。真实内容、SQLite 文件、上传媒体、备份、凭据、

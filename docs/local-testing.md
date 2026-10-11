@@ -9,30 +9,30 @@
 | 目标 | 内容来源 | 操作 | 会改变什么 |
 | --- | --- | --- | --- |
 | 检查网站界面和示例 | 仓库内明确标为 `sample` 的 `examples/blog` | `npm run app:dev` | 只启动本地前端；不代表生产内容 |
-| 检查真实 API 交互和后台 | 开发机私有目录中的临时/测试 SQLite 与媒体 | 按下文分别启动 `content:serve` 和 runtime 前端 | 只改变选定的本地测试数据 |
-| 自动回归 | 测试脚本创建的隔离测试数据 | `npm run content:integration` 或 `npm run verify` | 只生成本地测试产物，不发布 |
+| 检查真实 API 交互和后台 | 开发机私有目录中的临时/测试 SQLite 与媒体 | 在 `SekerContentApi` 启动服务，再在本仓库启动 runtime 前端 | 只改变选定的本地测试数据 |
+| 自动回归 | 前端契约使用隔离 HTTP 测试服务；后端测试使用隔离 SQLite | 分别在两个仓库运行 `npm run verify` | 只生成本地测试产物，不发布 |
 
 默认 `npm run app:dev` 使用嵌入示例模式；它不会读取内容 API。要验证上线后的网站取数路径，
 必须显式选择 runtime 模式。两种模式互斥，不能把样例预览当作作者内容已成功发布的证据。
 
 ## 手动联调前后端
 
-1. `npm ci` 安装锁定依赖。将 `services/content-api/.env.example` 复制为同目录的
+1. 分别在 `SekerContentApi` 和本仓库运行 `npm ci`。在服务仓库将 `.env.example` 复制为
    `.env.local`，按 [后台内容管理](content-publishing.md#本地启动) 设置本地管理员密码哈希。
    `CONTENT_DATA_DIR` 必须是仓库外的**专用测试目录**，不要指向生产数据、同步盘或现有私人资料库。
    保持 `CONTENT_LISTEN_HOST=127.0.0.1`、`CONTENT_PORT=4175`、
    `CONTENT_ADMIN_ORIGIN=http://127.0.0.1:4175`、
    `CONTENT_PUBLIC_ORIGINS=http://127.0.0.1:4174` 和 `CONTENT_REQUIRE_HTTPS=false`；
    这些 HTTP 设置仅供本机回环联调。
-2. 在一个终端启动后台：
+2. 在 `SekerContentApi` 仓库的一个终端启动后台：
 
    ```sh
-   npm run content:serve
+   npm run serve
    ```
 
    本机后台位于 `http://127.0.0.1:4175/admin`。空数据库不会自动迁移或复制示例；
    如需观察文章、图片或视频，先在这个**测试后台**添加并发布测试内容。
-3. 在另一个终端启动从 API 读取内容的前端：
+3. 在本仓库的另一个终端启动从 API 读取内容的前端：
 
    ```sh
    SEKER_CONTENT_DELIVERY=runtime SEKER_CONTENT_API_ORIGIN=http://127.0.0.1:4175 npm run app:dev
@@ -49,13 +49,13 @@
 
 ## 自动门禁与生产的界线
 
-`npm run content:integration` 会临时启动内容 API 和浏览器，验证后台、发布状态、媒体及
-前端读取；测试结束后清理其临时数据库。`npm run verify` 是完整本地门禁，包含静态检查、
+本仓库的 `npm run content:integration` 启动公共 API 契约测试服务和浏览器，验证 eDEX 对文章、媒体和 API 故障的处理；
+`SekerContentApi` 的测试单独验证后台、发布状态与媒体 Range 请求。分别运行两个仓库的 `npm run verify`，包含静态检查、
 测试、构建及浏览器/视觉验证。运行这些门禁前先停掉占用 4174/4175 端口的手动预览进程，
 避免端口冲突；通过本地门禁**不等于**网站或内容服务已上线。
 
 `npm run app:build` 也是本地构建，不会上传网站。只有在生产发布门禁满足且获得相应授权时，
 才按 [网站程序发布](site-deployment.md) 单独执行 `npm run deploy:site`。内容服务程序上线
-目前没有获批的自动执行入口；`npm run content-api:build` 只验证服务代码，
-`npm run content:serve` 只启动本地进程。作者日常发内容则在已经独立部署的**私有后台**操作，
+目前没有获批的生产服务部署入口；`SekerContentApi` 的 `npm run build` 只构建服务代码，
+其 `npm run serve` 只启动本地进程。作者日常发内容则在已经独立部署的**私有后台**操作，
 不构建也不发布网站代码。

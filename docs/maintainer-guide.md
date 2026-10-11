@@ -46,7 +46,7 @@ baseline review，不能直接放宽阈值。
 ## 添加文章、链接、照片与视频
 
 `examples/blog` 只供公开 CI 与本地示例预览，不能保存作者内容。真实内容在独立数据库后台创建、编辑和发布：
-本地先按 [`content-publishing.md`](content-publishing.md) 配置 `npm run content:serve`，粘贴 Markdown、添加 HTTPS 链接或上传 Web 图片/视频。目录由相对路径形成，顺序由 `sortOrder` 控制，草稿不会进入公开 API。图片和视频须提供可访问说明，上传前清理敏感元数据。相对文章链接仍按内容树解析；原始 HTML 不渲染。
+本地先按 [`content-publishing.md`](content-publishing.md) 配置 `SekerContentApi` 仓库的 `npm run serve`，粘贴 Markdown、添加 HTTPS 链接或上传 Web 图片/视频。目录由相对路径形成，顺序由 `sortOrder` 控制，草稿不会进入公开 API。图片和视频须提供可访问说明，上传前清理敏感元数据。相对文章链接仍按内容树解析；原始 HTML 不渲染。
 
 内容修改不需要改 `apps/clone/src`、建立公开 Git 提交或重建阿里云网站。只有改变展示方式、API 协议或后台程序时才属于代码改动。静态网站使用 `npm run deploy:site`，内容服务代码另行审查；禁止恢复旧 `publish:content` 静态上传。具体 Git、发布与许可证边界见 [`content-boundary.md`](content-boundary.md) 和 [`deployment.md`](deployment.md)。
 

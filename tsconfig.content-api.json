@@ -1,9 +1,0 @@
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "rootDir": "services/content-api",
-    "outDir": "dist/content-api",
-    "types": ["node"]
-  },
-  "include": ["services/content-api/**/*.ts"]
-}
