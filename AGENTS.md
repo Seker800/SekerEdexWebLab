@@ -63,6 +63,8 @@
 
 ## 生产发布
 
+- 多前端规划遵循 `docs/MULTI_FRONTEND_NORTH_STAR.md`：当前仓库只拥有 eDEX 前端的构建与发布，
+  不得把未来极简前端或入口页塞进 `apps/clone` 或现有 `deploy:site` 的对象范围。
 - 本机看效果与跑自动门禁遵循 `docs/local-testing.md`；测试通过不能推断已经获准 push、部署或迁移。
 - `docs/deployment.md` 是生产发布决策门禁。先区分静态网站代码、内容服务代码和作者内容数据；
   目标不明确时必须询问，不能串成“一键发布”。本轮代码变更不得推送或发布生产。

@@ -8,6 +8,8 @@ SekerEdexWebLab turns a target web experience into a reviewable sequence of evid
 
 The product uses [GitSquared/eDEX-UI](https://github.com/GitSquared/edex-ui), specifically eDEX-UI 2.2 with the default `tron` theme and QWERTY on-screen keyboard, as its primary visual reference. The intended experience is a fullscreen, functional science-fiction command interface inspired by TRON: Legacy: terminal-first, telemetry-rich, dark, precise, and suitable for sustained real use.
 
+This repository's frontend remains the eDEX Web product. A future minimal reader and a neutral entry page are separate frontend products that may share the public content API, not this frontend's source tree or release artifact; see `docs/MULTI_FRONTEND_NORTH_STAR.md`.
+
 The binding visual contract is documented in `docs/VISUAL_NORTH_STAR.md`.
 
 ## Success statement

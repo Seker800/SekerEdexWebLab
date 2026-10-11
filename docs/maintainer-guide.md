@@ -18,6 +18,9 @@
 9. [`adr/0004-fixed-canvas-and-reference-fonts.md`](adr/0004-fixed-canvas-and-reference-fonts.md)
 10. [`adr/0005-independent-site-and-content-releases.md`](adr/0005-independent-site-and-content-releases.md)
 
+多前端规划另见 [`MULTI_FRONTEND_NORTH_STAR.md`](MULTI_FRONTEND_NORTH_STAR.md)：本仓库的
+eDEX Web 不负责实现或发布未来的极简前端与中性入口页。
+
 ## 当前开发流程
 
 当前原型使用 Node.js 22、npm、Vite 和严格 TypeScript。完整本地门禁为 `npm run verify`，

@@ -72,7 +72,9 @@ iOS 聚焦缩放的字号、至少 44px 的触控目标和无横向裁切作为�
 生产网站构建固定使用 runtime 内容模式，显式配置公开 HTTPS `SEKER_CONTENT_API_ORIGIN` 后从独立
 内容服务读取 `author` 身份的已发布清单。数据库、草稿与媒体原件都在服务私有数据卷，不能进入
 阿里云静态产物或公开 Git。API 失败或返回空数据时绝不回退示例。不同静态前端可以使用同一 API，
-服务通过明确的 CORS origin 列表允许读取。`apps/clone/vite.config.ts` 在示例嵌入模式的构建边界发现 Markdown 与受支持的图片，
+服务通过明确的 CORS origin 列表允许读取。未来极简前端应独立建仓、独立发布，只共享公开 API；
+中性入口页也不属于 eDEX 画布或本仓库的现有发布产物。当前生产根地址不因规划改变，详见
+`docs/MULTI_FRONTEND_NORTH_STAR.md`。`apps/clone/vite.config.ts` 在示例嵌入模式的构建边界发现 Markdown 与受支持的图片，
 先把绝对磁盘位置收敛为内容根内的安全相对路径，再交给内容注册表。内容注册表使用 YAML 与 Zod 校验 frontmatter、路径碰撞、图片 alt 和相对资源，再生成不含
 解析器运行时代码的类型化清单。内容树保留仓库真实层级并挂载到 `/home/squared/Blog`；canonical
 eDEX 目录独立挂载到 `/home/squared/.config/eDEX-UI`，静态参考模式不接收个人内容。虚拟文件系统
