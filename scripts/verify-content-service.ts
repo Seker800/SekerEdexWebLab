@@ -50,6 +50,10 @@ try {
   browser = await chromium.launch({ headless: true });
   const admin = await browser.newPage({ viewport: { width: 1440, height: 1000 }, httpCredentials: { username: "author", password: "integration test password" } });
   await admin.goto(`${apiOrigin}/admin`);
+  assert.equal(await admin.locator(".link-field").isVisible(), false);
+  await admin.locator('#item-form [name="kind"]').selectOption("link");
+  assert.equal(await admin.locator(".document-field").first().isVisible(), false);
+  await admin.locator('#item-form [name="kind"]').selectOption("document");
   await admin.locator('#media-form [name="file"]').setInputFiles(path.resolve(import.meta.dirname, "../examples/blog/posts/night-routes/tokyo-night.jpg"));
   await admin.locator('#media-form [name="relativePath"]').fill("photos/本地图片.jpg");
   await admin.locator('#media-form [name="title"]').fill("本地测试图片");
