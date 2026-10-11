@@ -2,7 +2,7 @@
 
 ## 开始之前
 
-- 先阅读本文件、`docs/architecture.md` 与 `docs/visual-parity.md`。
+- 先阅读本文件、`docs/architecture.md` 与 `docs/visual-parity.md`；涉及跨仓库职责时再读 `docs/REPOSITORY_MAP.md`。
 - 改动架构边界、第三方来源或验收标准时，同时更新对应文档或 ADR。
 - 当前阶段是可行性验证；不要未经证据就扩展成账号系统或通用组件库。
 

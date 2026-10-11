@@ -24,6 +24,9 @@ telemetry, filesystem, globe, sound, and an on-screen keyboard all respond throu
 The repository also contains the deterministic capture and comparison system used to prove that the
 port still matches its frozen visual target.
 
+The [three-repository project map](docs/REPOSITORY_MAP.md) explains how this public frontend, the
+private minimal frontend, and the private content service fit together and what is still planned.
+
 > [!IMPORTANT]
 > SekerEdexWebLab is an unofficial browser port derived from GitSquared's
 > [eDEX-UI](https://github.com/GitSquared/edex-ui). It is not maintained or endorsed by GitSquared or
