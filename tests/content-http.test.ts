@@ -76,6 +76,7 @@ describe("public content API and private administration", () => {
     const headers = { Authorization: `Basic ${Buffer.from("author:long local test password").toString("base64")}`, Origin: "http://127.0.0.1", "Content-Type": "image/png", "X-Content-Path": "photos/one.png", "X-Content-Title": "One", "X-Content-Alt": "One photo" };
     const valid = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3]);
     expect((await fetch(`${base}/api/v1/admin/media`, { method: "POST", headers, body: Buffer.from("not an image") })).status).toBe(415);
+    expect((await fetch(`${base}/api/v1/admin/media`, { method: "POST", headers: { ...headers, "X-Content-Title": "%E0%A4%A" }, body: valid })).status).toBe(400);
     expect((await fetch(`${base}/api/v1/admin/media`, { method: "POST", headers: { ...headers, "X-Content-Path": "photos/one.jpg" }, body: valid })).status).toBe(400);
     const uploaded = await fetch(`${base}/api/v1/admin/media`, { method: "POST", headers, body: valid });
     expect(uploaded.status).toBe(201);
