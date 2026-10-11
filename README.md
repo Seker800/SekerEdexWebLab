@@ -65,7 +65,10 @@ npm run app:dev
 ```
 
 Open the printed local URL and choose **Initialize system**. Use **REBOOT** to replay the startup
-sequence and **SOUND ON/OFF** to control audio.
+sequence and **SOUND ON/OFF** to control audio. This default mode shows repository samples only.
+To run the content backend and preview runtime API content against a local test database, follow the
+[local testing guide](docs/local-testing.md). Production releases have a separate
+[decision gate](docs/deployment.md); local preview commands do not deploy anything.
 
 To install the browser engines and run the complete local acceptance gate:
 

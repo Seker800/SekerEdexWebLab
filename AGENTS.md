@@ -63,6 +63,7 @@
 
 ## 生产发布
 
+- 本机看效果与跑自动门禁遵循 `docs/local-testing.md`；测试通过不能推断已经获准 push、部署或迁移。
 - `docs/deployment.md` 是生产发布决策门禁。先区分静态网站代码、内容服务代码和作者内容数据；
   目标不明确时必须询问，不能串成“一键发布”。本轮代码变更不得推送或发布生产。
 - 静态网站程序只允许通过 `npm run deploy:site` 发布，并完整遵循 `docs/site-deployment.md`。

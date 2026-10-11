@@ -25,6 +25,10 @@
 Chromium、WebKit 和冻结视觉复刻验证。内容核心的 statements、branches、functions 与 lines
 覆盖率均不得低于 80%。
 
+本机看示例、本机连接测试内容 API、自动门禁分别怎么运行，以及何时必须停下而不触碰生产，
+统一见 [本地测试与预览](local-testing.md)。需要真正上线时先从 [发布决策门禁](deployment.md)
+选择网站程序、内容服务程序或作者数据的独立流程；本地门禁通过不是发布许可。
+
 CI 将这些职责拆成 `gate-integrity`、`source`、`app-chromium`、`app-webkit` 和
 `visual-canonical`。主分支应把五项全部配置为 required checks。基准、合同、判断器、门禁脚本、
 上游资产和许可证由 `.github/CODEOWNERS` 保护；更新这些文件必须保留来源、差异证据和审核记录。

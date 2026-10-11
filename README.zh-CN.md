@@ -57,7 +57,9 @@ npm run app:dev
 ```
 
 打开命令行输出的本地地址，然后选择 **Initialize system**。使用 **REBOOT** 重放启动序列，
-使用 **SOUND ON/OFF** 控制声音。
+使用 **SOUND ON/OFF** 控制声音。此默认模式只显示仓库样例；要在本地同时运行内容后台、
+用测试 SQLite 检查真实 API 取数，请按[本地测试与预览](docs/local-testing.md)操作。
+生产发布另见[发布决策门禁](docs/deployment.md)，不能从本地预览命令直接推断上线步骤。
 
 安装浏览器引擎并运行完整的本地验收门禁：
 
