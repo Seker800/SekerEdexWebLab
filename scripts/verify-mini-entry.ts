@@ -27,7 +27,7 @@ try {
         assert.equal(await link.textContent(), "Enter minimal site");
         await page.locator("#gate-language").selectOption("zh-CN");
         assert.equal(await link.textContent(), "进入极简版");
-        assert.equal(await page.locator("html").getAttribute("data-boot-phase"), "gate");
+        assert.equal(await page.locator("#boot-overlay").getAttribute("data-phase"), "gate");
         if (mobile) {
           const bounds = await link.boundingBox();
           assert.ok(bounds && bounds.height >= 44 && bounds.x >= 0 && bounds.x + bounds.width <= 390);

@@ -1,7 +1,7 @@
 export type Locale = "en" | "zh-CN";
 
 const english = {
-  startup: "System startup", source: "Unofficial browser port · original by", initialize: "Initialize system",
+  startup: "System startup", source: "Unofficial browser port · original by", initialize: "Initialize system", enterMinimal: "Enter minimal site",
   skipIntro: "Skip intro", panel: "PANEL", system: "SYSTEM", terminal: "TERMINAL", files: "FILES",
   reboot: "REBOOT", mainShell: "MAIN SHELL", network: "NETWORK", uptime: "UPTIME", type: "TYPE",
   power: "POWER", charge: "CHARGE", manufacturer: "MANUFACTURER", model: "MODEL", chassis: "CHASSIS",
@@ -28,7 +28,7 @@ const english = {
 } as const;
 
 const chinese: Record<keyof typeof english, string> = {
-  startup: "系统启动", source: "非官方浏览器移植 · 原作者", initialize: "初始化系统",
+  startup: "系统启动", source: "非官方浏览器移植 · 原作者", initialize: "初始化系统", enterMinimal: "进入极简版",
   skipIntro: "跳过开场", panel: "面板", system: "系统", terminal: "终端", files: "文件",
   reboot: "重新启动", mainShell: "主终端", network: "网络", uptime: "运行时间", type: "类型",
   power: "电源", charge: "充电中", manufacturer: "制造商", model: "型号", chassis: "机型",

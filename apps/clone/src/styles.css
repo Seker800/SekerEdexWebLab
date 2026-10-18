@@ -154,9 +154,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .boot-gate__source { margin: 1.2cqh 0 0; color: var(--dim); font: 400 1.05cqh var(--font-mono); letter-spacing: .06em; text-transform: none; }
 .boot-gate__source a { color: var(--signal); text-underline-offset: .25em; }
 .boot-gate__actions { display: flex; gap: 1px; margin-top: 3cqh; background: var(--border); border: 1px solid var(--border); }
-.boot-gate__actions button { min-width: 14cqw; padding: 1.15cqh 1.5cqw; border: 0; background: #000; font: 600 1.15cqh var(--font-mono); letter-spacing: .1em; }
+.boot-gate__actions :is(button, a) { min-width: 14cqw; padding: 1.15cqh 1.5cqw; border: 0; background: #000; font: 600 1.15cqh var(--font-mono); letter-spacing: .1em; }
+.boot-gate__actions a { display: flex; align-items: center; justify-content: center; text-decoration: none; text-transform: uppercase; box-sizing: border-box; }
 .boot-gate__actions button:first-child { color: #000; background: var(--signal); }
-.boot-gate__actions button:hover, .boot-gate__actions button:focus-visible { filter: brightness(1.25); outline: 1px solid var(--signal); }
+.boot-gate__actions :is(button, a):hover, .boot-gate__actions :is(button, a):focus-visible { filter: brightness(1.25); outline: 1px solid var(--signal); }
 .language-picker { display: inline-flex; align-items: center; gap: .5em; color: var(--dim); font-family: var(--font-mono); }
 .language-picker select { min-height: 2.5em; padding: .25em 1.8em .25em .5em; border: 1px solid var(--border); border-radius: 0; background: #000; color: var(--signal); cursor: pointer; }
 .language-picker--gate { margin-top: 2cqh; font-size: 1.15cqh; }
@@ -820,7 +821,7 @@ html[data-static-mode] .command-deck *::after { animation: none !important; tran
   .boot-gate { padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom)); }
   .boot-gate__eyebrow, .boot-gate__source { font-size: 12px; line-height: 1.5; }
   .boot-gate__actions { flex-direction: column; width: min(320px, 90cqw); }
-  .boot-gate__actions button { width: 100%; min-width: 0; min-height: 48px; padding: 14px; font-size: 16px; touch-action: manipulation; }
+  .boot-gate__actions :is(button, a) { width: 100%; min-width: 0; min-height: 48px; padding: 14px; font-size: 16px; touch-action: manipulation; }
   .boot-skip { min-width: 44px; min-height: 44px; right: max(8px, env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom)); font-size: 12px; }
 }
 

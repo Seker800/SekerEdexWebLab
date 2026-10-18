@@ -66,6 +66,7 @@ app.innerHTML = `
       <label class="language-picker language-picker--gate"><span data-i18n="language">Language</span><select id="gate-language" aria-label="Language" data-i18n-aria="language"><option value="en">English</option><option value="zh-CN">简体中文</option></select></label>
       <div class="boot-gate__actions">
         <button type="button" id="initialize-system" data-i18n="initialize">Initialize system</button>
+        <a id="enter-minimal" tabindex="0" href="https://mini.seker.wang/" data-i18n="enterMinimal">Enter minimal site</a>
         <button type="button" id="gate-sound-toggle">Sound: on</button>
       </div>
     </div>
