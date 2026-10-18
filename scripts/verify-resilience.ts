@@ -17,6 +17,29 @@ async function boot(page: Page): Promise<void> {
 }
 
 const scenarios: Record<string, (page: Page) => Promise<void>> = {
+  "IME composition does not submit terminal input": async (page) => {
+    await boot(page);
+    await page.locator("#terminal-input").fill("中文草稿");
+    await page.locator("#terminal-input").evaluate((input) => {
+      input.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", isComposing: true, bubbles: true, cancelable: true }));
+      document.querySelector<HTMLFormElement>("#terminal-form")!.requestSubmit();
+    });
+    assert.equal(await page.locator("#terminal-input").inputValue(), "中文草稿");
+    await page.locator("#terminal-input").evaluate((input) => input.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true })));
+    await page.locator("#terminal-input").fill("pwd");
+    await page.locator("#terminal-input").press("Enter");
+    assert.equal(await page.locator("#terminal-input").inputValue(), "");
+  },
+  "skip releases a stalled boot resource": async (page) => {
+    await page.route("**/boot_log.txt", () => undefined);
+    await page.goto(`${base}?fastboot`);
+    await page.locator("#initialize-system").click();
+    await page.locator("#boot-skip").click();
+    await page.locator('html[data-boot-phase="complete"]').waitFor();
+    await page.waitForFunction(() => !document.querySelector<HTMLButtonElement>("#reboot-system")!.disabled, undefined, { timeout: 2_000 });
+    assert.equal(await page.locator("#terminal-input").evaluate((input) => document.activeElement === input), true);
+  },
   "blocked browser storage": async (page) => {
     await page.addInitScript(() => Object.defineProperty(window, "localStorage", { get() { throw new DOMException("Storage blocked", "SecurityError"); } }));
     await boot(page);
