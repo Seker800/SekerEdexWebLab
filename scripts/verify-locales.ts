@@ -1,13 +1,17 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
+import { createServer } from "vite";
 
-const base = "http://127.0.0.1:4174";
+const server = await createServer({ root: path.resolve("apps/clone"), server: { host: "127.0.0.1", port: 0 }, logLevel: "error" });
+await server.listen();
+const base = server.resolvedUrls!.local[0]!.replace(/\/$/u, "");
 const artifacts = path.resolve("artifacts/app-verification");
 await mkdir(artifacts, { recursive: true });
-const browser = await chromium.launch({ headless: true });
+let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
 
 try {
+  browser = await chromium.launch({ headless: true });
   const desktop = await browser.newContext({ viewport: { width: 1934, height: 1094 } });
   const page = await desktop.newPage();
   const errors: string[] = [];
@@ -21,6 +25,8 @@ try {
   await page.waitForTimeout(900);
   if (await page.locator(".system-panel .clock-meta h1").nth(1).textContent() !== "运行时间") throw new Error("Desktop labels did not translate");
   if (await page.locator("#deck-language").inputValue() !== "zh-CN") throw new Error("Desktop language picker did not sync");
+  if (await page.locator('.file-grid [data-file-name="Go up"]').textContent() !== "返回上级") throw new Error("Filesystem navigation did not translate");
+  if (await page.locator('.file-grid [data-file-name="Show disks"]').textContent() !== "显示磁盘") throw new Error("Disk navigation did not translate");
   await page.screenshot({ path: path.join(artifacts, "command-deck-zh-cn.png") });
   await page.reload({ waitUntil: "networkidle" });
   if (await page.locator("#gate-language").inputValue() !== "zh-CN") throw new Error("Language selection was not retained");
@@ -52,5 +58,6 @@ try {
   await mobile.close();
   console.log("Locale browser checks passed; desktop and mobile screenshots saved.");
 } finally {
-  await browser.close();
+  await browser?.close();
+  await server.close();
 }
