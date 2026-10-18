@@ -11,7 +11,7 @@ export class VideoViewer {
     this.surface = document.createElement("section");
     this.surface.className = "video-viewer";
     this.surface.innerHTML = '<header><h1></h1></header><video controls playsinline preload="metadata"></video><p></p>';
-    this.overlay.register("video", this.surface);
+    this.overlay.register("video", this.surface, { onDeactivate: () => this.releaseMedia() });
     this.video = this.surface.querySelector("video")!;
     this.title = this.surface.querySelector("h1")!;
     this.caption = this.surface.querySelector("p")!;
@@ -27,10 +27,15 @@ export class VideoViewer {
   }
 
   close(options: { notify?: boolean } = {}): void {
+    if (this.overlay.isActive("video")) this.overlay.close(options);
+    else this.releaseMedia();
+  }
+
+  private releaseMedia(): void {
+    if (!this.video.hasAttribute("src")) return;
     this.video.pause();
     this.video.removeAttribute("src");
     this.video.load();
-    if (this.overlay.isActive("video")) this.overlay.close(options);
   }
 
   dispose(): void { this.close({ notify: false }); this.surface.remove(); }

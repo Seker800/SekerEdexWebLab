@@ -72,7 +72,7 @@ export class ImageViewer {
       <p class="image-viewer__caption"></p>
       <footer><button type="button" data-viewer-action="previous" aria-label="Previous image" data-i18n="previous" data-i18n-aria="previousImage">← PREV</button><span class="image-viewer__counter"></span><button type="button" data-viewer-action="zoom-out" aria-label="Zoom out" data-i18n-aria="zoomOut">−</button><span class="image-viewer__zoom"></span><button type="button" data-viewer-action="zoom-in" aria-label="Zoom in" data-i18n-aria="zoomIn">+</button><button type="button" data-viewer-action="next" aria-label="Next image" data-i18n="next" data-i18n-aria="nextImage">NEXT →</button></footer>
     `;
-    this.overlay.register("image", this.surface);
+    this.overlay.register("image", this.surface, { onDeactivate: () => this.cancelReveal() });
     this.stage = this.surface.querySelector(".image-viewer__stage")!;
     this.image = this.surface.querySelector("img")!;
     this.image.crossOrigin = "anonymous";
@@ -272,5 +272,6 @@ export class ImageViewer {
     this.pixelateReveal.cancel();
     if (this.revealTimer !== undefined) window.clearTimeout(this.revealTimer);
     this.revealTimer = undefined;
+    this.stage.setAttribute("aria-busy", "false");
   }
 }
