@@ -46,6 +46,7 @@ describe("blog content renderer", () => {
   it("does not emit navigable markup for missing local resources or empty image alt", () => {
     const html = renderContentMarkdown("[Missing](./missing.md) ![](./ridge.webp) ![Gone](./missing.webp)", { documentPath: "posts/trip/index.md", tree });
     expect(html).not.toContain("data-content-path");
+    expect(html).not.toContain('href="#"');
     expect(html).toContain("content-reference--missing");
     expect(html).toContain("content-image--invalid");
     expect(html).toContain("Missing image: Gone");
