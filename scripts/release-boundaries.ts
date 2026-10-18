@@ -33,7 +33,7 @@ export function siteBuildEnvironment(environment: NodeJS.ProcessEnv, configurati
   if (apiOrigin.protocol !== "https:" || apiOrigin.username || apiOrigin.password || apiOrigin.pathname !== "/" || apiOrigin.search || apiOrigin.hash || isIP(apiOrigin.hostname) !== 0 || !apiOrigin.hostname.includes(".") || apiOrigin.hostname.endsWith(".local") || apiOrigin.hostname.endsWith(".localhost")) {
     throw new Error("Site content API origin must be a public HTTPS domain without path or credentials");
   }
-  sanitized.SEKER_CONTENT_API_ORIGIN = apiOrigin.origin;
+  sanitized["SEKER_CONTENT_API_ORIGIN"] = apiOrigin.origin;
   sanitized.SEKER_CONTENT_DELIVERY = "runtime";
   return sanitized;
 }

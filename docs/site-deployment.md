@@ -1,6 +1,6 @@
 # 网站程序发布
 
-本流程只发布当前 eDEX Web 的阿里云静态网站程序，不发布未来极简前端、入口页、作者文章、照片、视频或内容服务代码。多前端规划见[北极星](MULTI_FRONTEND_NORTH_STAR.md)；作者内容由独立数据库后台管理，见 `docs/content-publishing.md`。只需在本机看效果或运行门禁时请走 [本地测试与预览](local-testing.md)，不要执行本页的发布入口。本轮只做本地改动，不执行生产发布。
+本流程只发布当前 eDEX Web 的阿里云静态网站程序，不发布未来极简前端、入口页、作者文章、照片、视频或内容服务代码。多前端规划见[北极星](MULTI_FRONTEND_NORTH_STAR.md)；作者内容由独立数据库后台管理，见 `docs/content-publishing.md`。只需在本机看效果或运行门禁时请走 [本地测试与预览](local-testing.md)，不要执行本页的发布入口。2026-10-18 本轮按作者授权实施静态站发布，保留以下门禁。
 
 ## 所有权合同
 
@@ -35,7 +35,7 @@ npm run deploy:site
 ```
 
 脚本会在临时 Git worktree 中检出已推送的提交，安装锁定依赖，运行发布边界门禁、类型检查、单元测试和
-生产构建。构建环境固定为 `SEKER_CONTENT_DELIVERY=runtime`，只传递经过白名单筛选的环境变量。执行前必须在作者 Mac 的私有环境中显式设置 `SEKER_CONTENT_API_ORIGIN` 为公开 HTTPS 内容接口域名 origin；它是会进入浏览器包的公开地址，绝不是密码或令牌。缺失、使用 HTTP、localhost 或直接使用 IP 时构建失败。网站构建不会读取 SQLite、媒体目录或后台配置。
+生产构建。构建根据提交中的 `site.config.json` 选择 sample 或 api，只传递经过白名单筛选的环境变量。sample 模式只使用标注的许可样稿；api 模式的 `contentApiOrigin` 必须是公开 HTTPS 域名 origin，它是公开地址，不是密码或令牌。api 模式缺少地址、使用 HTTP、localhost 或直接使用 IP 时构建失败。网站构建不会读取 SQLite、媒体目录或后台配置。
 
 上传顺序是哈希资源和普通文件、`index.html`、站点文件索引、`deployment.json`。公网版本验证成功后，
 脚本只根据上一版 `site-files.json` 清理明确登记的旧站点对象；它不枚举或推断 Bucket 中的内容对象，

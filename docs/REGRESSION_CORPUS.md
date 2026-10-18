@@ -25,3 +25,9 @@
 
 `npm run verify` 包含全部回归。功能报告、桌面与移动截图由工具生成到 `artifacts`；
 测试服务只使用公开样例和合成数据，不读取生产后台或数据库。
+
+## 双前端配置与入口（2026-10-18）
+
+- 启动门极简链接的鼠标、键盘、触摸及中英文路径：`npm run app:verify:entry`。
+- 发布模式必须显式选择，sample 不要求后端，api 缺地址不能退回样稿：`tests/site-configuration.test.ts`。
+- 原浏览器/视觉验证显式使用许可样稿环境；真实 API 协议通过隔离的 `content:integration` 验证，CI 不请求作者生产内容。

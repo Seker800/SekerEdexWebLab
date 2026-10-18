@@ -154,3 +154,10 @@ Candidate recapture repeats the same regional comparisons and stores each region
 `docs/SOURCE_PORT_MAP.md` records the upstream class, stylesheet and asset used by each local browser module. Keep that map current when a module boundary or source dependency changes.
 
 `scripts/verify-app.ts` performs startup, sound, browser interaction, responsive and error checks, captures each important startup state, and records both formal and antialias-aware perceptual comparisons. `scripts/verify-replication.ts` runs the frozen eDEX reference through the same orchestrator and visual judge used for other scenarios. Numeric pixel comparison is supporting evidence because large shared dark regions can hide obvious component differences; a separate qualitative visual verdict is required.
+
+## 2026-10-18 站点模式与极简入口
+
+作者已选择 `mini.seker.wang`，现有启动门提供普通链接，极简构建不进入此仓库。
+两站使用同格式 `site.config.json` 显式选择 sample/api。sample 可发布许可样稿并标注；
+api 生产构建不内置作者数据，失败不回退样稿。此决策替代上文早期“生产只能 runtime”的限制，
+不改变内容服务的唯一事实源和独立发布边界，详见 ADR 0009。

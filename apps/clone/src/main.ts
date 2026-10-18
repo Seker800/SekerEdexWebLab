@@ -62,6 +62,7 @@ app.innerHTML = `
   <section class="boot-overlay" id="boot-overlay" data-phase="gate" aria-label="System startup" data-i18n-aria="startup">
     <div class="boot-gate">
       <p class="boot-gate__eyebrow">eDEX-UI v${canonicalEdexVersion}</p>
+      ${contentSource.kind === "sample" ? '<p class="boot-gate__source" data-i18n="sampleContent">Sample content</p>' : ""}
       <p class="boot-gate__source"><span data-i18n="source">Unofficial browser port · original by</span> <a href="https://github.com/GitSquared/edex-ui" target="_blank" rel="noreferrer">GitSquared</a></p>
       <label class="language-picker language-picker--gate"><span data-i18n="language">Language</span><select id="gate-language" aria-label="Language" data-i18n-aria="language"><option value="en">English</option><option value="zh-CN">简体中文</option></select></label>
       <div class="boot-gate__actions">

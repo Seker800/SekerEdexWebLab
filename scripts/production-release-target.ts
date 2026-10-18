@@ -9,7 +9,8 @@ const execFile = promisify(execFileCallback);
 const productionBucket = "seker-edex-web";
 const productionRegion = "cn-beijing";
 export const productionOrigin = "https://www.seker.wang";
-const aliyunProfile = "seker-edex-local";
+const aliyunProfile = process.env.SEKER_ALIYUN_PROFILE || "seker-edex-local";
+const aliyunConfig = process.env.SEKER_ALIYUN_CONFIG_PATH ? ["--config-path", process.env.SEKER_ALIYUN_CONFIG_PATH] : [];
 const aliyunExecutable = path.join(homedir(), ".local", "bin", "aliyun");
 
 export async function runCommand(command: string, args: string[], cwd: string, environment?: NodeJS.ProcessEnv): Promise<string> {
@@ -31,7 +32,7 @@ export async function uploadProductionObject(owner: "site", localPath: string, o
   assertSiteOwnedObjectKey(objectKey);
   await runCommand(aliyunExecutable, [
     "oss", "cp", localPath, `oss://${productionBucket}/${objectKey}`,
-    "--profile", aliyunProfile,
+    "--profile", aliyunProfile, ...aliyunConfig,
     "--region", productionRegion,
     "--force",
     "--yes",
@@ -44,7 +45,7 @@ export async function removeProductionObject(owner: "site", objectKey: string, c
   assertSiteOwnedObjectKey(objectKey);
   await runCommand(aliyunExecutable, [
     "oss", "rm", `oss://${productionBucket}/${objectKey}`,
-    "--profile", aliyunProfile,
+    "--profile", aliyunProfile, ...aliyunConfig,
     "--region", productionRegion,
     "--force",
     "--yes",
@@ -55,7 +56,7 @@ export async function removeProductionObject(owner: "site", objectKey: string, c
 export async function refreshProductionCdn(objectPath: string, objectType: "File" | "Directory", cwd: string): Promise<void> {
   await runCommand(aliyunExecutable, [
     "cdn", "RefreshObjectCaches",
-    "--profile", aliyunProfile,
+    "--profile", aliyunProfile, ...aliyunConfig,
     "--region", productionRegion,
     "--ObjectPath", objectPath,
     "--ObjectType", objectType

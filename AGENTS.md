@@ -67,9 +67,9 @@
   不得把未来极简前端或入口页塞进 `apps/clone` 或现有 `deploy:site` 的对象范围。
 - 本机看效果与跑自动门禁遵循 `docs/local-testing.md`；测试通过不能推断已经获准 push、部署或迁移。
 - `docs/deployment.md` 是生产发布决策门禁。先区分静态网站代码、内容服务代码和作者内容数据；
-  目标不明确时必须询问，不能串成“一键发布”。本轮代码变更不得推送或发布生产。
+  目标不明确时必须询问，不能串成“一键发布”。2026-10-18 本轮按作者明确授权实施 ADR 0009 的静态双站发布；不包含内容服务部署。
 - 静态网站程序只允许通过 `npm run deploy:site` 发布，并完整遵循 `docs/site-deployment.md`。
-  生产构建必须配置公开 HTTPS `SEKER_CONTENT_API_ORIGIN`，不得读取私有数据库、媒体卷或后台配置，
+  生产 API 模式必须在 `site.config.json` 配置公开 HTTPS 内容 origin；显式 sample 模式允许许可样稿（ADR 0009），不得读取私有数据库、媒体卷或后台配置，
   也不得写入或删除旧的 `content/` OSS 命名空间。
 - 作者文章、链接、图片、视频、目录与顺序只在 `SekerContentApi` 独立后台管理，
   遵循 `docs/content-publishing.md`；修改内容不产生本程序仓库提交，也不构建网站。

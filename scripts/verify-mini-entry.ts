@@ -10,7 +10,9 @@ const base = server.resolvedUrls!.local[0]!;
 const artifacts = path.resolve("artifacts/mini-entry");
 await mkdir(artifacts, { recursive: true });
 try {
-  for (const engine of [chromium, webkit]) {
+  const requested = process.argv[2];
+  if (requested && !["chromium", "webkit"].includes(requested)) throw new Error("Unsupported browser");
+  for (const engine of [chromium, webkit].filter(engine => !requested || engine.name() === requested)) {
     const browser = await engine.launch();
     try {
       for (const input of ["mouse", "keyboard", "touch"] as const) {

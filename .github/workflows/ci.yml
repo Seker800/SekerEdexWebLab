@@ -52,6 +52,7 @@ jobs:
       - run: npm run content:integration
       - run: npm run app:verify:locales
       - run: npm run app:verify:resilience -- chromium
+      - run: npm run app:verify:entry -- chromium
       - if: always()
         continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -60,6 +61,7 @@ jobs:
           path: |
             artifacts/app-verification
             artifacts/resilience
+            artifacts/mini-entry
           if-no-files-found: error
           retention-days: 3
 
@@ -75,6 +77,7 @@ jobs:
       - run: npx playwright install --with-deps webkit
       - run: npm run app:verify:webkit
       - run: npm run app:verify:resilience -- webkit
+      - run: npm run app:verify:entry -- webkit
       - if: always()
         continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -83,6 +86,7 @@ jobs:
           path: |
             artifacts/app-verification/webkit-report.json
             artifacts/resilience
+            artifacts/mini-entry
           if-no-files-found: error
           retention-days: 3
 
