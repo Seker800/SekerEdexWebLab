@@ -5,6 +5,8 @@ import { chromium, webkit, type Page } from "playwright";
 import { createServer } from "vite";
 
 const artifactDirectory = path.resolve("artifacts/resilience");
+const selectedBrowser = process.argv[2];
+if (selectedBrowser && !["chromium", "webkit"].includes(selectedBrowser)) throw new Error("Expected chromium or webkit");
 const server = await createServer({ root: path.resolve("apps/clone"), server: { host: "127.0.0.1", port: 0 }, logLevel: "error" });
 await server.listen();
 const base = server.resolvedUrls!.local[0]!;
@@ -17,6 +19,15 @@ async function boot(page: Page): Promise<void> {
 }
 
 const scenarios: Record<string, (page: Page) => Promise<void>> = {
+  "mobile overlay returns focus to the visible file view": async (page) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await boot(page);
+    await page.locator("#mobile-files-view").click();
+    await page.evaluate(() => { location.hash = "#/blog/posts/night-routes/tokyo-night.jpg"; });
+    await page.locator(".image-viewer:not([hidden])").waitFor();
+    await page.locator("#content-overlay-close").click();
+    assert.ok(await page.locator(".file-grid").evaluate((grid) => grid.contains(document.activeElement)));
+  },
   "IME composition does not submit terminal input": async (page) => {
     await boot(page);
     await page.locator("#terminal-input").fill("中文草稿");
@@ -109,7 +120,7 @@ const scenarios: Record<string, (page: Page) => Promise<void>> = {
 
 try {
   await mkdir(artifactDirectory, { recursive: true });
-  for (const engine of [chromium, webkit]) {
+  for (const engine of [chromium, webkit].filter((engine) => !selectedBrowser || engine.name() === selectedBrowser)) {
     const browser = await engine.launch({ headless: true });
     try {
       for (const [scenario, run] of Object.entries(scenarios)) {
@@ -126,7 +137,7 @@ try {
       }
     } finally { await browser.close(); }
   }
-  await writeFile(path.join(artifactDirectory, "report.json"), JSON.stringify(results, null, 2));
+  await writeFile(path.join(artifactDirectory, selectedBrowser ? `${selectedBrowser}-report.json` : "report.json"), JSON.stringify(results, null, 2));
   console.log(JSON.stringify(results, null, 2));
   assert.ok(results.every((result) => result.passed), "Resilience regressions failed");
 } finally { await server.close(); }
