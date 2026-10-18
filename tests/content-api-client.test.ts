@@ -30,7 +30,7 @@ describe("independent API content client", () => {
       { kind: "link", relativePath: "travel/source.url", title: "Source", summary: "", href: "https://example.org/story", sortOrder: 20 }
     ] }), { status: 200 }));
     const loaded = await fetchContentApi("https://content.example", fetcher);
-    expect(fetcher).toHaveBeenCalledWith("https://content.example/api/v1/content", { cache: "no-store", credentials: "omit", referrerPolicy: "no-referrer" });
+    expect(fetcher).toHaveBeenCalledWith("https://content.example/api/v1/content", expect.objectContaining({ cache: "no-store", credentials: "omit", referrerPolicy: "no-referrer", signal: expect.any(AbortSignal) }));
     expect(loaded.manifest.entries).toHaveLength(3);
     const tree = buildContentTree(loaded.manifest.entries);
     expect(listContentDirectory(tree, "travel").map((entry) => entry.relativePath)).toEqual(["travel/story.md", "travel/source.url", "travel/clip.mp4"]);
