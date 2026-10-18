@@ -68,6 +68,8 @@ This file records source-plausible changes that deterministic capture disproved.
 
 ## Use
 
+功能、媒体生命周期、内容故障恢复与自动修复边界的反例另见 [REGRESSION_CORPUS.md](REGRESSION_CORPUS.md)。
+
 - Do not repeat a rejected change without new evidence that changes the capture conditions or identifies a different shared cause.
 - Keep accepted changes only after clean browser diagnostics, matching dimensions and a strictly lower deterministic difference.
 - Add every new rejected candidate with its measured baseline and candidate result.

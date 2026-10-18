@@ -3,6 +3,9 @@
 - Status: Accepted
 - Date: 2026-09-16
 
+素材选择的早期建议已由 [ADR 0008](0008-record-verified-browser-stack.md) 与现行文件级来源清单更新；
+下文的许可证与非官方身份要求继续有效。
+
 ## Context
 
 项目希望复刻 eDEX-UI 的 Web 视觉和交互体验。上游代码使用 GPLv3，且包含由不同作者提供的

@@ -134,7 +134,7 @@ The upstream interface uses short staged fades, width reveals, brightness change
 - short tab and selection transitions;
 - smoothly updating telemetry;
 - restrained cursor, scan and connection activity;
-- reduced-motion behavior that keeps all information available.
+- consistent page animation behavior regardless of the reduced-motion preference, while retaining keyboard and silent navigation.
 
 Bloom, glow, scanlines, noise and chromatic effects should remain subtle enough to preserve text contrast and screenshot stability.
 

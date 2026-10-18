@@ -1,7 +1,10 @@
 # ADR 0003: Web 技术路线
 
-- Status: Accepted
+- Status: Superseded in part by [ADR 0008](0008-record-verified-browser-stack.md)
 - Date: 2026-09-16
+
+下文保留早期设计原文。具体工具选择以 ADR 0008 和现行技术路线为准；类型化协作、浏览器安全边界
+和可执行验证要求继续有效。
 
 ## Context
 

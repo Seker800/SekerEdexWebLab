@@ -6,7 +6,8 @@ SekerEdexWebLab 是一个浏览器中的实时个人终端。它应让访问者�
 Cyberdeck：中央终端、文件系统、遥测面板、活动日志、声音与屏幕键盘共享同一会话状态。
 
 当前 North Star 是先验证高保真体验，再将其扩展为长期可维护的个人站。技术路线已经在
-`adr/0003-web-technology-route.md` 中锁定，框架不能代替视觉和交互验收。
+`adr/0003-web-technology-route.md` 中建立原则，由 `adr/0008-record-verified-browser-stack.md`
+记录当前经过验证的具体工具选择；框架不能代替视觉和交互验收。
 
 ## Locked reference profile
 
@@ -45,8 +46,8 @@ iOS 聚焦缩放的字号、至少 44px 的触控目标和无横向裁切作为�
 选择器猜测终端状态。
 
 核心会话是与框架无关的 TypeScript 模块。输入适配器把实体键盘、屏幕键盘、鼠标和触摸
-转换成类型化命令；会话引擎产生不可变快照与领域事件；React、xterm.js、Three.js、Canvas
-和 Web Audio 只消费这些输出。渲染器不得成为业务状态的唯一持有者。
+转换成类型化命令；会话引擎产生不可变快照；当前 DOM、SVG、ENCOM、VFX 与 Web Audio
+适配器只消费这些输出。渲染器不得成为业务状态的唯一持有者。
 
 ## Expected module boundaries
 
@@ -67,6 +68,9 @@ iOS 聚焦缩放的字号、至少 44px 的触控目标和无横向裁切作为�
 当前浏览器实现通过 `CommandDeckController` 落实上述状态边界：所有输入路径发送类型化 intent，
 控制器返回不可变快照，DOM 层只负责渲染和焦点。页面级 `DisposableRegistry` 统一释放事件监听、
 音频、启动任务、Globe 渲染器与调度器，避免重启、隐藏页面或热重载后遗留写入者。
+进入浏览器往返缓存时保留页面资源，由可见性调度器暂停持续工作；实际离开页面才销毁。
+内容与启动日志读取通过 `withRequestDeadline` 限时并支持取消。内容 API 故障时保留初始内容
+地址，显示可重试的错误状态；空内容有独立提示，重试通过重新加载页面重新取数。
 
 公开示例内容只位于仓库级 `examples/blog`，并声明 `sample` 身份；本地嵌入模式固定构建这些示例。
 生产网站构建固定使用 runtime 内容模式，显式配置公开 HTTPS `SEKER_CONTENT_API_ORIGIN` 后从独立
@@ -84,7 +88,8 @@ content intent；Blog 外的沙箱目录写入类型化 `history.state`，文章
 占用内容 hash 路由。文章、图片与视频作为内容视图挂载到同一个 `FullscreenContentOverlay`：它统一
 全屏几何、背景隔离、关闭按钮、Escape 行为和生命周期，并在打开时把整个 command deck 切换为
 `inert` 与 `aria-hidden`。图片序列、缩放、关闭与浏览器历史仍走同一 content route，不建立第二套
-弹层状态。图片显现由独立的 `PixelateRevealRenderer` 适配器和一次性、可取消状态机管理：真实图片
+弹层状态。弹层统一约束 Tab 焦点，失活时暂停内嵌音视频并通知视图释放资源；图片与视频适配器
+通过注册失活回调完成取消和来源释放。图片显现由独立的 `PixelateRevealRenderer` 适配器和一次性、可取消状态机管理：真实图片
 解码完成后，查看器按 `object-fit: contain` 计算实际媒体边界，适配器只在该边界内把同源图片交给
 VFX-JS 的 `pixelateTransition` 预设。像素块在约 1 秒内由粗变细，最后交接给清晰原图；首个特效帧
 产出前不暴露原图或效果 canvas。WebGL 不可用时降级到原有 10×6 裁片显现。

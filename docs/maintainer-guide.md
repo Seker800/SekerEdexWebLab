@@ -17,6 +17,7 @@
 8. [`adr/0003-web-technology-route.md`](adr/0003-web-technology-route.md)
 9. [`adr/0004-fixed-canvas-and-reference-fonts.md`](adr/0004-fixed-canvas-and-reference-fonts.md)
 10. [`adr/0005-independent-site-and-content-releases.md`](adr/0005-independent-site-and-content-releases.md)
+11. [`adr/0008-record-verified-browser-stack.md`](adr/0008-record-verified-browser-stack.md)（当前技术路线）
 
 多前端规划另见 [`MULTI_FRONTEND_NORTH_STAR.md`](MULTI_FRONTEND_NORTH_STAR.md)：本仓库的
 eDEX Web 不负责实现或发布未来的极简前端与中性入口页。
@@ -27,6 +28,11 @@ eDEX Web 不负责实现或发布未来的极简前端与中性入口页。
 依次执行基准策略完整性、上游资产、双发布线边界、静态检查、单元测试、内容核心覆盖率、生产构建、演示场景、
 Chromium、WebKit 和冻结视觉复刻验证。内容核心的 statements、branches、functions 与 lines
 覆盖率均不得低于 80%。
+
+`app:verify:locales` 自动启动临时预览，验证中英文桌面和移动端；`app:verify:resilience`
+独立验证 Chromium / WebKit 的存储受限、输入法、缓存恢复、启动跳过和媒体生命周期。
+两项均已进入 `verify` 与相应浏览器 CI。恢复回归报告在 `artifacts/resilience`。
+`content:integration` 另验证接口挂起、空内容、重试保留直链，以及大目录的真实鼠标滚动。
 
 本机看示例、本机连接测试内容 API、自动门禁分别怎么运行，以及何时必须停下而不触碰生产，
 统一见 [本地测试与预览](local-testing.md)。需要真正上线时先从 [发布决策门禁](deployment.md)
