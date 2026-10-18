@@ -1,4 +1,5 @@
 import { isIP } from "node:net";
+import { resolveSiteConfiguration } from "../apps/clone/site-configuration.js";
 
 export const contentObjectPrefix = "content/";
 export const siteFileIndexObjectKey = "site-files.json";
@@ -15,8 +16,16 @@ export function assertSiteOwnedObjectKey(objectKey: string): void {
   if (objectKey.startsWith(contentObjectPrefix)) throw new Error(`Site release cannot write content-owned object: ${objectKey}`);
 }
 
-export function siteBuildEnvironment(environment: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  const configuredOrigin = environment.SEKER_CONTENT_API_ORIGIN?.trim();
+export function siteBuildEnvironment(environment: NodeJS.ProcessEnv, configuration?: unknown): NodeJS.ProcessEnv {
+  const configured = configuration === undefined ? undefined : resolveSiteConfiguration(configuration);
+  const permitted = ["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "LANG", "LC_ALL", "CI", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "NPM_CONFIG_CACHE"];
+  const sanitized: NodeJS.ProcessEnv = {};
+  for (const key of permitted) if (environment[key] !== undefined) sanitized[key] = environment[key];
+  if (configured?.delivery === "embedded") {
+    sanitized.SEKER_CONTENT_DELIVERY = "embedded";
+    return sanitized;
+  }
+  const configuredOrigin = configured?.apiOrigin ?? environment.SEKER_CONTENT_API_ORIGIN?.trim();
   if (!configuredOrigin) throw new Error("Content API origin (SEKER_CONTENT_API_ORIGIN) is required for the site build");
   let apiOrigin: URL;
   try { apiOrigin = new URL(configuredOrigin); }
@@ -24,9 +33,6 @@ export function siteBuildEnvironment(environment: NodeJS.ProcessEnv): NodeJS.Pro
   if (apiOrigin.protocol !== "https:" || apiOrigin.username || apiOrigin.password || apiOrigin.pathname !== "/" || apiOrigin.search || apiOrigin.hash || isIP(apiOrigin.hostname) !== 0 || !apiOrigin.hostname.includes(".") || apiOrigin.hostname.endsWith(".local") || apiOrigin.hostname.endsWith(".localhost")) {
     throw new Error("Site content API origin must be a public HTTPS domain without path or credentials");
   }
-  const permitted = ["PATH", "HOME", "TMPDIR", "TMP", "TEMP", "LANG", "LC_ALL", "CI", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "NPM_CONFIG_CACHE", "SEKER_CONTENT_API_ORIGIN"];
-  const sanitized: NodeJS.ProcessEnv = {};
-  for (const key of permitted) if (environment[key] !== undefined) sanitized[key] = environment[key];
   sanitized.SEKER_CONTENT_API_ORIGIN = apiOrigin.origin;
   sanitized.SEKER_CONTENT_DELIVERY = "runtime";
   return sanitized;

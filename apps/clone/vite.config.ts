@@ -5,6 +5,7 @@ import { createContentManifest, supportedContentMediaExtensions } from "./src/co
 import { discoverContentFiles } from "./content-source-files.js";
 import { loadContentSource, type LoadedContentSource } from "./content-source.js";
 import { normalizeContentApiOrigin } from "./src/content/content-api.js";
+import { resolveSiteConfiguration } from "./site-configuration.js";
 
 const virtualModuleId = "virtual:content-manifest";
 const resolvedVirtualModuleId = `\0${virtualModuleId}`;
@@ -93,9 +94,10 @@ export function contentManifestPlugin(source: LoadedContentSource | string | Run
 
 export default defineConfig(async ({ mode }) => {
   const environment = loadEnv(mode, repositoryRoot, "");
-  const delivery = environment.SEKER_CONTENT_DELIVERY?.trim() || "embedded";
+  const config = resolveSiteConfiguration(JSON.parse(await readFile(path.join(repositoryRoot, "site.config.json"), "utf8")));
+  const delivery = environment.SEKER_CONTENT_DELIVERY?.trim() || config.delivery;
   if (delivery !== "embedded" && delivery !== "runtime") throw new Error(`Unsupported content delivery: ${delivery}`);
-  if (delivery === "runtime") return { plugins: [contentManifestPlugin(runtimeContentConfiguration(environment))] };
+  if (delivery === "runtime") return { plugins: [contentManifestPlugin(runtimeContentConfiguration({ ...environment, SEKER_CONTENT_API_ORIGIN: environment.SEKER_CONTENT_API_ORIGIN || (config.delivery === "runtime" ? config.apiOrigin : undefined) }))] };
   const source = await loadContentSource({
     repositoryRoot,
     contentRoot: path.join(repositoryRoot, "examples/blog"),

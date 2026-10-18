@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { contentObjectPrefix, assertSiteOwnedObjectKey, createSiteFileIndex, parseSiteFileIndex, siteBuildEnvironment, siteFileIndexObjectKey } from "./release-boundaries.js";
@@ -65,7 +65,7 @@ async function deploySite(): Promise<void> {
     console.log("Preparing a content-free production site build...");
     await runCommand("git", ["worktree", "add", "--detach", worktree, revision], repositoryRoot);
     await runCommand("npm", ["ci"], worktree);
-    const buildEnvironment = siteBuildEnvironment(process.env);
+    const buildEnvironment = siteBuildEnvironment(process.env, JSON.parse(await readFile(path.join(worktree, "site.config.json"), "utf8")));
     await runCommand("npm", ["run", "release:verify"], worktree, buildEnvironment);
     await runCommand("npm", ["run", "check"], worktree, buildEnvironment);
     await runCommand("npm", ["test"], worktree, buildEnvironment);
