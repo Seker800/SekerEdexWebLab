@@ -56,12 +56,12 @@ export function translate(locale: Locale, key: MessageKey): string {
 }
 
 const storageKey = "seker-edex-locale";
-export function readLocale(storage: Pick<Storage, "getItem"> | undefined): Locale {
-  try { return storage?.getItem(storageKey) === "zh-CN" ? "zh-CN" : "en"; }
+export function readLocale(storage?: Pick<Storage, "getItem">): Locale {
+  try { return (storage ?? window.localStorage).getItem(storageKey) === "zh-CN" ? "zh-CN" : "en"; }
   catch { return "en"; }
 }
 export function saveLocale(storage: Pick<Storage, "setItem"> | undefined, locale: Locale): void {
-  try { storage?.setItem(storageKey, locale); } catch { /* Language still changes for this visit. */ }
+  try { (storage ?? window.localStorage).setItem(storageKey, locale); } catch { /* Language still changes for this visit. */ }
 }
 
 export function localizeElements(root: ParentNode, locale: Locale): void {

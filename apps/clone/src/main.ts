@@ -46,7 +46,7 @@ const selectedContent = contentDelivery === "runtime" && !staticMode
     return { source: contentSource, manifest: contentManifest };
   })
   : { source: contentSource, manifest: contentManifest };
-let locale: Locale = staticMode ? "en" : readLocale(window.localStorage);
+let locale: Locale = staticMode ? "en" : readLocale();
 document.documentElement.lang = locale;
 const t = (key: Parameters<typeof translate>[1]): string => translate(locale, key);
 const [edexIcons, keyboardRows] = await Promise.all([loadEdexIcons(), loadKeyboardLayout()]);
@@ -206,7 +206,9 @@ const audioDeck = new AudioDeck();
 lifecycle.add(() => audioDeck.dispose());
 const runtimeScheduler = staticMode ? undefined : new RuntimeScheduler(documentVisibilitySource(document));
 if (runtimeScheduler) lifecycle.add(() => runtimeScheduler.dispose());
-lifecycle.listen<PageTransitionEvent>(window, "pagehide", () => lifecycle.dispose(), { once: true });
+lifecycle.listen<PageTransitionEvent>(window, "pagehide", (event) => {
+  if (!event.persisted) lifecycle.dispose();
+});
 const staticGlobeAngle = searchParams.has("globeAngle") ? Number(searchParams.get("globeAngle")) : 6.26;
 const staticGlobeSeed = searchParams.has("globeSeed") ? Number(searchParams.get("globeSeed")) : 0x1f87_2855;
 const staticGlobeLayerMode = searchParams.get("globeLayers") ?? "all";
@@ -1042,7 +1044,7 @@ const languagePickers = [...document.querySelectorAll<HTMLSelectElement>("#gate-
 function applyLocale(next: Locale): void {
   locale = next;
   document.documentElement.lang = locale;
-  saveLocale(window.localStorage, locale);
+  saveLocale(undefined, locale);
   languagePickers.forEach((picker) => { picker.value = locale; });
   localizeElements(app!, locale);
   imageViewer.setLocale(locale);
