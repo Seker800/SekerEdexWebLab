@@ -11,6 +11,12 @@ const entries: readonly ContentEntry[] = [
 const tree = buildContentTree(entries);
 
 describe("blog content renderer", () => {
+  it("keeps heading anchors unique when a title collides with a generated suffix", () => {
+    const html = renderContentMarkdown("## A\n\n## A\n\n## A-2\n\n## A", { documentPath: "posts/trip/index.md", tree });
+    const ids = [...html.matchAll(/ id="([^"]+)"/gu)].map((match) => match[1]);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
   it("renders the supported article structure", () => {
     const html = renderContentMarkdown("# Title\n\nA **bold** value with `code`.\n\n- First\n- Second\n\n1. One\n2. Two", { documentPath: "posts/trip/index.md", tree });
     expect(html).toContain('<h1 id="title" tabindex="-1">Title</h1>');

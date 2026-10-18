@@ -5,6 +5,24 @@ import { buildContentTree, listContentDirectory } from "../apps/clone/src/conten
 const source = { schemaVersion: 1, id: "seker-content", kind: "author", visibility: "public", defaultLicense: "All rights reserved" };
 
 describe("independent API content client", () => {
+  it.each(["headers", "body"])("bounds stalled %s and aborts the request", async (phase) => {
+    vi.useFakeTimers();
+    try {
+      let requestSignal: AbortSignal | null | undefined;
+      const pending = new Promise<Response>(() => undefined);
+      const fetcher = vi.fn<typeof fetch>().mockImplementation((_url, options) => {
+        requestSignal = options?.signal;
+        return phase === "headers" ? pending : Promise.resolve(new Response(new ReadableStream()));
+      });
+      let failure: unknown;
+      void fetchContentApi("https://content.example", fetcher).catch((error: unknown) => { failure = error; });
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(failure).toBeInstanceOf(Error);
+      expect(requestSignal?.aborted).toBe(true);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally { vi.useRealTimers(); }
+  });
+
   it("loads ordered Markdown, links, images and videos from an HTTPS API", async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ schemaVersion: 1, source, entries: [
       { kind: "media", relativePath: "travel/clip.mp4", url: "/api/v1/media/00000000-0000-0000-0000-000000000000", mediaType: "video/mp4", alt: "Clip", sortOrder: 30 },
