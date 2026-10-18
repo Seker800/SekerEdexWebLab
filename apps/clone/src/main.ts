@@ -19,6 +19,7 @@ import { contentApiOrigin, contentDelivery, contentManifest, contentSource } fro
 import { buildContentTree } from "./content/content-tree.js";
 import { contentDirname } from "./content/content-model.js";
 import { fetchContentApi } from "./content/content-api.js";
+import { createContentStatus } from "./content-status.js";
 import { contentHash, parseContentHash } from "./content/content-location.js";
 import { renderContentMarkdown } from "./content/markdown-renderer.js";
 import { localizeElements, readLocale, saveLocale, translate, type Locale } from "./locale.js";
@@ -36,18 +37,23 @@ const lifecycle = new DisposableRegistry();
 const searchParams = new URLSearchParams(window.location.search);
 const staticMode = searchParams.has("static");
 if (staticMode) document.documentElement.dataset.staticMode = "";
+let locale: Locale = staticMode ? "en" : readLocale();
+document.documentElement.lang = locale;
+let contentLoadFailed = false;
+if (contentDelivery === "runtime" && !staticMode) {
+  document.documentElement.dataset.contentState = "loading";
+  app.replaceChildren(createContentStatus("loading", locale));
+}
 const selectedContent = contentDelivery === "runtime" && !staticMode
   ? await fetchContentApi(contentApiOrigin).then((content) => {
     document.documentElement.dataset.contentState = "ready";
     return content;
-  }).catch((error: unknown) => {
+  }).catch(() => {
+    contentLoadFailed = true;
     document.documentElement.dataset.contentState = "error";
-    console.error("Author content is unavailable; samples will not be shown.", error);
-    return { source: contentSource, manifest: contentManifest };
+    return { source: contentSource, manifest: { entries: [] } };
   })
   : { source: contentSource, manifest: contentManifest };
-let locale: Locale = staticMode ? "en" : readLocale();
-document.documentElement.lang = locale;
 const t = (key: Parameters<typeof translate>[1]): string => translate(locale, key);
 const [edexIcons, keyboardRows] = await Promise.all([loadEdexIcons(), loadKeyboardLayout()]);
 const keyboardKeys = new Map(keyboardRows.flat().map((key) => [key.key, key]));
@@ -300,7 +306,8 @@ const contentOverlay = new FullscreenContentOverlay(
     renderSessionChrome();
     syncLocationToDeck();
     audioDeck.play("denied");
-    input.focus();
+    if (commandDeckElement.dataset.mobileView === "files") fileGrid.querySelector<HTMLButtonElement>("button")?.focus();
+    else input.focus();
   }
 );
 contentOverlay.register("document", contentReader);
@@ -382,9 +389,17 @@ function renderFilesystem(): void {
   filesystemTitle.textContent = snapshot.current.filesystemView === "disks"
     ? t("disks")
     : snapshot.current.cwd;
-  fileGrid.innerHTML = filesystemEntries.map(({ icon, name, category }) =>
-    `<button type="button" data-file-name="${escapeHtml(name)}" data-icon="${icon}" data-category="${category}"><b>${renderFileIcon(edexIcons, icon)}</b><span>${escapeHtml(name)}</span></button>`
-  ).join("");
+  fileGrid.innerHTML = filesystemEntries.map(({ icon, name, category }) => {
+    const label = category === "navigation" && (icon === "up" || icon === "showDisks")
+      ? t(icon === "up" ? "goUp" : "showDisks") : name;
+    return `<button type="button" data-file-name="${escapeHtml(name)}" data-icon="${icon}" data-category="${category}"><b>${renderFileIcon(edexIcons, icon)}</b><span>${escapeHtml(label)}</span></button>`;
+  }).join("");
+  fileGrid.parentElement?.querySelector(".content-status")?.remove();
+  const inContent = currentContentDirectory() !== undefined;
+  if (!staticMode && inContent && selectedContent.source.kind === "author") {
+    const empty = filesystemEntries.every((entry) => entry.category === "navigation");
+    if (contentLoadFailed || empty) fileGrid.before(createContentStatus(contentLoadFailed ? "error" : "empty", locale));
+  }
 }
 
 function renderPrompt(): void {
@@ -944,7 +959,8 @@ const memoryPointStates: MemoryPointState[] = staticMode
   : seededShuffle(Array.from({ length: 440 }, (_, index) => index < 194 ? "active" : index < 344 ? "available" : "free"), 0x2ed2_0228);
 memoryGrid.innerHTML = memoryPointStates.map((state) => `<i class="${state}"></i>`).join("");
 
-if (!staticMode) restoreContentLocation({ render: false });
+if (!staticMode && !contentLoadFailed) restoreContentLocation({ render: false });
+else lastContentHash = window.location.hash;
 renderTerminal();
 renderSessionChrome();
 renderTelemetry(0);

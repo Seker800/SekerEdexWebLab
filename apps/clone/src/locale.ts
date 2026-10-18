@@ -12,7 +12,7 @@ const english = {
   state: "STATE", online: "ONLINE", worldView: "WORLD VIEW", globalMap: "GLOBAL NETWORK MAP",
   endpoint: "ENDPOINT LAT/LON", initializingGlobe: "INITIALIZING GLOBE", networkTraffic: "NETWORK TRAFFIC",
   trafficRate: "UP / DOWN, MB/S", total: "TOTAL", up: "UP", down: "DOWN",
-  filesystem: "FILESYSTEM", home: "HOME", disks: "Showing available block devices",
+  filesystem: "FILESYSTEM", home: "HOME", disks: "Showing available block devices", showDisks: "Show disks", goUp: "Go up",
   mounted: "Mount /home/squared used 71%", returnToDeck: "RETURN TO DECK",
   systemTelemetry: "System telemetry", mainTerminal: "Main terminal", terminalSessions: "Terminal sessions",
   terminalCommand: "Terminal command", networkTelemetry: "Network telemetry", keyboard: "On-screen QWERTY keyboard",
@@ -22,7 +22,9 @@ const english = {
   zoomIn: "Zoom in", decoding: "DECODING MEDIA", resolving: "RESOLVING IMAGE",
   decodeError: "MEDIA DECODE ERROR", raster: "RASTER ACQUISITION",
   soundOn: "SOUND ON", soundOff: "SOUND OFF", gateSoundOn: "Sound: on", gateSoundOff: "Sound: off",
-  language: "Language"
+  language: "Language", contentLoading: "Loading published content…",
+  contentUnavailable: "Content is unavailable. The terminal is still available.",
+  contentEmpty: "No published content here yet.", contentRetry: "Reload & retry"
 } as const;
 
 const chinese: Record<keyof typeof english, string> = {
@@ -37,7 +39,7 @@ const chinese: Record<keyof typeof english, string> = {
   state: "状态", online: "在线", worldView: "世界视图", globalMap: "全球网络地图",
   endpoint: "端点经纬度", initializingGlobe: "正在初始化地球", networkTraffic: "网络流量",
   trafficRate: "上行 / 下行，MB/秒", total: "总计", up: "上行", down: "下行",
-  filesystem: "文件系统", home: "主页", disks: "显示可用块设备",
+  filesystem: "文件系统", home: "主页", disks: "显示可用块设备", showDisks: "显示磁盘", goUp: "返回上级",
   mounted: "/home/squared 已使用 71%", returnToDeck: "返回工作台",
   systemTelemetry: "系统状态", mainTerminal: "主终端", terminalSessions: "终端会话",
   terminalCommand: "终端命令", networkTelemetry: "网络状态", keyboard: "屏幕 QWERTY 键盘",
@@ -47,7 +49,9 @@ const chinese: Record<keyof typeof english, string> = {
   zoomIn: "放大", decoding: "正在解码图片", resolving: "正在解析图片",
   decodeError: "图片解码失败", raster: "正在载入图像",
   soundOn: "声音 开", soundOff: "声音 关", gateSoundOn: "声音：开", gateSoundOff: "声音：关",
-  language: "语言"
+  language: "语言", contentLoading: "正在加载已发布内容…",
+  contentUnavailable: "内容暂时无法加载，终端仍可使用。",
+  contentEmpty: "这里暂时没有已发布内容。", contentRetry: "重新加载并重试"
 };
 
 export type MessageKey = keyof typeof english;

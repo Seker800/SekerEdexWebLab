@@ -82,7 +82,7 @@ try {
   responseMode = "stalled";
   await page.goto(`${frontendOrigin}/?fastboot#/blog/posts/hello.md`, { waitUntil: "domcontentloaded" });
   await page.locator('[data-content-status="loading"]').waitFor({ timeout: 2_000 });
-  await page.waitForFunction(() => document.documentElement.dataset.contentState === "error", { timeout: 12_000 });
+  await page.waitForFunction(() => document.documentElement.dataset.contentState === "error", undefined, { timeout: 12_000 });
   assert.equal(new URL(page.url()).hash, "#/blog/posts/hello.md", "Outage must retain the requested article for retry");
   await page.locator("#initialize-system").click();
   await page.locator('html[data-boot-phase="complete"]').waitFor();
@@ -100,27 +100,48 @@ try {
     kind: "document", relativePath: `many/article-${String(index).padStart(2, "0")}.md`, title: `Article ${index}`,
     summary: "", markdown: `# Article ${index}`, publishedAt: "2026-10-18", tags: [], sortOrder: index
   });
-  await page.goto(`${frontendOrigin}/?fastboot#/blog/many`);
+  await page.goto(`${frontendOrigin}/?fastboot&case=many#/blog/many`);
   await page.locator("#initialize-system").click();
   await page.locator('html[data-boot-phase="complete"]').waitFor();
+  await page.locator(".file-grid").hover();
+  await page.mouse.wheel(0, 1600);
+  await page.waitForFunction(() => document.querySelector(".file-grid")!.scrollTop > 0, undefined, { timeout: 2_000 });
   await page.locator('.file-grid button[data-file-name="article-79.md"]').click({ timeout: 3_000 });
   assert.equal(await page.locator("#content-reader-title").textContent(), "Article 79");
   await page.locator("#content-overlay-close").click();
   await page.screenshot({ path: path.resolve("artifacts/app-verification/content-api-large-directory.png") });
 
   responseMode = "empty";
-  await page.goto(`${frontendOrigin}/?fastboot`);
+  await page.goto(`${frontendOrigin}/?fastboot&case=empty`);
   await page.locator("#initialize-system").click();
   await page.locator('html[data-boot-phase="complete"]').waitFor();
   await page.locator('[data-content-status="empty"]').waitFor({ timeout: 3_000 });
   assert.equal(await page.locator('.file-grid button[data-file-name="posts"]').count(), 0);
   await page.screenshot({ path: path.resolve("artifacts/app-verification/content-api-empty.png") });
+  const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+  const mobilePage = await mobile.newPage();
+  await mobilePage.goto(`${frontendOrigin}/?fastboot`);
+  await mobilePage.locator("#gate-language").selectOption("zh-CN");
+  await mobilePage.locator("#initialize-system").tap();
+  await mobilePage.locator('html[data-boot-phase="complete"]').waitFor();
+  await mobilePage.locator("#mobile-files-view").tap();
+  assert.equal(await mobilePage.locator('[data-content-status="empty"] p').textContent(), "这里暂时没有已发布内容。");
+  await mobilePage.screenshot({ path: path.resolve("artifacts/app-verification/content-api-mobile-empty.png") });
   backend.closeAllConnections();
   await new Promise<void>((resolve) => backend.close(() => resolve()));
   backendOpen = false;
   await page.reload();
   await page.waitForFunction(() => document.documentElement.dataset.contentState === "error");
   assert.equal(await page.locator('.file-grid button[data-file-name="posts"]').count(), 0);
+  await mobilePage.reload();
+  await mobilePage.locator("#initialize-system").tap();
+  await mobilePage.locator('html[data-boot-phase="complete"]').waitFor();
+  await mobilePage.locator("#mobile-files-view").tap();
+  const retryBounds = await mobilePage.locator("[data-content-retry]").boundingBox();
+  assert.ok(retryBounds && retryBounds.width >= 44 && retryBounds.height >= 44);
+  assert.ok(await mobilePage.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await mobilePage.screenshot({ path: path.resolve("artifacts/app-verification/content-api-mobile-error.png") });
+  await mobile.close();
   console.log("Content client integration passed: media, bounded loading, retry, deep-link recovery, large directory, empty and outage states.");
 } finally {
   await browser?.close();
