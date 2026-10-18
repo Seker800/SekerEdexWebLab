@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { withRequestDeadline } from "../request-lifecycle.js";
 import { buildContentTree } from "./content-tree.js";
 import type { ContentEntry, ContentManifest, ContentSourceDescriptor } from "./content-model.js";
 
@@ -25,28 +26,13 @@ export function normalizeContentApiOrigin(value: string): string {
 
 export async function fetchContentApi(apiOrigin: string, fetcher: typeof fetch = fetch): Promise<{ source: ContentSourceDescriptor; manifest: ContentManifest }> {
   const origin = normalizeContentApiOrigin(apiOrigin);
-  const controller = new AbortController();
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_resolve, reject) => {
-    timer = setTimeout(() => {
-      const error = new Error("Content API request timed out.");
-      controller.abort(error);
-      reject(error);
-    }, 8_000);
+  const payload: unknown = await withRequestDeadline(async (signal) => {
+    const response = await fetcher(`${origin}/api/v1/content`, {
+      cache: "no-store", credentials: "omit", referrerPolicy: "no-referrer", signal
+    });
+    if (!response.ok) throw new Error(`Content API request failed with ${response.status}.`);
+    return response.json();
   });
-  let payload: unknown;
-  try {
-    // The deadline covers both response headers and a body that stops streaming.
-    payload = await Promise.race([(async () => {
-      const response = await fetcher(`${origin}/api/v1/content`, {
-        cache: "no-store", credentials: "omit", referrerPolicy: "no-referrer", signal: controller.signal
-      });
-      if (!response.ok) throw new Error(`Content API request failed with ${response.status}.`);
-      return response.json();
-    })(), timeout]);
-  } finally {
-    clearTimeout(timer);
-  }
   const parsed = responseSchema.parse(payload);
   const entries: ContentEntry[] = parsed.entries.map((entry) => {
     if (entry.kind !== "media") return entry;
