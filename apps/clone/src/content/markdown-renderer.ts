@@ -10,6 +10,7 @@ export interface MarkdownRenderContext {
 interface MarkdownEnvironment extends Env {
   context: MarkdownRenderContext;
   headingCounts: Map<string, number>;
+  headingIds: Set<string>;
 }
 
 function escapeAttribute(markdown: MarkdownItInstance, value: string): string {
@@ -54,9 +55,15 @@ markdown.renderer.rules.heading_open = (tokens, index, options, environment, ren
   const token = tokens[index]!;
   const markdownEnvironment = environment as MarkdownEnvironment;
   const base = headingSlug(tokens[index + 1]?.content ?? "");
-  const occurrence = (markdownEnvironment.headingCounts.get(base) ?? 0) + 1;
+  let occurrence = (markdownEnvironment.headingCounts.get(base) ?? 0) + 1;
+  let id = occurrence === 1 ? base : `${base}-${occurrence}`;
+  while (markdownEnvironment.headingIds.has(id)) {
+    occurrence += 1;
+    id = `${base}-${occurrence}`;
+  }
   markdownEnvironment.headingCounts.set(base, occurrence);
-  token.attrSet("id", occurrence === 1 ? base : `${base}-${occurrence}`);
+  markdownEnvironment.headingIds.add(id);
+  token.attrSet("id", id);
   token.attrSet("tabindex", "-1");
   return defaultHeadingOpen(tokens, index, options, environment, renderer);
 };
@@ -114,5 +121,5 @@ markdown.renderer.rules.image = (tokens, index, _options, environment) => {
 };
 
 export function renderContentMarkdown(source: string, context: MarkdownRenderContext): string {
-  return markdown.render(source, { context, headingCounts: new Map() } satisfies MarkdownEnvironment);
+  return markdown.render(source, { context, headingCounts: new Map(), headingIds: new Set() } satisfies MarkdownEnvironment);
 }
