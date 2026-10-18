@@ -19,12 +19,14 @@ const content = {
     { kind: "media", relativePath: "posts/clip.mp4", url: "/api/v1/media/00000000-0000-0000-0000-000000000002", mediaType: "video/mp4", alt: "A short clip", sortOrder: 3 }
   ]
 };
+let responseMode: "normal" | "stalled" | "empty" = "normal";
 const backend = createServer((request, response) => {
   response.setHeader("Access-Control-Allow-Origin", frontendOrigin);
   response.setHeader("Cache-Control", "no-store");
   if (request.url === "/api/v1/content") {
+    if (responseMode === "stalled") return;
     response.writeHead(200, { "Content-Type": "application/json" });
-    response.end(JSON.stringify(content));
+    response.end(JSON.stringify(responseMode === "empty" ? { ...content, entries: [] } : content));
     return;
   }
   const media = request.url?.endsWith("000000000001") ? { type: "image/jpeg", bytes: image } :
@@ -77,14 +79,54 @@ try {
   await page.locator(".video-viewer video").waitFor({ state: "visible" });
   assert.equal(await page.locator(".video-viewer p").textContent(), "A short clip");
   await page.screenshot({ path: path.resolve(import.meta.dirname, "../artifacts/app-verification/content-api-video.png") });
+  responseMode = "stalled";
+  await page.goto(`${frontendOrigin}/?fastboot#/blog/posts/hello.md`, { waitUntil: "domcontentloaded" });
+  await page.locator('[data-content-status="loading"]').waitFor({ timeout: 2_000 });
+  await page.waitForFunction(() => document.documentElement.dataset.contentState === "error", { timeout: 12_000 });
+  assert.equal(new URL(page.url()).hash, "#/blog/posts/hello.md", "Outage must retain the requested article for retry");
+  await page.locator("#initialize-system").click();
+  await page.locator('html[data-boot-phase="complete"]').waitFor();
+  await page.locator('[data-content-status="error"]').waitFor();
+  await page.screenshot({ path: path.resolve("artifacts/app-verification/content-api-timeout.png") });
+  responseMode = "normal";
+  await page.locator('[data-content-retry]').click();
+  await page.waitForFunction(() => document.documentElement.dataset.contentState === "ready");
+  await page.locator("#initialize-system").click();
+  await page.locator('html[data-boot-phase="complete"]').waitFor();
+  assert.equal(await page.locator("#content-reader-title").textContent(), "API article");
+
+  // A populated directory must remain navigable beyond the first screenful.
+  for (let index = 0; index < 80; index += 1) content.entries.push({
+    kind: "document", relativePath: `many/article-${String(index).padStart(2, "0")}.md`, title: `Article ${index}`,
+    summary: "", markdown: `# Article ${index}`, publishedAt: "2026-10-18", tags: [], sortOrder: index
+  });
+  await page.goto(`${frontendOrigin}/?fastboot#/blog/many`);
+  await page.locator("#initialize-system").click();
+  await page.locator('html[data-boot-phase="complete"]').waitFor();
+  await page.locator('.file-grid button[data-file-name="article-79.md"]').click({ timeout: 3_000 });
+  assert.equal(await page.locator("#content-reader-title").textContent(), "Article 79");
+  await page.locator("#content-overlay-close").click();
+  await page.screenshot({ path: path.resolve("artifacts/app-verification/content-api-large-directory.png") });
+
+  responseMode = "empty";
+  await page.goto(`${frontendOrigin}/?fastboot`);
+  await page.locator("#initialize-system").click();
+  await page.locator('html[data-boot-phase="complete"]').waitFor();
+  await page.locator('[data-content-status="empty"]').waitFor({ timeout: 3_000 });
+  assert.equal(await page.locator('.file-grid button[data-file-name="posts"]').count(), 0);
+  await page.screenshot({ path: path.resolve("artifacts/app-verification/content-api-empty.png") });
+  backend.closeAllConnections();
   await new Promise<void>((resolve) => backend.close(() => resolve()));
   backendOpen = false;
   await page.reload();
   await page.waitForFunction(() => document.documentElement.dataset.contentState === "error");
   assert.equal(await page.locator('.file-grid button[data-file-name="posts"]').count(), 0);
-  console.log("Content client integration passed: API article and media load, outage fails closed.");
+  console.log("Content client integration passed: media, bounded loading, retry, deep-link recovery, large directory, empty and outage states.");
 } finally {
   await browser?.close();
   await vite?.close();
-  if (backendOpen) await new Promise<void>((resolve) => backend.close(() => resolve()));
+  if (backendOpen) {
+    backend.closeAllConnections();
+    await new Promise<void>((resolve) => backend.close(() => resolve()));
+  }
 }
