@@ -101,6 +101,7 @@ artifacts/runs/<run-id>/
 - Shell arguments are passed through process argument arrays, not shell interpolation.
 - Live repair is opt in and operates inside a Git repository.
 - Automated repair can write application source and repository Markdown content only. Canonical evidence, upstream assets, hash manifests, licenses, gate configuration, judges and orchestration remain outside its writable roots.
+- The whole controller `src` tree, verification/release `scripts`, CI configuration and root dependency/build manifests are protected, including comparison and collection adapters. A custom contract cannot make these trusted pipeline components writable.
 - `gate:verify` binds the reference screenshot, source revision, asset manifest, visual ceilings and repair roots to the reviewed canonical policy. CODEOWNERS and protected branch settings provide the repository-level approval boundary for policy changes.
 
 ## Extension seams
