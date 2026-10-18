@@ -2,6 +2,16 @@ import { describe, expect, it } from "vitest";
 import { scenarioContractSchema } from "../src/config/contract.js";
 
 describe("scenario contract", () => {
+  it.each([
+    "src/comparison", "src/adapters/browser", "src/adapters/process", "src/domain", "src/cli.ts",
+    "scripts/verify-app.ts", "scripts/deploy-site.ts", ".github/workflows", "package.json", "package-lock.json"
+  ])("keeps repair agents out of the trusted pipeline: %s", (allowedPath) => {
+    expect(() => scenarioContractSchema.parse({
+      scenarioId: "trusted-pipeline", targetUrl: "https://example.com", replicaUrl: "http://127.0.0.1:3000",
+      viewport: { width: 1280, height: 720 }, maxDifferenceRatio: 0.1, allowedPaths: [allowedPath]
+    })).toThrow(/protected path/);
+  });
+
   it("accepts a bounded visual scenario", () => {
     const contract = scenarioContractSchema.parse({
       scenarioId: "home-page",
