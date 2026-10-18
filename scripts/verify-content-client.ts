@@ -9,14 +9,14 @@ import { contentManifestPlugin } from "../apps/clone/vite.config.js";
 const frontendPort = 4180;
 const frontendOrigin = `http://127.0.0.1:${frontendPort}`;
 const image = await readFile(path.resolve(import.meta.dirname, "../examples/blog/posts/night-routes/tokyo-night.jpg"));
-const video = Buffer.from("000000186674797069736f6d0000000069736f6d", "hex");
+let video: Buffer = Buffer.alloc(0);
 const content = {
   schemaVersion: 1,
   source: { schemaVersion: 1, id: "seker-content", kind: "author", visibility: "public", defaultLicense: "All rights reserved" },
   entries: [
     { kind: "document", relativePath: "posts/hello.md", title: "API article", summary: "Live content", markdown: "# API article\n\n![本地图片](../photos/image.jpg)", publishedAt: "2026-10-11", tags: [], sortOrder: 1 },
     { kind: "media", relativePath: "photos/image.jpg", url: "/api/v1/media/00000000-0000-0000-0000-000000000001", mediaType: "image/jpeg", alt: "A local test image", sortOrder: 2 },
-    { kind: "media", relativePath: "posts/clip.mp4", url: "/api/v1/media/00000000-0000-0000-0000-000000000002", mediaType: "video/mp4", alt: "A short clip", sortOrder: 3 }
+    { kind: "media", relativePath: "posts/clip.webm", url: "/api/v1/media/00000000-0000-0000-0000-000000000002", mediaType: "video/webm", alt: "A short clip", sortOrder: 3 }
   ]
 };
 let responseMode: "normal" | "stalled" | "empty" = "normal";
@@ -30,7 +30,7 @@ const backend = createServer((request, response) => {
     return;
   }
   const media = request.url?.endsWith("000000000001") ? { type: "image/jpeg", bytes: image } :
-    request.url?.endsWith("000000000002") ? { type: "video/mp4", bytes: video } : undefined;
+    request.url?.endsWith("000000000002") ? { type: "video/webm", bytes: video } : undefined;
   if (media) {
     response.writeHead(200, { "Content-Type": media.type, "Content-Length": media.bytes.length });
     response.end(media.bytes);
@@ -57,6 +57,36 @@ try {
   await vite.listen();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  // Self-generated moving color bars prove playback without third-party media.
+  video = Buffer.from(await page.evaluate(async () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 64;
+    canvas.height = 64;
+    const context = canvas.getContext("2d")!;
+    const stream = canvas.captureStream(10);
+    const recorder = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp8" });
+    const chunks: Blob[] = [];
+    recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
+    let frame = 0;
+    const timer = setInterval(() => {
+      context.fillStyle = frame++ % 2 ? "#AACFD1" : "#05080D";
+      context.fillRect(0, 0, 64, 64);
+    }, 100);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        recorder.onstop = () => resolve();
+        recorder.onerror = () => reject(new Error("Test video recording failed"));
+        recorder.start();
+        setTimeout(() => recorder.stop(), 1_200);
+      });
+      return [...new Uint8Array(await new Blob(chunks, { type: "video/webm" }).arrayBuffer())];
+    } finally {
+      clearInterval(timer);
+      stream.getTracks().forEach((track) => track.stop());
+    }
+  }));
   await page.goto(frontendOrigin);
   await page.waitForFunction(() => document.documentElement.dataset.contentState === "ready");
   assert.equal(await page.locator('.file-grid button[data-file-name="posts"]').count(), 1);
@@ -75,10 +105,14 @@ try {
   await page.locator(".content-image img").screenshot({ path: path.resolve(import.meta.dirname, "../artifacts/app-verification/content-api-inline-image.png") });
   await page.screenshot({ path: path.resolve(import.meta.dirname, "../artifacts/app-verification/content-api-article.png") });
   await page.locator("#content-overlay-close").click();
-  await page.locator('.file-grid button[data-file-name="clip.mp4"]').click();
+  await page.locator('.file-grid button[data-file-name="clip.webm"]').click();
   await page.locator(".video-viewer video").waitFor({ state: "visible" });
   assert.equal(await page.locator(".video-viewer p").textContent(), "A short clip");
+  await page.locator(".video-viewer video").evaluate((element) => (element as HTMLVideoElement).play());
+  await page.waitForFunction(() => document.querySelector<HTMLVideoElement>(".video-viewer video")!.currentTime > 0.1);
   await page.screenshot({ path: path.resolve(import.meta.dirname, "../artifacts/app-verification/content-api-video.png") });
+  await page.locator("#content-overlay-close").click();
+  assert.ok(await page.locator(".video-viewer video").evaluate((element) => (element as HTMLVideoElement).paused && !element.hasAttribute("src")));
   responseMode = "stalled";
   await page.goto(`${frontendOrigin}/?fastboot#/blog/posts/hello.md`, { waitUntil: "domcontentloaded" });
   await page.locator('[data-content-status="loading"]').waitFor({ timeout: 2_000 });
@@ -120,6 +154,7 @@ try {
   await page.screenshot({ path: path.resolve("artifacts/app-verification/content-api-empty.png") });
   const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   const mobilePage = await mobile.newPage();
+  mobilePage.on("pageerror", (error) => pageErrors.push(error.message));
   await mobilePage.goto(`${frontendOrigin}/?fastboot`);
   await mobilePage.locator("#gate-language").selectOption("zh-CN");
   await mobilePage.locator("#initialize-system").tap();
@@ -142,6 +177,7 @@ try {
   assert.ok(await mobilePage.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await mobilePage.screenshot({ path: path.resolve("artifacts/app-verification/content-api-mobile-error.png") });
   await mobile.close();
+  assert.deepEqual(pageErrors, [], "Content navigation must not cause unhandled browser errors");
   console.log("Content client integration passed: media, bounded loading, retry, deep-link recovery, large directory, empty and outage states.");
 } finally {
   await browser?.close();
