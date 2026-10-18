@@ -92,7 +92,7 @@ markdown.renderer.rules.link_open = (tokens, index, options, environment, render
     token.attrSet("href", contentHash(target.relativePath));
     token.attrSet("data-content-path", target.relativePath);
   } else {
-    token.attrSet("href", "#");
+    token.attrs = token.attrs?.filter(([name]) => name !== "href") ?? null;
     token.attrSet("class", "content-reference--missing");
     token.attrSet("aria-disabled", "true");
   }
