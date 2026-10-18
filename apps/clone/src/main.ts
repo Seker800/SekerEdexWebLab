@@ -658,7 +658,12 @@ function playFeedback(feedback: TerminalFeedback): void {
   else if (feedback === "denied") audioDeck.play("denied");
 }
 
+let composingInput = false;
+lifecycle.listen<CompositionEvent>(input, "compositionstart", () => { composingInput = true; });
+lifecycle.listen<CompositionEvent>(input, "compositionend", () => { composingInput = false; });
+
 function submitCommand(): void {
+  if (composingInput) return;
   const feedback = commandDeck.dispatch({ type: "submit", value: input.value }).feedback ?? "silent";
   input.value = "";
   renderTerminal();
@@ -673,6 +678,7 @@ lifecycle.listen<SubmitEvent>(form, "submit", (event) => {
 });
 
 lifecycle.listen<KeyboardEvent>(input, "keydown", (event) => {
+  if (event.isComposing || composingInput || event.keyCode === 229) return;
   const sourceKey = keyboardKeysForEvent(event).length > 0;
   if (sourceKey) audioDeck.play("stdin");
   const controlCommand = physicalControlCommand(event);
